@@ -1,23 +1,25 @@
 # Gadget Script Installer
 
-## Структура проекта
+## Project Structure
 
-- `Gadget-script-installer-core.js` — основной скрипт
-- `Gadget-script-installer.js` — загрузчик
-- `Gadget-script-installer-core.css` — стили
-- `i18n/` — все языковые файлы (JSON)
+- `Gadget-script-installer-core.js` — main script
+- `Gadget-script-installer.js` — loader
+- `Gadget-script-installer-core.css` — styles
+- `i18n/` — all language files (JSON)
 
-## Локализация
+## Localization
 
-Все языковые файлы должны находиться в папке `i18n`.
+All language files must be placed in the `i18n` folder and named according to the language code (e.g., `ru.json`, `en.json`).
 
-Пример подключения русского языка:
-```js
-window.SCRIPT_INSTALLER_STRINGS_URL = 'i18n/Gadget-script-installer-core.ru.json';
-mw.loader.load('.../Gadget-script-installer-core.js');
+Localization is loaded automatically based on the user's MediaWiki language (`wgUserLanguage`).
+
+Localization files are loaded directly from GitLab:
 ```
+https://gitlab.wikimedia.org/iniquity/script-installer/-/raw/main/i18n/{lang}.json
+```
+If the file for the selected language is missing, English (`en.json`) is used as a fallback.
 
-## Сборка, линтинг и форматирование
-(см. package.json, .eslintrc.json, .prettierrc)
+## Build, Lint, and Format
+(see `package.json`, `.eslintrc.json`, `.prettierrc`)
 
 --- 

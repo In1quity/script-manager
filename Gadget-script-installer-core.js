@@ -1,4 +1,4 @@
-/* Адаптированная версия [[User:Enterprisey/script-installer|script-installer]] */
+/* Adapted version of [[User:Enterprisey/script-installer|script-installer]] */
 
 ( function () {
     // An mw.Api object
@@ -725,14 +725,30 @@
     var jsPage = mw.config.get( "wgPageName" ).slice( -3 ) === ".js" ||
         mw.config.get( "wgPageContentModel" ) === "javascript";
 
+    // --- New localization loading method ---
+    var userLang = mw.config.get('wgUserLanguage') || 'en';
+    var i18nUrl = 'https://gitlab.wikimedia.org/iniquity/script-installer/-/raw/main/i18n/' + userLang + '.json';
+
     function loadStrings(callback) {
-        var url = window.SCRIPT_INSTALLER_STRINGS_URL || 'Gadget-script-installer-core.json';
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, true);
+        xhr.open('GET', i18nUrl, true);
         xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                STRINGS = JSON.parse(xhr.responseText);
-                if (callback) callback();
+            if (xhr.readyState === 4) {
+                if (xhr.status === 200) {
+                    STRINGS = JSON.parse(xhr.responseText);
+                    if (callback) callback();
+                } else if (userLang !== 'en') {
+                    // fallback to English
+                    var xhr2 = new XMLHttpRequest();
+                    xhr2.open('GET', 'https://gitlab.wikimedia.org/iniquity/script-installer/-/raw/main/i18n/en.json', true);
+                    xhr2.onreadystatechange = function() {
+                        if (xhr2.readyState === 4 && xhr2.status === 200) {
+                            STRINGS = JSON.parse(xhr2.responseText);
+                            if (callback) callback();
+                        }
+                    };
+                    xhr2.send();
+                }
             }
         };
         xhr.send();
