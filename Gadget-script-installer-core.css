@@ -1,0 +1,80 @@
+#script-installer-panel li.disabled a.script {
+	text-decoration: line-through;
+	font-style: italic;
+}
+
+#script-installer-panel {
+	width: 60%;
+	border: solid lightgray 1px;
+	padding: 0;
+	margin-left: auto;
+	margin-right: auto;
+	margin-bottom: 15px;
+	overflow: auto;
+	box-shadow: 5px 5px 5px #999;
+	background-color: var(--background-color-base, #fff);
+	z-index: 50;
+}
+
+#script-installer-panel header {
+	background-color: var(--background-color-content-added, #a3d3ff);
+	display: block;
+	padding: 5px;
+	font-size: 1.1em;
+	font-weight: bold;
+	text-align: left;
+}
+
+#script-installer-panel .checkbox-container input {
+	margin-left: 1.5em; 
+}
+#script-installer-panel .filter-container {
+	margin-bottom: -0.75em;
+}
+
+#script-installer-panel .filter-container label {
+	margin-right: 0.35em;
+}
+
+#script-installer-panel .container {
+	padding: 0.75em;
+}
+
+#script-installer-panel .container h2 {
+	margin-top: 0.75em;
+}
+
+#script-installer-panel a {
+	cursor: pointer;
+}
+
+#script-installer-main-install {
+	font-weight: bold;
+}
+
+#script-installer-top-container {
+	bottom: 5px;
+	font-size: 70%;
+	margin-left: 1em;
+	user-select: none;
+}
+
+body.skin-modern #script-installer-top-container a {
+	color: inherit;
+	cursor: pointer;
+}
+
+body.skin-timeless #script-installer-top-container a,
+body.skin-cologneblue #script-installer-top-container a {
+	cursor: pointer
+}
+
+#script-installer-top-container img.warning {
+	position: relative;
+	top: -2px;
+	margin-right: 3px;
+}
+
+td.script-installer-ibx {
+	text-align: center
+}
