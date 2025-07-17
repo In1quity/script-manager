@@ -715,7 +715,7 @@
         window.scriptInstallerInstallTarget = "common"; // by default, install things to the user's common.js
     }
 
-    // ADVERT теперь задаётся через window.ADVERT или дефолтное значение
+    // ADVERT is now set via window.ADVERT or uses the default value
     if (typeof window.ADVERT === 'string') {
         ADVERT = window.ADVERT;
     } else {
@@ -725,51 +725,69 @@
     var jsPage = mw.config.get( "wgPageName" ).slice( -3 ) === ".js" ||
         mw.config.get( "wgPageContentModel" ) === "javascript";
 
-    // --- New localization loading method ---
-    var userLang = mw.config.get('wgUserLanguage') || 'en';
-    var i18nUrl = 'https://gitlab.wikimedia.org/iniquity/script-installer/-/raw/main/i18n/' + userLang + '.json';
+    // Load languageFallbacks.json from GitLab via CORS proxy
+    var languageFallbacks = {};
+    fetch('https://gitlab-content.toolforge.org/iniquity/script-installer/-/raw/main/data/languageFallbacks.mediawiki.json?mime=application/json')
+      .then(resp => resp.json())
+      .then(fallbacks => { languageFallbacks = fallbacks; })
+      .catch(() => { languageFallbacks = {}; });
 
-    function loadStrings(callback) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', i18nUrl, true);
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    STRINGS = JSON.parse(xhr.responseText);
-                    if (callback) callback();
-                } else if (userLang !== 'en') {
-                    // fallback to English
-                    var xhr2 = new XMLHttpRequest();
-                    xhr2.open('GET', 'https://gitlab.wikimedia.org/iniquity/script-installer/-/raw/main/i18n/en.json', true);
-                    xhr2.onreadystatechange = function() {
-                        if (xhr2.readyState === 4 && xhr2.status === 200) {
-                            STRINGS = JSON.parse(xhr2.responseText);
-                            if (callback) callback();
-                        }
-                    };
-                    xhr2.send();
-                }
-            }
-        };
-        xhr.send();
+    function getLanguageChain(lang) {
+      const chain = [lang];
+      let current = lang;
+      const visited = new Set([lang]);
+      while (languageFallbacks[current]) {
+        for (const fallback of languageFallbacks[current]) {
+          if (!visited.has(fallback)) {
+            chain.push(fallback);
+            visited.add(fallback);
+            current = fallback;
+            break;
+          }
+        }
+        if (chain[chain.length - 1] === current) break;
+      }
+      if (!chain.includes('en')) chain.push('en');
+      return chain;
     }
 
-    loadStrings(function() {
-        $.when(
-            $.ready,
-            mw.loader.using( [ "mediawiki.api", "mediawiki.util" ] )
-        ).then( function () {
-            api = new mw.Api();
-            buildImportList().then( function () {
-                attachInstallLinks();
-                if( jsPage ) showUi();
+    function loadI18nWithFallback(lang, callback) {
+      const chain = getLanguageChain(lang);
+      let idx = 0;
+      function tryNext() {
+        if (idx >= chain.length) {
+          console.error('No localization found for any fallback language');
+          return;
+        }
+        const tryLang = chain[idx++];
+        const url = `https://gitlab-content.toolforge.org/iniquity/script-installer/-/raw/main/i18n/${tryLang}.json?mime=application/json`;
+        fetch(url)
+          .then(resp => resp.ok ? resp.json() : Promise.reject())
+          .then(i18n => {
+            STRINGS = i18n;
+            if (callback) callback();
+          })
+          .catch(tryNext);
+      }
+      tryNext();
+    }
 
-                // Auto-open the panel if we set the cookie to do so (see `conditionalReload()`)
-                if( document.cookie.indexOf( "open_script_installer=yes" ) >= 0 ) {
-                    document.cookie = "open_script_installer=; expires=Thu, 01 Jan 1970 00:00:01 GMT";
-                    $( "#script-installer-top-container a:contains('Manage')" ).trigger( "click" );
-                }
-            } );
-        } );
+    // Using:
+    var userLang = mw.config.get('wgUserLanguage') || 'en';
+    loadI18nWithFallback(userLang, function() {
+      $.when(
+        $.ready,
+        mw.loader.using(["mediawiki.api", "mediawiki.util"])
+      ).then(function () {
+        api = new mw.Api();
+        buildImportList().then(function () {
+          attachInstallLinks();
+          if (jsPage) showUi();
+          if (document.cookie.indexOf("open_script_installer=yes") >= 0) {
+            document.cookie = "open_script_installer=; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+            $("#script-installer-top-container a:contains('Manage')").trigger("click");
+          }
+        });
+      });
     });
 } )();
