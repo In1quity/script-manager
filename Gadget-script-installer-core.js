@@ -439,7 +439,20 @@
                 var filteredImports = computed(function() {
                     var result = {};
                     if (importsRef.value) {
-                        Object.keys(importsRef.value).forEach(function(targetName) {
+                        // Define the order: common first, then global, then others
+                        var orderedKeys = ['common', 'global'];
+                        var allKeys = Object.keys(importsRef.value);
+                        
+                        // Add other keys (excluding common and global) in alphabetical order
+                        allKeys.filter(function(key) { 
+                            return key !== 'common' && key !== 'global'; 
+                        }).sort().forEach(function(key) {
+                            orderedKeys.push(key);
+                        });
+                        
+                        orderedKeys.forEach(function(targetName) {
+                            if (!importsRef.value[targetName]) return;
+                            
                             // Filter by selected skin
                             if (selectedSkin.value !== 'all') {
                                 if (selectedSkin.value !== targetName) {
