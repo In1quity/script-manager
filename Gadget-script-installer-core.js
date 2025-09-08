@@ -595,7 +595,11 @@
                 };
                 
                 var getSkinUrl = function(skinName) {
-                    return 'https://' + mw.config.get('wgServerName') + '/wiki/User:' + mw.config.get('wgUserName') + '/' + skinName + '.js';
+                    if (skinName === 'global') {
+                        return 'https://meta.wikimedia.org/wiki/User:' + mw.config.get('wgUserName') + '/global.js';
+                    } else {
+                        return 'https://' + mw.config.get('wgServerName') + '/wiki/User:' + mw.config.get('wgUserName') + '/' + skinName + '.js';
+                    }
                 };
                 
                 return {
