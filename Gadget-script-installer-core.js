@@ -1007,8 +1007,6 @@
                     if (isMoving.value) return;
                     
                     isMoving.value = true;
-                    var key = 'move-' + anImport.getDescription();
-                    setLoading(key, true);
                     
                     anImport.move(selectedTarget.value).done(function() {
                         // Reload data without closing dialog
@@ -1023,7 +1021,6 @@
                         alert('Failed to move script. Please try again.');
                     }).always(function() {
                         isMoving.value = false;
-                        setLoading(key, false);
                     });
                 };
                 
