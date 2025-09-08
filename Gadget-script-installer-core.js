@@ -833,7 +833,9 @@
     }
 
     function showUi() {
+        console.log('[script-installer] showUi() called');
         var fixedPageName = mw.config.get( "wgPageName" ).replace( /_/g, " " );
+        console.log('[script-installer] Page name:', fixedPageName, 'firstHeading exists:', document.getElementById('firstHeading') !== null);
         $( "#firstHeading" ).append( $( "<span>" )
             .attr( "id", "script-installer-top-container" )
             .append(
@@ -847,6 +849,7 @@
                             $( "#script-installer-panel" ).remove();
                         }
                      } ) ) );
+        console.log('[script-installer] UI elements added to page');
     }
 
     function attachInstallLinks() {
@@ -1405,15 +1408,24 @@
     // Using:
     var userLang = mw.config.get('wgUserLanguage') || 'en';
     loadI18nWithFallback(userLang, function() {
+      console.log('[script-installer] i18n loaded, starting main initialization');
       $.when(
         $.ready,
         mw.loader.using(["mediawiki.api", "mediawiki.ForeignApi", "mediawiki.util"])
       ).then(function () {
+        console.log('[script-installer] MediaWiki modules loaded');
         api = new mw.Api();
         metaApi = new mw.ForeignApi( 'https://meta.wikimedia.org/w/api.php' );
         buildImportList().then(function () {
+          console.log('[script-installer] Import list built, attaching links and showing UI');
           attachInstallLinks();
-          if (jsPage) showUi();
+          console.log('[script-installer] jsPage check:', jsPage, 'wgPageName:', mw.config.get('wgPageName'));
+          if (jsPage) {
+            console.log('[script-installer] Showing UI for JS page');
+            showUi();
+          } else {
+            console.log('[script-installer] Not a JS page, UI not shown');
+          }
           if (document.cookie.indexOf("open_script_installer=yes") >= 0) {
             document.cookie = "open_script_installer=; expires=Thu, 01 Jan 1970 00:00:01 GMT";
             $("#script-installer-top-container a:contains('Manage')").trigger("click");
