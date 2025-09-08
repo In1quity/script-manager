@@ -244,3 +244,14 @@ td.script-installer-ibx {
 	display: flex;
 	justify-content: flex-end;
 }
+
+/* Removed script styles */
+.script-item-removed {
+	background-color: #fef2f2 !important;
+	border-color: #fecaca !important;
+	opacity: 0.7;
+}
+
+.script-item-removed .script-link {
+	color: #dc2626 !important;
+}

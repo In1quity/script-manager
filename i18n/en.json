@@ -41,5 +41,6 @@
   "selectTargetSkin": "Select target skin",
   "moveScriptButton": "Move Script",
   "movingProgress": "Moving...",
-  "globalAppliesToAllWikis": "Global (applies to all wikis)"
+  "globalAppliesToAllWikis": "Global (applies to all wikis)",
+  "restoreLinkText": "Restore"
 }

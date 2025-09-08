@@ -425,6 +425,7 @@
                 var filterText = ref('');
                 var selectedSkin = ref('all');
                 var loadingStates = ref({});
+                var removedScripts = ref([]);
                 
                 // Create skin options
                 var skinOptions = [
@@ -488,20 +489,49 @@
                 
                 var handleUninstall = function(anImport) {
                     var key = 'uninstall-' + anImport.getDescription();
+                    var scriptName = anImport.getDescription();
+                    var isRemoved = removedScripts.value.includes(scriptName);
+                    
                     setLoading(key, true);
-                    anImport.uninstall().done(function() {
-                        // Reload data without closing dialog
-                        buildImportList().then(function() {
-                            if (importsRef) {
-                                importsRef.value = imports;
+                    
+                    if (isRemoved) {
+                        // Restore script
+                        anImport.install().done(function() {
+                            // Remove from removed list
+                            var index = removedScripts.value.indexOf(scriptName);
+                            if (index > -1) {
+                                removedScripts.value.splice(index, 1);
                             }
+                            // Reload data without closing dialog
+                            buildImportList().then(function() {
+                                if (importsRef) {
+                                    importsRef.value = imports;
+                                }
+                            });
+                        }).fail(function(error) {
+                            console.error('Failed to restore:', error);
+                            alert('Failed to restore script. Please try again.');
+                        }).always(function() {
+                            setLoading(key, false);
                         });
-                    }).fail(function(error) {
-                        console.error('Failed to uninstall:', error);
-                        alert('Failed to uninstall script. Please try again.');
-                    }).always(function() {
-                        setLoading(key, false);
-                    });
+                    } else {
+                        // Remove script
+                        anImport.uninstall().done(function() {
+                            // Add to removed list
+                            removedScripts.value.push(scriptName);
+                            // Reload data without closing dialog
+                            buildImportList().then(function() {
+                                if (importsRef) {
+                                    importsRef.value = imports;
+                                }
+                            });
+                        }).fail(function(error) {
+                            console.error('Failed to uninstall:', error);
+                            alert('Failed to uninstall script. Please try again.');
+                        }).always(function() {
+                            setLoading(key, false);
+                        });
+                    }
                 };
                 
                 var handleToggleDisabled = function(anImport) {
@@ -558,6 +588,7 @@
                     skinOptions,
                     filteredImports,
                     loadingStates,
+                    removedScripts,
                     handleNormalize,
                     handleUninstall,
                     handleToggleDisabled,
@@ -605,11 +636,14 @@
                         </h3>
                         
                         <div class="script-list">
-                            <div 
+                            <cdx-card 
                                 v-for="anImport in targetImports" 
                                 :key="anImport.getDescription()"
                                 class="script-item"
-                                :class="{ disabled: anImport.disabled }"
+                                :class="{ 
+                                    disabled: anImport.disabled,
+                                    'script-item-removed': removedScripts.includes(anImport.getDescription())
+                                }"
                             >
                                 <div class="script-info">
                                     <a :href="anImport.getHumanUrl()" class="script-link">
@@ -624,7 +658,8 @@
                                         :disabled="loadingStates['uninstall-' + anImport.getDescription()]"
                                         @click="handleUninstall(anImport)"
                                     >
-                                        {{ loadingStates['uninstall-' + anImport.getDescription()] ? '...' : STRINGS.uninstallLinkText }}
+                                        {{ loadingStates['uninstall-' + anImport.getDescription()] ? '...' : 
+                                           (removedScripts.includes(anImport.getDescription()) ? STRINGS.restoreLinkText : STRINGS.uninstallLinkText) }}
                                     </cdx-button>
                                     
                                     <cdx-button 
@@ -645,7 +680,7 @@
                                         {{ loadingStates['move-' + anImport.getDescription()] ? '...' : STRINGS.moveLinkText }}
                                     </cdx-button>
                                 </div>
-                            </div>
+                            </cdx-card>
                         </div>
                     </div>
                     </div>
@@ -1295,11 +1330,11 @@
             if (tryLang === 'en') {
               STRINGS_EN = i18n;
             } else {
-              STRINGS = i18n;
+            STRINGS = i18n;
             }
             loadedCount++;
             if (loadedCount >= 2 || (loadedCount === 1 && !chain.includes('en'))) {
-              if (callback) callback();
+            if (callback) callback();
             }
           })
           .catch(tryNext);
@@ -1310,7 +1345,7 @@
       if (lang !== 'en') {
         idx = chain.indexOf('en');
         if (idx === -1) idx = chain.length;
-        tryNext();
+      tryNext();
       }
     }
 
