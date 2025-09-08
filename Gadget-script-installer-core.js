@@ -429,9 +429,9 @@
                 
                 // Create skin options
                 var skinOptions = [
-                    { label: 'All skins', value: 'all' },
-                    { label: 'Common (applies to all skins)', value: 'common' },
-                    { label: 'Global (applies to all wikis)', value: 'global' }
+                    { label: STRINGS.allSkins, value: 'all' },
+                    { label: STRINGS.commonAppliesToAllSkins, value: 'common' },
+                    { label: STRINGS.globalAppliesToAllWikis, value: 'global' }
                 ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
                     return { label: skin, value: skin };
                 }));
@@ -619,11 +619,11 @@
                         
                         <div class="script-installer-skin-selector">
                             <cdx-field>
-                                <template #label>Select skin:</template>
+                                <template #label>{{ STRINGS.selectSkin }}:</template>
                                 <cdx-select
                                     v-model:selected="selectedSkin"
                                     :menu-items="skinOptions"
-                                    default-label="All skins"
+                                    :default-label="STRINGS.allSkins"
                                 />
                             </cdx-field>
                         </div>

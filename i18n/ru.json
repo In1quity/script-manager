@@ -42,5 +42,8 @@
   "moveScriptButton": "Переместить скрипт",
   "movingProgress": "Перемещение...",
   "globalAppliesToAllWikis": "Global (применяется ко всем вики)",
-  "restoreLinkText": "Вернуть"
+  "restoreLinkText": "Вернуть",
+  "allSkins": "Все скины",
+  "commonAppliesToAllSkins": "Common (применяется ко всем скинам)",
+  "selectSkin": "Выберите скин"
 } 
