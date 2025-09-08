@@ -1361,20 +1361,27 @@
     }
 
     function loadI18nWithFallback(lang, callback) {
+      console.log('[script-installer] loadI18nWithFallback called with lang:', lang);
       const chain = getLanguageChain(lang);
+      console.log('[script-installer] Language chain:', chain);
       let idx = 0;
       let loadedCount = 0;
       
       function tryNext() {
         if (idx >= chain.length) {
-          console.error('No localization found for any fallback language');
+          console.error('[script-installer] No localization found for any fallback language');
           return;
         }
         const tryLang = chain[idx++];
         const url = `https://gitlab-content.toolforge.org/iniquity/script-installer/-/raw/main/i18n/${tryLang}.json?mime=application/json`;
+        console.log('[script-installer] Trying to load i18n for:', tryLang, 'from:', url);
         fetch(url)
-          .then(resp => resp.ok ? resp.json() : Promise.reject())
+          .then(resp => {
+            console.log('[script-installer] Fetch response for', tryLang, ':', resp.status, resp.ok);
+            return resp.ok ? resp.json() : Promise.reject('HTTP ' + resp.status);
+          })
           .then(i18n => {
+            console.log('[script-installer] Successfully loaded i18n for:', tryLang);
             if (tryLang === 'en') {
               STRINGS_EN = i18n;
             } else {
@@ -1382,10 +1389,14 @@
             }
             loadedCount++;
             if (loadedCount >= 2 || (loadedCount === 1 && !chain.includes('en'))) {
+            console.log('[script-installer] Calling callback, loadedCount:', loadedCount);
             if (callback) callback();
             }
           })
-          .catch(tryNext);
+          .catch(err => {
+            console.error('[script-installer] Failed to load i18n for', tryLang, ':', err);
+            tryNext();
+          });
       }
       
       // Load both current language and English
@@ -1407,6 +1418,7 @@
 
     // Using:
     var userLang = mw.config.get('wgUserLanguage') || 'en';
+    console.log('[script-installer] Starting with user language:', userLang);
     loadI18nWithFallback(userLang, function() {
       console.log('[script-installer] i18n loaded, starting main initialization');
       $.when(
