@@ -581,6 +581,10 @@
                     });
                 };
                 
+                var getSkinUrl = function(skinName) {
+                    return 'https://' + mw.config.get('wgServerName') + '/wiki/User:' + mw.config.get('wgUserName') + '/' + skinName + '.js';
+                };
+                
                 return {
                     dialogOpen,
                     filterText,
@@ -594,6 +598,7 @@
                     handleToggleDisabled,
                     handleMove,
                     handleNormalizeAll,
+                    getSkinUrl,
                     STRINGS: STRINGS,
                     SKINS: SKINS,
                     mw: mw
@@ -640,7 +645,7 @@
                                 {{ STRINGS.globalAppliesToAllWikis }}
                             </template>
                             <template v-else>
-                                <a :href="'https://' + mw.config.get('wgServerName') + '/wiki/User:' + mw.config.get('wgUserName') + '/' + targetName + '.js'" target="_blank">
+                                <a :href="getSkinUrl(targetName)" target="_blank">
                                     {{ targetName }}
                                 </a>
                             </template>
