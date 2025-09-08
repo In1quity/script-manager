@@ -1219,10 +1219,10 @@
     function getSummaryForTarget( target, summaryKey, description ) {
         if ( target === 'global' ) {
             // Use English summary for global.js from en.json
-            return STRINGS_EN[summaryKey].replace( "$1", description ) + ADVERT;
+            return STRINGS_EN[summaryKey].replace( "$1", description ) + (ADVERT ? " " + ADVERT : "");
         } else {
             // Use localized summary for local scripts
-            return STRINGS[summaryKey].replace( "$1", description ) + ADVERT;
+            return STRINGS[summaryKey].replace( "$1", description ) + (ADVERT ? " " + ADVERT : "");
         }
     }
 
