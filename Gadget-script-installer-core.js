@@ -567,9 +567,12 @@
                 <cdx-dialog
                     class="sm-cdx-dialog"
                     v-model:open="dialogOpen"
-                    :title="STRINGS.panelHeader"
+                    :title="STRINGS.scriptManagerTitle"
                     :use-close-button="true"
                 >
+                    <div class="script-installer-subtitle">
+                        {{ STRINGS.panelHeader }}
+                    </div>
                     <div class="script-installer-controls">
                         <div class="script-installer-search-wrap">
                             <cdx-text-input
