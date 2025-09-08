@@ -41,9 +41,5 @@
   "selectTargetSkin": "Select target skin",
   "moveScriptButton": "Move Script",
   "movingProgress": "Moving...",
-  "globalAppliesToAllWikis": "Global (applies to all wikis)",
-  "installSummaryEn": "Installing $1",
-  "uninstallSummaryEn": "Uninstalling $1",
-  "enableSummaryEn": "Enabling $1",
-  "disableSummaryEn": "Disabling $1"
+  "globalAppliesToAllWikis": "Global (applies to all wikis)"
 }

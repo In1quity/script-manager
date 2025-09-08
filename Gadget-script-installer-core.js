@@ -1218,7 +1218,13 @@
     function getSummaryForTarget( target, summaryKey, description ) {
         if ( target === 'global' ) {
             // Use English summary for global.js
-            return STRINGS[summaryKey + 'En'].replace( "$1", description ) + ADVERT;
+            var englishSummaries = {
+                'installSummary': 'Installing $1',
+                'uninstallSummary': 'Uninstalling $1',
+                'enableSummary': 'Enabling $1',
+                'disableSummary': 'Disabling $1'
+            };
+            return englishSummaries[summaryKey].replace( "$1", description ) + ADVERT;
         } else {
             // Use localized summary for local scripts
             return STRINGS[summaryKey].replace( "$1", description ) + ADVERT;
