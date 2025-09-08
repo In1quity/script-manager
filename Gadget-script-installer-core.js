@@ -127,7 +127,8 @@
      * Installs the import.
      */
     Import.prototype.install = function () {
-        return api.postWithEditToken( {
+        var targetApi = getApiForTarget( this.target );
+        return targetApi.postWithEditToken( {
             action: "edit",
             title: getFullTarget( this.target ),
             summary: STRINGS.installSummary.replace( "$1", this.getDescription( /* useWikitext */ true ) ) + ADVERT,
@@ -232,8 +233,10 @@
      */
     Import.prototype.move = function ( newTarget ) {
         if( this.target === newTarget ) return;
+        console.log('[script-installer] Import.move - moving from', this.target, 'to', newTarget);
         var old = new Import( this.page, this.wiki, this.url, this.target, this.disabled );
         this.target = newTarget;
+        console.log('[script-installer] Import.move - calling uninstall and install');
         return $.when( old.uninstall(), this.install() );
     }
 
@@ -1008,7 +1011,12 @@
                     
                     isMoving.value = true;
                     
+                    console.log('[script-installer] Moving script:', anImport.getDescription());
+                    console.log('[script-installer] From target:', anImport.target);
+                    console.log('[script-installer] To target:', selectedTarget.value);
+                    
                     anImport.move(selectedTarget.value).done(function() {
+                        console.log('[script-installer] Move successful');
                         // Reload data without closing dialog
                         buildImportList().then(function() {
                             if (importsRef) {
