@@ -116,7 +116,13 @@
         var dis = this.disabled ? "//" : "",
             url = this.url;
         switch( this.type ) {
-            case 0: return dis + "importScript('" + escapeForJsString( this.page ) + "'); // " + STRINGS.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
+            case 0: 
+                // For global.js, use mw.loader.load and English backlink
+                if (this.target === 'global') {
+                    return dis + "mw.loader.load('" + escapeForJsString( this.page ) + "'); // " + STRINGS_EN.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
+                } else {
+                    return dis + "importScript('" + escapeForJsString( this.page ) + "'); // " + STRINGS.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
+                }
             case 1: url = "//" + encodeURIComponent( this.wiki ) + ".org/w/index.php?title=" +
                             encodeURIComponent( this.page ) + "&action=raw&ctype=text/javascript"; 
                     /* FALL THROUGH */
