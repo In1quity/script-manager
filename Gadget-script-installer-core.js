@@ -119,7 +119,9 @@
             case 0: 
                 // For global.js, use mw.loader.load and English backlink
                 if (this.target === 'global') {
-                    return dis + "mw.loader.load('" + escapeForJsString( this.page ) + "'); // " + STRINGS_EN.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
+                    var globalUrl = "//" + mw.config.get('wgServerName') + "/w/index.php?title=" + 
+                                   encodeURIComponent( this.page ) + "&action=raw&ctype=text/javascript";
+                    return dis + "mw.loader.load('" + escapeForJsString( globalUrl ) + "'); // " + STRINGS_EN.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
                 } else {
                     return dis + "importScript('" + escapeForJsString( this.page ) + "'); // " + STRINGS.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
                 }
