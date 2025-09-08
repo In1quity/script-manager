@@ -131,7 +131,7 @@
         return targetApi.postWithEditToken( {
             action: "edit",
             title: getFullTarget( this.target ),
-            summary: STRINGS.installSummary.replace( "$1", this.getDescription( /* useWikitext */ true ) ) + ADVERT,
+            summary: getSummaryForTarget( this.target, 'installSummary', this.getDescription( /* useWikitext */ true ) ),
             appendtext: "\n" + this.toJs()
         } );
     }
@@ -181,7 +181,7 @@
             return getApiForTarget( that.target ).postWithEditToken( {
                 action: "edit",
                 title: getFullTarget( that.target ),
-                summary: STRINGS.uninstallSummary.replace( "$1", that.getDescription( /* useWikitext */ true ) ) + ADVERT,
+                summary: getSummaryForTarget( that.target, 'uninstallSummary', that.getDescription( /* useWikitext */ true ) ),
                 text: newWikitext
             } );
         } );
@@ -212,8 +212,8 @@
                 } );
             }
 
-            var summary = ( disabled ? STRINGS.disableSummary : STRINGS.enableSummary )
-                    .replace( "$1", that.getDescription( /* useWikitext */ true ) ) + ADVERT;
+            var summaryKey = disabled ? 'disableSummary' : 'enableSummary';
+            var summary = getSummaryForTarget( that.target, summaryKey, that.getDescription( /* useWikitext */ true ) );
             return getApiForTarget( that.target ).postWithEditToken( {
                 action: "edit",
                 title: getFullTarget( that.target ),
@@ -1213,6 +1213,16 @@
 
     function getApiForTitle( title ) {
         return title.indexOf( "/global.js" ) !== -1 ? metaApi : api;
+    }
+
+    function getSummaryForTarget( target, summaryKey, description ) {
+        if ( target === 'global' ) {
+            // Use English summary for global.js
+            return STRINGS[summaryKey + 'En'].replace( "$1", description ) + ADVERT;
+        } else {
+            // Use localized summary for local scripts
+            return STRINGS[summaryKey].replace( "$1", description ) + ADVERT;
+        }
     }
 
     // From https://stackoverflow.com/a/10192255

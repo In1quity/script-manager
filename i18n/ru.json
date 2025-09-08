@@ -41,5 +41,9 @@
   "selectTargetSkin": "Выберите целевой скин",
   "moveScriptButton": "Переместить скрипт",
   "movingProgress": "Перемещение...",
-  "globalAppliesToAllWikis": "Global (применяется ко всем вики)"
+  "globalAppliesToAllWikis": "Global (применяется ко всем вики)",
+  "installSummaryEn": "Installing $1",
+  "uninstallSummaryEn": "Uninstalling $1",
+  "enableSummaryEn": "Enabling $1",
+  "disableSummaryEn": "Disabling $1"
 } 
