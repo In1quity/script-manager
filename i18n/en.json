@@ -33,5 +33,12 @@
   "badPageError": "Page is not User: or MediaWiki: and is unprotected",
   "manageUserScripts": "Manage user scripts",
   "bigSecurityWarning": "Warning!$1\n\nAll user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump. Install this script?",
-  "securityWarningSection": " About to install $1."
+  "securityWarningSection": " About to install $1.",
+  "moveDialogTitle": "Move script: $1",
+  "currentLocation": "Current location:",
+  "moveToSkin": "Move to skin:",
+  "selectTargetSkin": "Select target skin",
+  "moveScriptButton": "Move Script",
+  "movingProgress": "Moving...",
+  "globalAppliesToAllWikis": "Global (applies to all wikis)"
 } 

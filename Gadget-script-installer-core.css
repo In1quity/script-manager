@@ -1,52 +1,189 @@
-#script-installer-panel li.disabled a.script {
+/* Codex-based script installer dialog styles */
+.sm-cdx-dialog.cdx-dialog {
+	max-width: 65rem;
+}
+
+.script-installer-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	margin-bottom: 1rem;
+}
+
+.script-installer-search-wrap {
+	width: 100%;
+	margin: 0 0 10px 0;
+}
+
+.script-installer-search-wrap .cdx-text-input {
+	width: 100%;
+}
+
+.script-installer-skin-selector {
+	width: 100%;
+	margin: 0 0 10px 0;
+}
+
+.script-installer-skin-selector .cdx-text-input {
+	width: 100%;
+}
+
+.script-installer-scroll {
+	height: 55vh;
+	overflow-y: auto;
+	scrollbar-gutter: stable;
+	display: flex;
+	flex-direction: column;
+}
+
+.script-installer-dialog-module {
+	display: flex;
+}
+
+.script-installer-bottom-left {
+	display: flex;
+	justify-content: flex-start;
+	width: 100%;
+	align-items: flex-end;
+}
+
+.script-installer-dialog-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 10px;
+	padding-top: 8px;
+	position: sticky;
+	bottom: 0;
+	background: var(--background-color-base, #fff);
+	z-index: 3;
+	width: 100%;
+}
+
+.script-target-section {
+	margin-bottom: 1.5rem;
+}
+
+.script-target-section h3 {
+	margin: 0 0 0.5rem 0;
+	font-size: 1.1em;
+	font-weight: bold;
+	color: var(--color-base, #000);
+}
+
+.script-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.script-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.75rem;
+	background-color: var(--background-color-base, #fff);
+	border: 1px solid var(--border-color-base, #a2a9b1);
+	border-radius: 4px;
+	transition: background-color 0.2s ease;
+}
+
+.script-item:hover {
+	background-color: var(--background-color-interactive, #f8f9fa);
+}
+
+.script-item.disabled {
+	opacity: 0.6;
+}
+
+.script-item.disabled .script-link {
 	text-decoration: line-through;
 	font-style: italic;
 }
 
-#script-installer-panel {
-	width: 60%;
-	border: solid lightgray 1px;
-	padding: 0;
-	margin-left: auto;
-	margin-right: auto;
-	margin-bottom: 15px;
-	overflow: auto;
-	box-shadow: 5px 5px 5px #999;
-	background-color: var(--background-color-base, #fff);
-	z-index: 50;
+.script-info {
+	flex: 1;
 }
 
-#script-installer-panel header {
-	background-color: var(--background-color-content-added, #a3d3ff);
-	display: block;
-	padding: 5px;
-	font-size: 1.1em;
-	font-weight: bold;
-	text-align: left;
+.script-link {
+	color: var(--color-link, #0645ad);
+	text-decoration: none;
+	font-weight: 500;
 }
 
-#script-installer-panel .checkbox-container input {
-	margin-left: 1.5em; 
-}
-#script-installer-panel .filter-container {
-	margin-bottom: -0.75em;
+.script-link:hover {
+	text-decoration: underline;
 }
 
-#script-installer-panel .filter-container label {
-	margin-right: 0.35em;
+.script-actions {
+	display: flex;
+	gap: 0.5rem;
+	flex-shrink: 0;
 }
 
-#script-installer-panel .container {
-	padding: 0.75em;
+.script-actions .cdx-button {
+	min-width: auto;
 }
 
-#script-installer-panel .container h2 {
-	margin-top: 0.75em;
+.script-actions .cdx-button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 
-#script-installer-panel a {
-	cursor: pointer;
+.normalize-wrapper {
+	margin-left: 0.5rem;
+	font-weight: normal;
 }
+
+/* Responsive design */
+@media (max-width: 768px) {
+	.script-installer-codex-panel {
+		width: 95%;
+		margin: 0 auto 15px auto;
+	}
+	
+	.script-installer-controls {
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	
+	.script-item {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.5rem;
+	}
+	
+	.script-actions {
+		width: 100%;
+		justify-content: flex-start;
+		flex-wrap: wrap;
+	}
+}
+
+/* Error message styling */
+#script-installer-panel .error {
+	padding: 1rem;
+	background-color: #f8d7da;
+	color: #721c24;
+	border: 1px solid #f5c6cb;
+	border-radius: 4px;
+	text-align: center;
+}
+
+/* Debug info styling */
+.debug-info {
+	padding: 0.5rem;
+	background-color: #d1ecf1;
+	color: #0c5460;
+	border: 1px solid #bee5eb;
+	border-radius: 4px;
+	margin: 0.5rem 0;
+	font-family: monospace;
+	font-size: 0.8em;
+	white-space: pre-wrap;
+}
+
+/* Install dialog styling - dialog will be teleported to body */
 
 #script-installer-main-install {
 	font-weight: bold;
@@ -77,4 +214,24 @@ body.skin-cologneblue #script-installer-top-container a {
 
 td.script-installer-ibx {
 	text-align: center
+}
+
+/* Move dialog styles */
+#script-installer-move-dialog {
+	z-index: 1002;
+}
+
+
+.script-installer-move-content {
+	padding: 1rem 0;
+}
+
+.script-installer-move-content p {
+	margin: 0.5rem 0;
+}
+
+.script-installer-move-actions {
+	margin-top: 1.5rem;
+	display: flex;
+	justify-content: flex-end;
 }
