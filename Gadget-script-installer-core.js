@@ -639,10 +639,14 @@
                         <div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
                         <h3>
                             <template v-if="targetName === 'common'">
-                                {{ STRINGS.skinCommon }}
+                                <a :href="getSkinUrl(targetName)" target="_blank">
+                                    {{ STRINGS.skinCommon }}
+                                </a>
                             </template>
                             <template v-else-if="targetName === 'global'">
-                                {{ STRINGS.globalAppliesToAllWikis }}
+                                <a :href="getSkinUrl(targetName)" target="_blank">
+                                    {{ STRINGS.globalAppliesToAllWikis }}
+                                </a>
                             </template>
                             <template v-else>
                                 <a :href="getSkinUrl(targetName)" target="_blank">
