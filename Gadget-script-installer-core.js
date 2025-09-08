@@ -595,7 +595,8 @@
                     handleMove,
                     handleNormalizeAll,
                     STRINGS: STRINGS,
-                    SKINS: SKINS
+                    SKINS: SKINS,
+                    mw: mw
                 };
             },
             template: `
@@ -632,7 +633,17 @@
                     <div class="script-installer-scroll">
                         <div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
                         <h3>
-                            {{ targetName === 'common' ? STRINGS.skinCommon : (targetName === 'global' ? 'Global (applies to all wikis)' : targetName) }}
+                            <template v-if="targetName === 'common'">
+                                {{ STRINGS.skinCommon }}
+                            </template>
+                            <template v-else-if="targetName === 'global'">
+                                {{ STRINGS.globalAppliesToAllWikis }}
+                            </template>
+                            <template v-else>
+                                <a :href="'https://' + mw.config.get('wgServerName') + '/wiki/User:' + mw.config.get('wgUserName') + '/' + targetName + '.js'" target="_blank">
+                                    {{ targetName }}
+                                </a>
+                            </template>
                         </h3>
                         
                         <div class="script-list">
