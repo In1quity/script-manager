@@ -31,6 +31,7 @@
      * Strings, for translation
      */
     var STRINGS = {};
+    var STRINGS_EN = {};
 
     var USER_NAMESPACE_NAME = mw.config.get( "wgFormattedNamespaces" )[2];
 
@@ -1217,14 +1218,8 @@
 
     function getSummaryForTarget( target, summaryKey, description ) {
         if ( target === 'global' ) {
-            // Use English summary for global.js
-            var englishSummaries = {
-                'installSummary': 'Installing $1',
-                'uninstallSummary': 'Uninstalling $1',
-                'enableSummary': 'Enabling $1',
-                'disableSummary': 'Disabling $1'
-            };
-            return englishSummaries[summaryKey].replace( "$1", description ) + ADVERT;
+            // Use English summary for global.js from en.json
+            return STRINGS_EN[summaryKey].replace( "$1", description ) + ADVERT;
         } else {
             // Use localized summary for local scripts
             return STRINGS[summaryKey].replace( "$1", description ) + ADVERT;
@@ -1285,6 +1280,8 @@
     function loadI18nWithFallback(lang, callback) {
       const chain = getLanguageChain(lang);
       let idx = 0;
+      let loadedCount = 0;
+      
       function tryNext() {
         if (idx >= chain.length) {
           console.error('No localization found for any fallback language');
@@ -1295,12 +1292,26 @@
         fetch(url)
           .then(resp => resp.ok ? resp.json() : Promise.reject())
           .then(i18n => {
-            STRINGS = i18n;
-            if (callback) callback();
+            if (tryLang === 'en') {
+              STRINGS_EN = i18n;
+            } else {
+              STRINGS = i18n;
+            }
+            loadedCount++;
+            if (loadedCount >= 2 || (loadedCount === 1 && !chain.includes('en'))) {
+              if (callback) callback();
+            }
           })
           .catch(tryNext);
       }
+      
+      // Load both current language and English
       tryNext();
+      if (lang !== 'en') {
+        idx = chain.indexOf('en');
+        if (idx === -1) idx = chain.length;
+        tryNext();
+      }
     }
 
     // Prewarm Codex bundles early to speed up first open of the modal
