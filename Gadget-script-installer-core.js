@@ -427,12 +427,12 @@
         return stack;
     }
 
-    function showNotification(messageKeyOrText, type, count) {
+    function showNotification(messageKeyOrText, type, param) {
         var message;
         if (typeof messageKeyOrText === 'string' && STRINGS[messageKeyOrText]) {
-            // Use localized message with optional count for PLURAL
-            if (typeof count === 'number') {
-                message = STRINGS[messageKeyOrText].replace('$1', count);
+            // Use localized message with optional parameter
+            if (param !== undefined) {
+                message = STRINGS[messageKeyOrText].replace('$1', param);
             } else {
                 message = STRINGS[messageKeyOrText];
             }
