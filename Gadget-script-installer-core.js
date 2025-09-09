@@ -833,9 +833,7 @@
     }
 
     function showUi() {
-        console.log('[script-installer] showUi() called');
         var fixedPageName = mw.config.get( "wgPageName" ).replace( /_/g, " " );
-        console.log('[script-installer] Page name:', fixedPageName, 'firstHeading exists:', document.getElementById('firstHeading') !== null);
         $( "#firstHeading" ).append( $( "<span>" )
             .attr( "id", "script-installer-top-container" )
             .append(
@@ -849,7 +847,6 @@
                             $( "#script-installer-panel" ).remove();
                         }
                      } ) ) );
-        console.log('[script-installer] UI elements added to page');
     }
 
     function attachInstallLinks() {
@@ -1361,40 +1358,33 @@
     }
 
     function loadI18nWithFallback(lang, callback) {
-      console.log('[script-installer] loadI18nWithFallback called with lang:', lang);
       const chain = getLanguageChain(lang);
-      console.log('[script-installer] Language chain:', chain);
       let idx = 0;
       let loadedCount = 0;
       
       function tryNext() {
         if (idx >= chain.length) {
-          console.error('[script-installer] No localization found for any fallback language');
+          console.error('No localization found for any fallback language');
           return;
         }
         const tryLang = chain[idx++];
         const url = `https://gitlab-content.toolforge.org/iniquity/script-installer/-/raw/main/i18n/${tryLang}.json?mime=application/json`;
-        console.log('[script-installer] Trying to load i18n for:', tryLang, 'from:', url);
         fetch(url)
-          .then(resp => {
-            console.log('[script-installer] Fetch response for', tryLang, ':', resp.status, resp.ok);
-            return resp.ok ? resp.json() : Promise.reject('HTTP ' + resp.status);
-          })
+          .then(resp => resp.ok ? resp.json() : Promise.reject('HTTP ' + resp.status))
           .then(i18n => {
-            console.log('[script-installer] Successfully loaded i18n for:', tryLang);
             if (tryLang === 'en') {
               STRINGS_EN = i18n;
+              STRINGS = i18n; // Also set STRINGS to English if it's the only language
             } else {
             STRINGS = i18n;
             }
             loadedCount++;
-            if (loadedCount >= 2 || (loadedCount === 1 && !chain.includes('en'))) {
-            console.log('[script-installer] Calling callback, loadedCount:', loadedCount);
+            if (loadedCount >= 2 || (loadedCount === 1 && !chain.includes('en')) || (loadedCount === 1 && tryLang === 'en')) {
             if (callback) callback();
             }
           })
           .catch(err => {
-            console.error('[script-installer] Failed to load i18n for', tryLang, ':', err);
+            console.error('Failed to load i18n for', tryLang, ':', err);
             tryNext();
           });
       }
@@ -1418,26 +1408,16 @@
 
     // Using:
     var userLang = mw.config.get('wgUserLanguage') || 'en';
-    console.log('[script-installer] Starting with user language:', userLang);
     loadI18nWithFallback(userLang, function() {
-      console.log('[script-installer] i18n loaded, starting main initialization');
       $.when(
         $.ready,
         mw.loader.using(["mediawiki.api", "mediawiki.ForeignApi", "mediawiki.util"])
       ).then(function () {
-        console.log('[script-installer] MediaWiki modules loaded');
         api = new mw.Api();
         metaApi = new mw.ForeignApi( 'https://meta.wikimedia.org/w/api.php' );
         buildImportList().then(function () {
-          console.log('[script-installer] Import list built, attaching links and showing UI');
           attachInstallLinks();
-          console.log('[script-installer] jsPage check:', jsPage, 'wgPageName:', mw.config.get('wgPageName'));
-          if (jsPage) {
-            console.log('[script-installer] Showing UI for JS page');
-            showUi();
-          } else {
-            console.log('[script-installer] Not a JS page, UI not shown');
-          }
+          if (jsPage) showUi();
           if (document.cookie.indexOf("open_script_installer=yes") >= 0) {
             document.cookie = "open_script_installer=; expires=Thu, 01 Jan 1970 00:00:01 GMT";
             $("#script-installer-top-container a:contains('Manage')").trigger("click");
