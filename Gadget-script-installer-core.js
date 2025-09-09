@@ -113,22 +113,32 @@
     }
 
     Import.prototype.toJs = function () {
-        var dis = this.disabled ? "//" : "",
-            url = this.url;
+        var dis = this.disabled ? "//" : "";
+        
         switch( this.type ) {
             case 0: 
-                // For global.js, use mw.loader.load and English backlink
+                // Local scripts
                 if (this.target === 'global') {
+                    // For global.js, use mw.loader.load and English backlink
                     var globalUrl = "//" + mw.config.get('wgServerName') + "/w/index.php?title=" + 
                                    encodeURIComponent( this.page ) + "&action=raw&ctype=text/javascript";
                     return dis + "mw.loader.load('" + escapeForJsString( globalUrl ) + "'); // " + STRINGS_EN.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
                 } else {
                     return dis + "importScript('" + escapeForJsString( this.page ) + "'); // " + STRINGS.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
                 }
-            case 1: url = "//" + encodeURIComponent( this.wiki ) + ".org/w/index.php?title=" +
-                            encodeURIComponent( this.page ) + "&action=raw&ctype=text/javascript"; 
-                    /* FALL THROUGH */
-            case 2: return dis + "mw.loader.load('" + escapeForJsString( url ) + "');";
+                
+            case 1: 
+                // Remote scripts - convert to URL format
+                var remoteUrl = "//" + encodeURIComponent( this.wiki ) + ".org/w/index.php?title=" +
+                               encodeURIComponent( this.page ) + "&action=raw&ctype=text/javascript";
+                return dis + "mw.loader.load('" + escapeForJsString( remoteUrl ) + "');";
+                
+            case 2: 
+                // Direct URL scripts
+                return dis + "mw.loader.load('" + escapeForJsString( this.url ) + "');";
+                
+            default:
+                return "";
         }
     }
 
@@ -939,20 +949,22 @@
     }
 
     function showUi() {
-        var fixedPageName = mw.config.get( "wgPageName" ).replace( /_/g, " " );
-        $( "#firstHeading" ).append( $( "<span>" )
-            .attr( "id", "script-installer-top-container" )
-            .append(
-                buildCurrentPageInstallElement(),
-                " | ",
-                $( "<a>" )
-                    .text( STRINGS.manageUserScripts ).click( function () {
-                        if( !document.getElementById( "script-installer-panel" ) ) {
-                            $( "#mw-content-text" ).before( makePanel() );
-                        } else {
-                            $( "#script-installer-panel" ).remove();
-                        }
-                     } ) ) );
+        if( !document.getElementById( "script-installer-top-container" ) ) {
+            var fixedPageName = mw.config.get( "wgPageName" ).replace( /_/g, " " );
+            $( "#firstHeading" ).append( $( "<span>" )
+                .attr( "id", "script-installer-top-container" )
+                .append(
+                    buildCurrentPageInstallElement(),
+                    " | ",
+                    $( "<a>" )
+                        .text( STRINGS.manageUserScripts ).click( function () {
+                            if( !document.getElementById( "script-installer-panel" ) ) {
+                                $( "#mw-content-text" ).before( makePanel() );
+                            } else {
+                                $( "#script-installer-panel" ).remove();
+                            }
+                         } ) ) );
+        }
     }
 
     function attachInstallLinks() {
@@ -960,22 +972,26 @@
         // <span id='User:Foo/Bar.js' class='scriptInstallerLink'></span>
         $( "span.scriptInstallerLink" ).each( function () {
             var scriptName = this.id;
-            $( this ).append( " | ", $( "<a>" )
-                    .text( localScriptsByName[ scriptName ] ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
-                    .click( makeLocalInstallClickHandler( scriptName ) ) );
+            if( $( this ).find( "a" ).length === 0 ) {
+                $( this ).append( " | ", $( "<a>" )
+                        .text( localScriptsByName[ scriptName ] ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
+                        .click( makeLocalInstallClickHandler( scriptName ) ) );
+            }
         } );
 
         $( "table.infobox-user-script" ).each( function () {
-            var scriptName = $( this ).find( "th:contains('Source')" ).next().text() ||
-                    mw.config.get( "wgPageName" );
-            scriptName = /user:.+?\/.+?.js/i.exec( scriptName )[0];
-            $( this ).children( "tbody" ).append( $( "<tr>" ).append( $( "<td>" )
-                    .attr( "colspan", "2" )
-                    .addClass( "script-installer-ibx" )
-                    .append( $( "<button>" )
-                        .addClass( "mw-ui-button mw-ui-progressive mw-ui-big" )
-                        .text( localScriptsByName[ scriptName ] ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
-                        .click( makeLocalInstallClickHandler( scriptName ) ) ) ) );
+            if( $( this ).find( ".script-installer-ibx" ).length === 0 ) {
+                var scriptName = $( this ).find( "th:contains('Source')" ).next().text() ||
+                        mw.config.get( "wgPageName" );
+                scriptName = /user:.+?\/.+?.js/i.exec( scriptName )[0];
+                $( this ).children( "tbody" ).append( $( "<tr>" ).append( $( "<td>" )
+                        .attr( "colspan", "2" )
+                        .addClass( "script-installer-ibx" )
+                        .append( $( "<button>" )
+                            .addClass( "mw-ui-button mw-ui-progressive mw-ui-big" )
+                            .text( localScriptsByName[ scriptName ] ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
+                            .click( makeLocalInstallClickHandler( scriptName ) ) ) ) );
+            }
         } );
     }
 
