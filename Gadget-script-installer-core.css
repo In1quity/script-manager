@@ -274,19 +274,7 @@
 	margin-bottom: 0.5rem;
 }
 
-.gadget-details {
-	display: flex;
-	gap: 1rem;
-	font-size: 0.75rem;
-	color: var(--color-subtle, #54595d);
-}
 
-.gadget-scripts,
-.gadget-styles {
-	background-color: var(--background-color-subtle, #f8f9fa);
-	padding: 0.125rem 0.5rem;
-	border-radius: 3px;
-}
 
 .gadget-actions {
 	display: flex;

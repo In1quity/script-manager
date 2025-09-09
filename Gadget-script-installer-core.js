@@ -409,12 +409,15 @@
                         section = gadget.metadata.settings.section;
                     }
                     
+                    // Check if gadget is enabled by default
+                    var isDefault = gadget.metadata && gadget.metadata.settings && 
+                                   gadget.metadata.settings.default === '';
+                    
                     gadgetsData[gadget.id] = {
                         name: gadget.id,
                         description: gadget.desc || 'No description available',
                         section: section,
-                        scripts: [],
-                        styles: []
+                        isDefault: isDefault
                     };
                 });
                 
@@ -427,6 +430,45 @@
             console.error('Failed to load gadgets:', error);
             gadgetsData = {};
             return gadgetsData;
+        });
+    }
+
+    function loadSectionOrder() {
+        return api.get({
+            action: 'query',
+            titles: 'MediaWiki:Gadgets-definition',
+            prop: 'extracts',
+            exintro: true,
+            explaintext: true,
+            format: 'json'
+        }).then(function(data) {
+            var page = Object.values(data.query.pages)[0];
+            if (page && page.extract) {
+                // Parse the page content to extract section order
+                var content = page.extract;
+                var sectionOrder = [];
+                
+                // Look for section headers (## section-name)
+                var lines = content.split('\n');
+                lines.forEach(function(line) {
+                    var match = line.match(/^##\s+(\w+)/);
+                    if (match) {
+                        sectionOrder.push(match[1]);
+                    }
+                });
+                
+                return sectionOrder;
+            } else {
+                // Fallback to default order if page not found
+                return ['common', 'ondemand', 'default', 'editing', 'articles', 
+                       'users', 'special-pages', 'interface', 'wikificator', 
+                       'wikidata', 'interwiki', 'projects', 'development', 'tests'];
+            }
+        }).catch(function() {
+            // Fallback to default order on error
+            return ['common', 'ondemand', 'default', 'editing', 'articles', 
+                   'users', 'special-pages', 'interface', 'wikificator', 
+                   'wikidata', 'interwiki', 'projects', 'development', 'tests'];
         });
     }
 
@@ -720,8 +762,20 @@
                             groupedGadgets[section][gadgetName] = gadget;
                         });
                         
-                        // Sort sections and gadgets within sections
-                        var sortedSections = Object.keys(groupedGadgets).sort();
+                        // Get section order from loaded data
+                        var sectionOrder = window.gadgetSectionOrder || [];
+                        
+                        // Sort sections according to loaded order
+                        var sortedSections = sectionOrder.filter(function(section) {
+                            return groupedGadgets[section];
+                        });
+                        
+                        // Add any remaining sections not in the order
+                        Object.keys(groupedGadgets).forEach(function(section) {
+                            if (sortedSections.indexOf(section) === -1) {
+                                sortedSections.push(section);
+                            }
+                        });
                         sortedSections.forEach(function(section) {
                             var sectionGadgets = groupedGadgets[section];
                             var sortedGadgets = {};
@@ -908,7 +962,23 @@
                 };
 
                 var isGadgetEnabled = function(gadgetName) {
-                    return userGadgetSettings['gadget-' + gadgetName] === '1';
+                    // Check if gadget is explicitly enabled in user settings
+                    if (userGadgetSettings['gadget-' + gadgetName] === '1') {
+                        return true;
+                    }
+                    
+                    // Check if gadget is disabled in user settings
+                    if (userGadgetSettings['gadget-' + gadgetName] === '0') {
+                        return false;
+                    }
+                    
+                    // If not in user settings, check if it's enabled by default
+                    var gadget = gadgetsData[gadgetName];
+                    if (gadget && gadget.isDefault) {
+                        return true;
+                    }
+                    
+                    return false;
                 };
                 
                 var getSkinUrl = function(skinName) {
@@ -998,10 +1068,6 @@
                                                 <div class="gadget-info">
                                                     <div class="gadget-name">{{ gadgetName }}</div>
                                                     <div class="gadget-description" v-if="gadget.description" v-html="gadget.description"></div>
-                                                    <div class="gadget-details" v-if="gadget.scripts || gadget.styles">
-                                                        <span v-if="gadget.scripts" class="gadget-scripts">{{ gadget.scripts.length }} script(s)</span>
-                                                        <span v-if="gadget.styles" class="gadget-styles">{{ gadget.styles.length }} style(s)</span>
-                                                    </div>
                                                 </div>
                                                 
                                                 <div class="gadget-actions">
@@ -1795,11 +1861,19 @@
           loadGadgets(),
           loadUserGadgetSettings()
         ).then(function (imports, gadgets, userSettings) {
-          // Load section labels after gadgets are loaded
-          return loadSectionLabels().then(function(sectionLabels) {
-            // Store section labels globally for Vue component
+          // Load section order and labels after gadgets are loaded
+          return Promise.all([
+            loadSectionOrder(),
+            loadSectionLabels()
+          ]).then(function(results) {
+            var sectionOrder = results[0];
+            var sectionLabels = results[1];
+            
+            // Store data globally for Vue component
+            window.gadgetSectionOrder = sectionOrder;
             window.gadgetSectionLabels = sectionLabels;
-            return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionLabels: sectionLabels };
+            
+            return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels };
           });
         }).then(function(data) {
           attachInstallLinks();
