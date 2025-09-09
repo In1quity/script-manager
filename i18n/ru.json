@@ -45,5 +45,17 @@
   "restoreLinkText": "Вернуть",
   "allSkins": "Все скины",
   "commonAppliesToAllSkins": "Common (применяется ко всем скинам)",
-  "selectSkin": "Выберите скин"
+  "selectSkin": "Выберите скин",
+  "notificationInstallSuccess": "Скрипт $1 успешно установлен",
+  "notificationUninstallSuccess": "Скрипт $1 успешно удален",
+  "notificationEnableSuccess": "Скрипт $1 успешно включен",
+  "notificationDisableSuccess": "Скрипт $1 успешно выключен",
+  "notificationMoveSuccess": "Скрипт $1 успешно перемещен",
+  "notificationNormalizeSuccess": "Скрипты успешно нормализованы",
+  "notificationInstallError": "Не удалось установить скрипт $1",
+  "notificationUninstallError": "Не удалось удалить скрипт $1",
+  "notificationEnableError": "Не удалось включить скрипт $1",
+  "notificationDisableError": "Не удалось выключить скрипт $1",
+  "notificationMoveError": "Не удалось переместить скрипт $1",
+  "notificationNormalizeError": "Не удалось нормализовать скрипты"
 } 

@@ -43,5 +43,17 @@
   "restoreLinkText": "Restore",
   "allSkins": "All skins",
   "commonAppliesToAllSkins": "Common (applies to all skins)",
-  "selectSkin": "Select skin"
+  "selectSkin": "Select skin",
+  "notificationInstallSuccess": "Script $1 installed successfully",
+  "notificationUninstallSuccess": "Script $1 uninstalled successfully",
+  "notificationEnableSuccess": "Script $1 enabled successfully",
+  "notificationDisableSuccess": "Script $1 disabled successfully",
+  "notificationMoveSuccess": "Script $1 moved successfully",
+  "notificationNormalizeSuccess": "Scripts normalized successfully",
+  "notificationInstallError": "Failed to install script $1",
+  "notificationUninstallError": "Failed to uninstall script $1",
+  "notificationEnableError": "Failed to enable script $1",
+  "notificationDisableError": "Failed to disable script $1",
+  "notificationMoveError": "Failed to move script $1",
+  "notificationNormalizeError": "Failed to normalize scripts"
 }

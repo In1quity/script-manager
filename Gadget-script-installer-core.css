@@ -198,6 +198,35 @@
 	font-weight: bold;
 }
 
+/* Message stack container for notifications */
+.script-installer-message-stack {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	z-index: 10001;
+	width: 420px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.script-installer-message-host .cdx-message {
+	box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+}
+
+.script-installer-message-host .cdx-message--block {
+	margin: 0;
+}
+
+/* Fade transition for notifications */
+.script-installer-fade-enter-active, .script-installer-fade-leave-active {
+	transition: opacity 0.3s ease;
+}
+
+.script-installer-fade-enter-from, .script-installer-fade-leave-to {
+	opacity: 0;
+}
+
 #script-installer-top-container {
 	bottom: 5px;
 	font-size: 70%;

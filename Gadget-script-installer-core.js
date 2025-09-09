@@ -142,7 +142,12 @@
             title: getFullTarget( this.target ),
             summary: getSummaryForTarget( this.target, 'installSummary', this.getDescription( /* useWikitext */ true ) ),
             appendtext: "\n" + this.toJs()
-        } );
+        } ).then(function() {
+            showNotification('notificationInstallSuccess', 'success', this.getDescription());
+        }.bind(this)).catch(function(error) {
+            console.error('Install failed:', error);
+            showNotification('notificationInstallError', 'error', this.getDescription());
+        }.bind(this));
     }
 
     /**
@@ -193,7 +198,12 @@
                 summary: getSummaryForTarget( that.target, 'uninstallSummary', that.getDescription( /* useWikitext */ true ) ),
                 text: newWikitext
             } );
-        } );
+        } ).then(function() {
+            showNotification('notificationUninstallSuccess', 'success', that.getDescription());
+        }).catch(function(error) {
+            console.error('Uninstall failed:', error);
+            showNotification('notificationUninstallError', 'error', that.getDescription());
+        });
     }
 
     /**
@@ -229,7 +239,14 @@
                 summary: summary,
                 text: newWikitextLines.join( "\n" )
             } );
-        } );
+        } ).then(function() {
+            var notificationKey = disabled ? 'notificationDisableSuccess' : 'notificationEnableSuccess';
+            showNotification(notificationKey, 'success', that.getDescription());
+        }).catch(function(error) {
+            console.error('Set disabled failed:', error);
+            var notificationKey = disabled ? 'notificationDisableError' : 'notificationEnableError';
+            showNotification(notificationKey, 'error', that.getDescription());
+        });
     }
 
     Import.prototype.toggleDisabled = function () {
@@ -243,10 +260,16 @@
     Import.prototype.move = function ( newTarget ) {
         if( this.target === newTarget ) return;
         console.log('[script-installer] Import.move - moving from', this.target, 'to', newTarget);
+        var that = this;
         var old = new Import( this.page, this.wiki, this.url, this.target, this.disabled );
         this.target = newTarget;
         console.log('[script-installer] Import.move - calling uninstall and install');
-        return $.when( old.uninstall(), this.install() );
+        return $.when( old.uninstall(), this.install() ).then(function() {
+            showNotification('notificationMoveSuccess', 'success', that.getDescription());
+        }).catch(function(error) {
+            console.error('Move failed:', error);
+            showNotification('notificationMoveError', 'error', that.getDescription());
+        });
     }
 
     function getAllTargetWikitexts() {
@@ -373,7 +396,12 @@
                 summary: STRINGS.normalizeSummary,
                 text: newLines.join( "\n" )
             } );
-        } );
+        } ).then(function() {
+            showNotification('notificationNormalizeSuccess', 'success');
+        }).catch(function(error) {
+            console.error('Normalize failed:', error);
+            showNotification('notificationNormalizeError', 'error');
+        });
     }
 
     function conditionalReload( openPanel ) {
@@ -381,6 +409,85 @@
             if( openPanel ) document.cookie = "open_script_installer=yes";
             window.location.reload( true );
         }
+    }
+
+    /********************************************
+     *
+     * Notification system
+     *
+     ********************************************/
+    function getMessageStack() {
+        var stack = document.getElementById('script-installer-message-stack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.id = 'script-installer-message-stack';
+            stack.className = 'script-installer-message-stack';
+            document.body.appendChild(stack);
+        }
+        return stack;
+    }
+
+    function showNotification(messageKeyOrText, type, count) {
+        var message;
+        if (typeof messageKeyOrText === 'string' && STRINGS[messageKeyOrText]) {
+            // Use localized message with optional count for PLURAL
+            if (typeof count === 'number') {
+                message = STRINGS[messageKeyOrText].replace('$1', count);
+            } else {
+                message = STRINGS[messageKeyOrText];
+            }
+        } else {
+            message = messageKeyOrText;
+        }
+        
+        var status = 'notice';
+        if (type === 'success') status = 'success';
+        else if (type === 'warning') status = 'warning';
+        else if (type === 'error') status = 'error';
+        
+        mw.loader.using(['vue', '@wikimedia/codex']).then(function() {
+            try {
+                var VueMod = mw.loader.require('vue');
+                var CodexPkg = mw.loader.require('@wikimedia/codex');
+                
+                var createApp = VueMod.createApp || VueMod.createMwApp;
+                var CdxMessage = CodexPkg.CdxMessage || (CodexPkg.components && CodexPkg.components.CdxMessage);
+                
+                if (!createApp || !CdxMessage) {
+                    throw new Error('Codex components not available');
+                }
+                
+                var stack = getMessageStack();
+                var host = document.createElement('div');
+                host.className = 'script-installer-message-host';
+                stack.appendChild(host);
+                
+                var app = createApp({
+                    data: function(){ 
+                        return { 
+                            type: status, 
+                            message: message, 
+                            show: true 
+                        }; 
+                    },
+                    template: '<transition name="script-installer-fade"><CdxMessage v-if="show" :type="type" :fade-in="true" :allow-user-dismiss="true" :auto-dismiss="true" :display-time="4000"><div v-html="message"></div></CdxMessage></transition>'
+                });
+                
+                app.component('CdxMessage', CdxMessage);
+                app.mount(host);
+                
+                setTimeout(function(){ 
+                    try {
+                        app.unmount();
+                        if (host.parentNode) {
+                            host.parentNode.removeChild(host);
+                        }
+                    } catch(e) {}
+                }, 4200);
+            } catch(e) { 
+                console.error('showNotification error:', e); 
+            }
+        });
     }
 
     /********************************************

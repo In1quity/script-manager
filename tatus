@@ -1,0 +1,13 @@
+[1mdiff --git a/i18n/en.json b/i18n/en.json[m
+[1mindex c564442..e704664 100644[m
+[1m--- a/i18n/en.json[m
+[1m+++ b/i18n/en.json[m
+[36m@@ -26,7 +26,7 @@[m
+   "notJavaScript": "not JavaScript",[m
+   "installViaPreferences": "Install via preferences",[m
+   "showNormalizeLinks": "Show \"normalize\" links?",[m
+[31m-  "normalize": "normalize",[m
+[32m+[m[32m  "normalize": "Normalize",[m
+   "showMoveLinks": "Show \"move\" links?",[m
+   "quickFilter": "Quick filter:",[m
+   "tempWarning": "Installation of non-User, non-MediaWiki protected pages is temporary and may be removed in the future.",[m
