@@ -65,5 +65,6 @@
   "noGadgetsConfigured": "Гаджеты не настроены",
   "apiAccessRestricted": "Доступ к API ограничен",
   "noDescriptionAvailable": "Описание недоступно",
-  "thisMightBeBecause": "Это может быть потому что:"
+  "thisMightBeBecause": "Это может быть потому что:",
+  "enabledOnly": "Включенные"
 } 

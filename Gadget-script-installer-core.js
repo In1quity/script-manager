@@ -726,12 +726,13 @@
             var CdxField = CodexPkg.CdxField || (CodexPkg.components && CodexPkg.components.CdxField);
             var CdxTabs = CodexPkg.CdxTabs || (CodexPkg.components && CodexPkg.components.CdxTabs);
             var CdxTab = CodexPkg.CdxTab || (CodexPkg.components && CodexPkg.components.CdxTab);
+            var CdxToggleButton = CodexPkg.CdxToggleButton || (CodexPkg.components && CodexPkg.components.CdxToggleButton);
             
-            if (!createApp || !CdxDialog || !CdxButton || !CdxTextInput || !CdxSelect || !CdxField || !CdxTabs || !CdxTab) {
+            if (!createApp || !CdxDialog || !CdxButton || !CdxTextInput || !CdxSelect || !CdxField || !CdxTabs || !CdxTab || !CdxToggleButton) {
                 throw new Error('Codex/Vue components not available');
             }
             
-            createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab);
+            createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab, CdxToggleButton);
         }).catch(function(error) {
             console.error('[script-installer] Failed to load Vue/Codex:', error);
             container.html('<div class="error">Failed to load interface. Please refresh the page.</div>');
@@ -740,12 +741,12 @@
         return container;
     }
 
-    function createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab) {
+    function createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab, CdxToggleButton) {
         // Make imports reactive and set global reference
         importsRef = ref(imports);
         
         var ScriptManager = defineComponent({
-            components: { CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab },
+            components: { CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab, CdxToggleButton },
             setup() {
                 var dialogOpen = ref(true);
                 var filterText = ref('');
@@ -754,6 +755,7 @@
                 var removedScripts = ref([]);
                 var gadgetSectionLabels = ref(window.gadgetSectionLabels || {});
                 var gadgetsLabel = ref(window.gadgetsLabel || 'Gadgets');
+                var enabledOnly = ref(false);
                 
                 // Create skin tabs
                 var skinTabs = computed(function() {
@@ -777,6 +779,11 @@
                         Object.keys(gadgetsData).forEach(function(gadgetName) {
                             var gadget = gadgetsData[gadgetName];
                             var section = gadget.section || 'other';
+                            
+                            // Filter by enabledOnly if enabled
+                            if (enabledOnly.value && !isGadgetEnabled(gadgetName)) {
+                                return;
+                            }
                             
                             if (!groupedGadgets[section]) {
                                 groupedGadgets[section] = {};
@@ -837,6 +844,13 @@
                             
                             var targetImports = importsRef.value[targetName];
                             if (targetImports && targetImports.length > 0) {
+                                // Filter by enabledOnly if enabled
+                                if (enabledOnly.value) {
+                                    targetImports = targetImports.filter(function(anImport) {
+                                        return !anImport.disabled;
+                                    });
+                                }
+                                
                                 if (filterText.value && filterText.value.trim()) {
                                     var filtered = targetImports.filter(function(anImport) {
                                         return anImport.getDescription().toLowerCase().includes(filterText.value.toLowerCase().trim());
@@ -1021,6 +1035,7 @@
                     removedScripts,
                     gadgetSectionLabels,
                     gadgetsLabel,
+                    enabledOnly,
                     handleNormalize,
                     handleUninstall,
                     handleToggleDisabled,
@@ -1058,6 +1073,11 @@
                                 <cdx-tabs v-model:active="selectedSkin">
                                     <cdx-tab v-for="tab in skinTabs" :key="tab.name" :name="tab.name" :label="tab.label"></cdx-tab>
                                 </cdx-tabs>
+                            </div>
+                            <div class="script-installer-enabled-toggle">
+                                <cdx-toggle-button v-model="enabledOnly" :aria-label="STRINGS.enabledOnly">
+                                    {{ STRINGS.enabledOnly }}
+                                </cdx-toggle-button>
                             </div>
                         </div>
                     </div>

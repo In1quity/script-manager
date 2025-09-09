@@ -63,5 +63,6 @@
   "noGadgetsConfigured": "No gadgets are configured",
   "apiAccessRestricted": "API access is restricted",
   "noDescriptionAvailable": "No description available",
-  "thisMightBeBecause": "This might be because:"
+  "thisMightBeBecause": "This might be because:",
+  "enabledOnly": "Enabled only"
 }
