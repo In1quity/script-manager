@@ -472,6 +472,26 @@
         });
     }
 
+    function loadGadgetsLabel() {
+        return api.get({
+            action: 'query',
+            titles: 'MediaWiki:Prefs-gadgets',
+            prop: 'extracts',
+            exintro: true,
+            explaintext: true,
+            format: 'json'
+        }).then(function(data) {
+            var page = Object.values(data.query.pages)[0];
+            if (page && page.extract) {
+                return page.extract.trim();
+            } else {
+                return 'Gadgets'; // Fallback
+            }
+        }).catch(function() {
+            return 'Gadgets'; // Fallback
+        });
+    }
+
     function loadSectionLabels() {
         // Get unique sections from loaded gadgets
         var sections = new Set();
@@ -734,11 +754,12 @@
                 var loadingStates = ref({});
                 var removedScripts = ref([]);
                 var gadgetSectionLabels = ref(window.gadgetSectionLabels || {});
+                var gadgetsLabel = ref(window.gadgetsLabel || 'Gadgets');
                 
                 // Create skin tabs
                 var skinTabs = [
                     { name: 'all', label: STRINGS.allSkins },
-                    { name: 'gadgets', label: STRINGS.gadgets },
+                    { name: 'gadgets', label: gadgetsLabel.value },
                     { name: 'global', label: 'global' },
                     { name: 'common', label: 'common' }             
                 ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
@@ -998,6 +1019,7 @@
                     loadingStates,
                     removedScripts,
                     gadgetSectionLabels,
+                    gadgetsLabel,
                     handleNormalize,
                     handleUninstall,
                     handleToggleDisabled,
@@ -1860,19 +1882,22 @@
           loadGadgets(),
           loadUserGadgetSettings()
         ).then(function (imports, gadgets, userSettings) {
-          // Load section order and labels after gadgets are loaded
+          // Load section order, labels and gadgets label after gadgets are loaded
           return Promise.all([
             loadSectionOrder(),
-            loadSectionLabels()
+            loadSectionLabels(),
+            loadGadgetsLabel()
           ]).then(function(results) {
             var sectionOrder = results[0];
             var sectionLabels = results[1];
+            var gadgetsLabel = results[2];
             
             // Store data globally for Vue component
             window.gadgetSectionOrder = sectionOrder;
             window.gadgetSectionLabels = sectionLabels;
+            window.gadgetsLabel = gadgetsLabel;
             
-            return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels };
+            return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels, gadgetsLabel: gadgetsLabel };
           });
         }).then(function(data) {
           attachInstallLinks();
