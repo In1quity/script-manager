@@ -391,15 +391,15 @@
         return api.get({
             action: 'query',
             list: 'gadgets',
-            gaprop: 'id|desc|hidden',
+            gaprop: 'id|desc|metadata',
             format: 'json'
         }).then(function(data) {
             if (data && data.query && data.query.gadgets) {
                 // Convert array to object format, filtering out hidden gadgets
                 gadgetsData = {};
                 data.query.gadgets.forEach(function(gadget) {
-                    // Skip hidden gadgets
-                    if (gadget.hidden) {
+                    // Skip hidden gadgets (check metadata.settings.hidden)
+                    if (gadget.metadata && gadget.metadata.settings && gadget.metadata.settings.hidden !== '') {
                         return;
                     }
                     
