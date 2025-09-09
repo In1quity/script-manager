@@ -398,8 +398,8 @@
                 // Convert array to object format, filtering out hidden gadgets
                 gadgetsData = {};
                 data.query.gadgets.forEach(function(gadget) {
-                    // Skip hidden gadgets (check metadata.settings.hidden)
-                    if (gadget.metadata && gadget.metadata.settings && gadget.metadata.settings.hidden !== '') {
+                    // Skip hidden gadgets (check metadata.settings.section === 'hidden')
+                    if (gadget.metadata && gadget.metadata.settings && gadget.metadata.settings.section === 'hidden') {
                         return;
                     }
                     
