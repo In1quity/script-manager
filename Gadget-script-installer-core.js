@@ -388,21 +388,12 @@
     }
 
     function loadGadgets() {
-        console.log('=== Starting gadgets loading ===');
-        console.log('Trying to load gadgets from API using list=gadgets...');
-        
         return api.get({
             action: 'query',
             list: 'gadgets',
             gaprop: 'id|desc',
             format: 'json'
         }).then(function(data) {
-            console.log('Gadgets API response:', data);
-            console.log('Response structure check:');
-            console.log('- data exists:', !!data);
-            console.log('- data.query exists:', !!(data && data.query));
-            console.log('- data.query.gadgets exists:', !!(data && data.query && data.query.gadgets));
-            
             if (data && data.query && data.query.gadgets) {
                 // Convert array to object format
                 gadgetsData = {};
@@ -414,82 +405,53 @@
                         styles: []
                     };
                 });
-                
-                console.log('✅ Gadgets loaded successfully from API:', gadgetsData);
-                console.log('Number of gadgets found:', Object.keys(gadgetsData).length);
                 return gadgetsData;
             } else {
-                console.log('❌ No gadgets data found in API response');
                 gadgetsData = {};
                 return gadgetsData;
             }
         }).catch(function(error) {
-            console.error('❌ Failed to load gadgets from API:', error);
-            console.error('Error details:', error.message);
+            console.error('Failed to load gadgets:', error);
             gadgetsData = {};
             return gadgetsData;
         });
     }
 
     function loadUserGadgetSettings() {
-        console.log('=== Loading user gadget settings ===');
         return api.get({
             action: 'query',
             meta: 'userinfo',
             uiprop: 'options'
         }).then(function(data) {
-            console.log('User gadget settings API response:', data);
-            console.log('User settings structure check:');
-            console.log('- data exists:', !!data);
-            console.log('- data.query exists:', !!(data && data.query));
-            console.log('- data.query.userinfo exists:', !!(data && data.query && data.query.userinfo));
-            console.log('- data.query.userinfo.options exists:', !!(data && data.query && data.query.userinfo && data.query.userinfo.options));
-            
             var options = data.query.userinfo.options || {};
-            console.log('User options loaded:', options);
-            console.log('All user options count:', Object.keys(options).length);
-            
             userGadgetSettings = {};
             
             // Extract gadget settings
             Object.keys(options).forEach(function(key) {
                 if (key.startsWith('gadget-')) {
                     userGadgetSettings[key] = options[key];
-                    console.log('User gadget setting found:', key, '=', options[key]);
                 }
             });
             
-            console.log('✅ User gadget settings loaded:', userGadgetSettings);
-            console.log('Number of gadget settings:', Object.keys(userGadgetSettings).length);
             return userGadgetSettings;
         }).catch(function(error) {
-            console.error('❌ Failed to load user gadget settings:', error);
-            console.error('Error details:', error.message);
+            console.error('Failed to load user gadget settings:', error);
             userGadgetSettings = {};
             return {};
         });
     }
 
     function toggleGadget(gadgetName, enabled) {
-        console.log('=== Toggling gadget ===');
-        console.log('Gadget name:', gadgetName);
-        console.log('Enabled:', enabled);
-        console.log('Option name:', 'gadget-' + gadgetName);
-        console.log('Option value:', enabled ? '1' : '0');
-        
         return api.postWithToken('csrf', {
             action: 'options',
             optionname: 'gadget-' + gadgetName,
             optionvalue: enabled ? '1' : '0'
         }).then(function(response) {
-            console.log('✅ Gadget toggle API response:', response);
             // Update local settings
             userGadgetSettings['gadget-' + gadgetName] = enabled ? '1' : '0';
-            console.log('✅ Updated local gadget settings:', userGadgetSettings);
             return true;
         }).catch(function(error) {
-            console.error('❌ Failed to toggle gadget:', error);
-            console.error('Error details:', error.message);
+            console.error('Failed to toggle gadget:', error);
             throw error;
         });
     }
@@ -840,31 +802,21 @@
                 };
 
                 var handleGadgetToggle = function(gadgetName, enabled) {
-                    console.log('=== Handling gadget toggle ===');
-                    console.log('Gadget name:', gadgetName);
-                    console.log('Enabled:', enabled);
-                    console.log('Current userGadgetSettings:', userGadgetSettings);
-                    
                     var key = 'gadget-' + gadgetName;
                     setLoading(key, true);
                     
                     toggleGadget(gadgetName, enabled).then(function() {
-                        console.log('✅ Gadget toggle successful');
                         showNotification('Gadget ' + gadgetName + ' ' + (enabled ? 'enabled' : 'disabled'), 'success');
                     }).catch(function(error) {
-                        console.error('❌ Failed to toggle gadget:', error);
+                        console.error('Failed to toggle gadget:', error);
                         showNotification('Failed to toggle gadget', 'error');
                     }).always(function() {
                         setLoading(key, false);
-                        console.log('Gadget toggle completed, loading state cleared');
                     });
                 };
 
                 var isGadgetEnabled = function(gadgetName) {
-                    var optionKey = 'gadget-' + gadgetName;
-                    var isEnabled = userGadgetSettings[optionKey] === '1';
-                    console.log('Checking if gadget is enabled:', gadgetName, '->', optionKey, '=', userGadgetSettings[optionKey], '-> enabled:', isEnabled);
-                    return isEnabled;
+                    return userGadgetSettings['gadget-' + gadgetName] === '1';
                 };
                 
                 var getSkinUrl = function(skinName) {
@@ -1740,20 +1692,11 @@
         metaApi = new mw.ForeignApi( 'https://meta.wikimedia.org/w/api.php' );
         
         // Load both scripts and gadgets
-        console.log('=== Starting main initialization ===');
-        console.log('Loading buildImportList, loadGadgets, and loadUserGadgetSettings...');
-        
         $.when(
           buildImportList(),
           loadGadgets(),
           loadUserGadgetSettings()
         ).then(function () {
-          console.log('✅ All initialization functions completed');
-          console.log('Final gadgetsData:', gadgetsData);
-          console.log('Final userGadgetSettings:', userGadgetSettings);
-          console.log('Number of gadgets loaded:', Object.keys(gadgetsData).length);
-          console.log('Number of user gadget settings:', Object.keys(userGadgetSettings).length);
-          
           attachInstallLinks();
           if (jsPage) showUi();
           if (document.cookie.indexOf("open_script_installer=yes") >= 0) {
