@@ -55,5 +55,12 @@
   "notificationEnableError": "Failed to enable script $1",
   "notificationDisableError": "Failed to disable script $1",
   "notificationMoveError": "Failed to move script $1",
-  "notificationNormalizeError": "Failed to normalize scripts"
+  "notificationNormalizeError": "Failed to normalize scripts",
+  "gadgets": "Gadgets",
+  "noGadgetsAvailable": "No gadgets available or failed to load gadgets data.",
+  "gadgetsNotInstalled": "Gadgets extension is not installed on this wiki",
+  "noGadgetsConfigured": "No gadgets are configured",
+  "apiAccessRestricted": "API access is restricted",
+  "noDescriptionAvailable": "No description available",
+  "thisMightBeBecause": "This might be because:"
 }

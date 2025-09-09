@@ -57,5 +57,12 @@
   "notificationEnableError": "Не удалось включить скрипт $1",
   "notificationDisableError": "Не удалось выключить скрипт $1",
   "notificationMoveError": "Не удалось переместить скрипт $1",
-  "notificationNormalizeError": "Не удалось нормализовать скрипты"
+  "notificationNormalizeError": "Не удалось нормализовать скрипты",
+  "gadgets": "Гаджеты",
+  "noGadgetsAvailable": "Гаджеты недоступны или не удалось загрузить данные о гаджетах.",
+  "gadgetsNotInstalled": "Расширение Gadgets не установлено на этой вики",
+  "noGadgetsConfigured": "Гаджеты не настроены",
+  "apiAccessRestricted": "Доступ к API ограничен",
+  "noDescriptionAvailable": "Описание недоступно",
+  "thisMightBeBecause": "Это может быть потому что:"
 } 

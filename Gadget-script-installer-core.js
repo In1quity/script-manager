@@ -415,7 +415,7 @@
                     
                     gadgetsData[gadget.id] = {
                         name: gadget.id,
-                        description: gadget.desc || 'No description available',
+                        description: gadget.desc || STRINGS.noDescriptionAvailable,
                         section: section,
                         isDefault: isDefault
                     };
@@ -521,6 +521,35 @@
                 sectionLabels[item.section] = item.label;
             });
             return sectionLabels;
+        });
+    }
+
+    function loadGadgetTranslations() {
+        // Load gadget descriptions in user's language
+        var gadgetNames = Object.keys(gadgetsData);
+        if (gadgetNames.length === 0) {
+            return Promise.resolve({});
+        }
+        
+        return api.get({
+            action: 'query',
+            titles: gadgetNames.map(function(name) { return 'MediaWiki:Gadget-' + name; }),
+            prop: 'extracts',
+            exintro: true,
+            explaintext: true,
+            format: 'json'
+        }).then(function(data) {
+            var translations = {};
+            Object.values(data.query.pages).forEach(function(page) {
+                if (page.extract) {
+                    // Extract gadget name from title
+                    var gadgetName = page.title.replace('MediaWiki:Gadget-', '');
+                    translations[gadgetName] = page.extract.trim();
+                }
+            });
+            return translations;
+        }).catch(function() {
+            return {};
         });
     }
 
@@ -740,7 +769,7 @@
                     { name: 'all', label: STRINGS.allSkins },
                     { name: 'global', label: 'global' },
                     { name: 'common', label: 'common' },
-                    { name: 'gadgets', label: 'Gadgets' }
+                    { name: 'gadgets', label: STRINGS.gadgets }
                 ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
                     return { name: skin, label: skin };
                 }));
@@ -1043,14 +1072,14 @@
                         <!-- Gadgets tab -->
                         <template v-if="selectedSkin === 'gadgets'">
                             <div class="gadgets-section">
-                                <h3>Gadgets</h3>
+                                <h3>{{ STRINGS.gadgets }}</h3>
                                 <div v-if="Object.keys(filteredImports).length === 0" class="no-gadgets">
-                                    <p>No gadgets available or failed to load gadgets data.</p>
-                                    <p>This might be because:</p>
+                                    <p>{{ STRINGS.noGadgetsAvailable }}</p>
+                                    <p>{{ STRINGS.thisMightBeBecause }}</p>
                                     <ul>
-                                        <li>Gadgets extension is not installed on this wiki</li>
-                                        <li>No gadgets are configured</li>
-                                        <li>API access is restricted</li>
+                                        <li>{{ STRINGS.gadgetsNotInstalled }}</li>
+                                        <li>{{ STRINGS.noGadgetsConfigured }}</li>
+                                        <li>{{ STRINGS.apiAccessRestricted }}</li>
                                     </ul>
                                 </div>
                                 <div v-else class="gadgets-list">
@@ -1078,7 +1107,7 @@
                                                         @click="handleGadgetToggle(gadgetName, !isGadgetEnabled(gadgetName))"
                                                     >
                                                         {{ loadingStates['gadget-' + gadgetName] ? '...' : 
-                                                           (isGadgetEnabled(gadgetName) ? 'Disable' : 'Enable') }}
+                                                           (isGadgetEnabled(gadgetName) ? STRINGS.disableLinkText : STRINGS.enableLinkText) }}
                                                     </cdx-button>
                                                 </div>
                                             </cdx-card>
