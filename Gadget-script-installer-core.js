@@ -1189,7 +1189,7 @@
                         <div class="script-installer-dialog-actions">
                             <cdx-button 
                                 weight="primary"
-                                :disabled="Object.keys(filteredImports).length === 0"
+                                :disabled="Object.keys(filteredImports).length === 0 || selectedSkin === 'gadgets'"
                                 @click="handleNormalizeAll"
                             >
                                 {{ STRINGS.normalize }}
