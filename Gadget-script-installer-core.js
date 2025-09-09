@@ -459,16 +459,12 @@
                 
                 return sectionOrder;
             } else {
-                // Fallback to default order if page not found
-                return ['common', 'ondemand', 'default', 'editing', 'articles', 
-                       'users', 'special-pages', 'interface', 'wikificator', 
-                       'wikidata', 'interwiki', 'projects', 'development', 'tests'];
+                // No fallback - return empty array if page not found
+                return [];
             }
         }).catch(function() {
-            // Fallback to default order on error
-            return ['common', 'ondemand', 'default', 'editing', 'articles', 
-                   'users', 'special-pages', 'interface', 'wikificator', 
-                   'wikidata', 'interwiki', 'projects', 'development', 'tests'];
+            // No fallback - return empty array on error
+            return [];
         });
     }
 
@@ -757,14 +753,16 @@
                 var gadgetsLabel = ref(window.gadgetsLabel || 'Gadgets');
                 
                 // Create skin tabs
-                var skinTabs = [
-                    { name: 'all', label: STRINGS.allSkins },
-                    { name: 'gadgets', label: gadgetsLabel.value },
-                    { name: 'global', label: 'global' },
-                    { name: 'common', label: 'common' }             
-                ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
-                    return { name: skin, label: skin };
-                }));
+                var skinTabs = computed(function() {
+                    return [
+                        { name: 'all', label: STRINGS.allSkins },
+                        { name: 'gadgets', label: gadgetsLabel.value },
+                        { name: 'global', label: 'global' },
+                        { name: 'common', label: 'common' }             
+                    ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
+                        return { name: skin, label: skin };
+                    }));
+                });
                 
                 var filteredImports = computed(function() {
                     var result = {};
