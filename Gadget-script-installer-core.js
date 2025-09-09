@@ -388,63 +388,100 @@
     }
 
     function loadGadgets() {
+        console.log('=== Starting gadgets loading ===');
         // Try different approaches to get gadgets
+        console.log('Trying to load gadgets from API...');
         return api.get({
             action: 'query',
             meta: 'gadgets',
             format: 'json'
         }).then(function(data) {
+            console.log('Gadgets API response:', data);
+            console.log('Response structure check:');
+            console.log('- data exists:', !!data);
+            console.log('- data.query exists:', !!(data && data.query));
+            console.log('- data.query.gadgets exists:', !!(data && data.query && data.query.gadgets));
+            
             // Check if gadgets data exists and has the expected structure
             if (data && data.query && data.query.gadgets) {
                 gadgetsData = data.query.gadgets;
-                console.log('Gadgets loaded successfully:', gadgetsData);
+                console.log('✅ Gadgets loaded successfully from API:', gadgetsData);
+                console.log('Number of gadgets found:', Object.keys(gadgetsData).length);
             } else {
-                console.log('No gadgets data found in API response, trying alternative approach...');
+                console.log('❌ No gadgets data found in API response, trying alternative approach...');
                 // Try alternative approach - get gadgets from siteinfo
+                console.log('Trying to load siteinfo with extensions...');
                 return api.get({
                     action: 'query',
                     meta: 'siteinfo',
                     siprop: 'extensions'
                 }).then(function(siteData) {
+                    console.log('Siteinfo API response:', siteData);
+                    console.log('Siteinfo structure check:');
+                    console.log('- siteData.query exists:', !!(siteData && siteData.query));
+                    console.log('- siteData.query.extensions exists:', !!(siteData && siteData.query && siteData.query.extensions));
+                    
                     // Look for gadgets in extensions
                     var gadgets = {};
                     if (siteData && siteData.query && siteData.query.extensions) {
+                        console.log('Extensions found:', siteData.query.extensions.length);
                         siteData.query.extensions.forEach(function(ext) {
+                            console.log('Extension:', ext.name, 'version:', ext.version);
                             if (ext.name === 'Gadgets') {
-                                console.log('Found Gadgets extension');
+                                console.log('✅ Found Gadgets extension');
                             }
                         });
+                    } else {
+                        console.log('❌ No extensions data in siteinfo');
                     }
                     gadgetsData = gadgets;
+                    console.log('Gadgets data from siteinfo:', gadgetsData);
                     return gadgetsData;
                 });
             }
             return gadgetsData;
         }).catch(function(error) {
-            console.error('Failed to load gadgets:', error);
+            console.error('❌ Failed to load gadgets from API:', error);
+            console.error('Error details:', error.message);
             // Fallback: try to get gadgets from user preferences
+            console.log('Trying fallback: load gadgets from user preferences...');
             return api.get({
                 action: 'query',
                 meta: 'userinfo',
                 uiprop: 'options'
             }).then(function(userData) {
+                console.log('User info API response:', userData);
+                console.log('User info structure check:');
+                console.log('- userData.query exists:', !!(userData && userData.query));
+                console.log('- userData.query.userinfo exists:', !!(userData && userData.query && userData.query.userinfo));
+                console.log('- userData.query.userinfo.options exists:', !!(userData && userData.query && userData.query.userinfo && userData.query.userinfo.options));
+                
                 var gadgets = {};
                 if (userData && userData.query && userData.query.userinfo && userData.query.userinfo.options) {
-                    Object.keys(userData.query.userinfo.options).forEach(function(key) {
+                    console.log('✅ User options loaded:', userData.query.userinfo.options);
+                    var allOptions = userData.query.userinfo.options;
+                    console.log('All user options count:', Object.keys(allOptions).length);
+                    
+                    Object.keys(allOptions).forEach(function(key) {
                         if (key.startsWith('gadget-')) {
                             var gadgetName = key.replace('gadget-', '');
                             gadgets[gadgetName] = {
                                 name: gadgetName,
-                                enabled: userData.query.userinfo.options[key] === '1'
+                                enabled: allOptions[key] === '1'
                             };
+                            console.log('Found gadget option:', key, '->', gadgetName, '=', allOptions[key]);
                         }
                     });
+                    console.log('Gadget options found:', Object.keys(gadgets).length);
+                } else {
+                    console.log('❌ No user options data available');
                 }
                 gadgetsData = gadgets;
-                console.log('Loaded gadgets from user preferences:', gadgetsData);
+                console.log('✅ Loaded gadgets from user preferences:', gadgetsData);
                 return gadgetsData;
             }).catch(function(fallbackError) {
-                console.error('Fallback also failed:', fallbackError);
+                console.error('❌ Fallback also failed:', fallbackError);
+                console.error('Fallback error details:', fallbackError.message);
                 gadgetsData = {};
                 return {};
             });
@@ -452,40 +489,64 @@
     }
 
     function loadUserGadgetSettings() {
+        console.log('=== Loading user gadget settings ===');
         return api.get({
             action: 'query',
             meta: 'userinfo',
             uiprop: 'options'
         }).then(function(data) {
+            console.log('User gadget settings API response:', data);
+            console.log('User settings structure check:');
+            console.log('- data exists:', !!data);
+            console.log('- data.query exists:', !!(data && data.query));
+            console.log('- data.query.userinfo exists:', !!(data && data.query && data.query.userinfo));
+            console.log('- data.query.userinfo.options exists:', !!(data && data.query && data.query.userinfo && data.query.userinfo.options));
+            
             var options = data.query.userinfo.options || {};
+            console.log('User options loaded:', options);
+            console.log('All user options count:', Object.keys(options).length);
+            
             userGadgetSettings = {};
             
             // Extract gadget settings
             Object.keys(options).forEach(function(key) {
                 if (key.startsWith('gadget-')) {
                     userGadgetSettings[key] = options[key];
+                    console.log('User gadget setting found:', key, '=', options[key]);
                 }
             });
             
+            console.log('✅ User gadget settings loaded:', userGadgetSettings);
+            console.log('Number of gadget settings:', Object.keys(userGadgetSettings).length);
             return userGadgetSettings;
         }).catch(function(error) {
-            console.error('Failed to load user gadget settings:', error);
+            console.error('❌ Failed to load user gadget settings:', error);
+            console.error('Error details:', error.message);
             userGadgetSettings = {};
             return {};
         });
     }
 
     function toggleGadget(gadgetName, enabled) {
+        console.log('=== Toggling gadget ===');
+        console.log('Gadget name:', gadgetName);
+        console.log('Enabled:', enabled);
+        console.log('Option name:', 'gadget-' + gadgetName);
+        console.log('Option value:', enabled ? '1' : '0');
+        
         return api.postWithToken('csrf', {
             action: 'options',
             optionname: 'gadget-' + gadgetName,
             optionvalue: enabled ? '1' : '0'
-        }).then(function() {
+        }).then(function(response) {
+            console.log('✅ Gadget toggle API response:', response);
             // Update local settings
             userGadgetSettings['gadget-' + gadgetName] = enabled ? '1' : '0';
+            console.log('✅ Updated local gadget settings:', userGadgetSettings);
             return true;
         }).catch(function(error) {
-            console.error('Failed to toggle gadget:', error);
+            console.error('❌ Failed to toggle gadget:', error);
+            console.error('Error details:', error.message);
             throw error;
         });
     }
@@ -836,21 +897,31 @@
                 };
 
                 var handleGadgetToggle = function(gadgetName, enabled) {
+                    console.log('=== Handling gadget toggle ===');
+                    console.log('Gadget name:', gadgetName);
+                    console.log('Enabled:', enabled);
+                    console.log('Current userGadgetSettings:', userGadgetSettings);
+                    
                     var key = 'gadget-' + gadgetName;
                     setLoading(key, true);
                     
                     toggleGadget(gadgetName, enabled).then(function() {
+                        console.log('✅ Gadget toggle successful');
                         showNotification('Gadget ' + gadgetName + ' ' + (enabled ? 'enabled' : 'disabled'), 'success');
                     }).catch(function(error) {
-                        console.error('Failed to toggle gadget:', error);
+                        console.error('❌ Failed to toggle gadget:', error);
                         showNotification('Failed to toggle gadget', 'error');
                     }).always(function() {
                         setLoading(key, false);
+                        console.log('Gadget toggle completed, loading state cleared');
                     });
                 };
 
                 var isGadgetEnabled = function(gadgetName) {
-                    return userGadgetSettings['gadget-' + gadgetName] === '1';
+                    var optionKey = 'gadget-' + gadgetName;
+                    var isEnabled = userGadgetSettings[optionKey] === '1';
+                    console.log('Checking if gadget is enabled:', gadgetName, '->', optionKey, '=', userGadgetSettings[optionKey], '-> enabled:', isEnabled);
+                    return isEnabled;
                 };
                 
                 var getSkinUrl = function(skinName) {
@@ -1726,11 +1797,20 @@
         metaApi = new mw.ForeignApi( 'https://meta.wikimedia.org/w/api.php' );
         
         // Load both scripts and gadgets
+        console.log('=== Starting main initialization ===');
+        console.log('Loading buildImportList, loadGadgets, and loadUserGadgetSettings...');
+        
         $.when(
           buildImportList(),
           loadGadgets(),
           loadUserGadgetSettings()
         ).then(function () {
+          console.log('✅ All initialization functions completed');
+          console.log('Final gadgetsData:', gadgetsData);
+          console.log('Final userGadgetSettings:', userGadgetSettings);
+          console.log('Number of gadgets loaded:', Object.keys(gadgetsData).length);
+          console.log('Number of user gadget settings:', Object.keys(userGadgetSettings).length);
+          
           attachInstallLinks();
           if (jsPage) showUi();
           if (document.cookie.indexOf("open_script_installer=yes") >= 0) {
