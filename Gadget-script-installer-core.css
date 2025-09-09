@@ -275,6 +275,22 @@
 	min-width: auto;
 }
 
+.no-gadgets {
+	padding: 2rem;
+	text-align: center;
+	color: var(--color-subtle, #54595d);
+}
+
+.no-gadgets ul {
+	text-align: left;
+	margin: 1rem 0;
+	padding-left: 2rem;
+}
+
+.no-gadgets li {
+	margin: 0.5rem 0;
+}
+
 /* Message stack container for notifications */
 .script-installer-message-stack {
 	position: fixed;

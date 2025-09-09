@@ -388,17 +388,66 @@
     }
 
     function loadGadgets() {
+        // Try different approaches to get gadgets
         return api.get({
             action: 'query',
             meta: 'gadgets',
             format: 'json'
         }).then(function(data) {
-            gadgetsData = data.query.gadgets || {};
+            // Check if gadgets data exists and has the expected structure
+            if (data && data.query && data.query.gadgets) {
+                gadgetsData = data.query.gadgets;
+                console.log('Gadgets loaded successfully:', gadgetsData);
+            } else {
+                console.log('No gadgets data found in API response, trying alternative approach...');
+                // Try alternative approach - get gadgets from siteinfo
+                return api.get({
+                    action: 'query',
+                    meta: 'siteinfo',
+                    siprop: 'extensions'
+                }).then(function(siteData) {
+                    // Look for gadgets in extensions
+                    var gadgets = {};
+                    if (siteData && siteData.query && siteData.query.extensions) {
+                        siteData.query.extensions.forEach(function(ext) {
+                            if (ext.name === 'Gadgets') {
+                                console.log('Found Gadgets extension');
+                            }
+                        });
+                    }
+                    gadgetsData = gadgets;
+                    return gadgetsData;
+                });
+            }
             return gadgetsData;
         }).catch(function(error) {
             console.error('Failed to load gadgets:', error);
-            gadgetsData = {};
-            return {};
+            // Fallback: try to get gadgets from user preferences
+            return api.get({
+                action: 'query',
+                meta: 'userinfo',
+                uiprop: 'options'
+            }).then(function(userData) {
+                var gadgets = {};
+                if (userData && userData.query && userData.query.userinfo && userData.query.userinfo.options) {
+                    Object.keys(userData.query.userinfo.options).forEach(function(key) {
+                        if (key.startsWith('gadget-')) {
+                            var gadgetName = key.replace('gadget-', '');
+                            gadgets[gadgetName] = {
+                                name: gadgetName,
+                                enabled: userData.query.userinfo.options[key] === '1'
+                            };
+                        }
+                    });
+                }
+                gadgetsData = gadgets;
+                console.log('Loaded gadgets from user preferences:', gadgetsData);
+                return gadgetsData;
+            }).catch(function(fallbackError) {
+                console.error('Fallback also failed:', fallbackError);
+                gadgetsData = {};
+                return {};
+            });
         });
     }
 
@@ -866,7 +915,16 @@
                         <template v-if="selectedSkin === 'gadgets'">
                             <div class="gadgets-section">
                                 <h3>Gadgets</h3>
-                                <div class="gadgets-list">
+                                <div v-if="Object.keys(filteredImports).length === 0" class="no-gadgets">
+                                    <p>No gadgets available or failed to load gadgets data.</p>
+                                    <p>This might be because:</p>
+                                    <ul>
+                                        <li>Gadgets extension is not installed on this wiki</li>
+                                        <li>No gadgets are configured</li>
+                                        <li>API access is restricted</li>
+                                    </ul>
+                                </div>
+                                <div v-else class="gadgets-list">
                                     <cdx-card 
                                         v-for="(gadget, gadgetName) in filteredImports" 
                                         :key="gadgetName"
