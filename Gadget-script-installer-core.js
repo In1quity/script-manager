@@ -391,13 +391,18 @@
         return api.get({
             action: 'query',
             list: 'gadgets',
-            gaprop: 'id|desc',
+            gaprop: 'id|desc|hidden',
             format: 'json'
         }).then(function(data) {
             if (data && data.query && data.query.gadgets) {
-                // Convert array to object format
+                // Convert array to object format, filtering out hidden gadgets
                 gadgetsData = {};
                 data.query.gadgets.forEach(function(gadget) {
+                    // Skip hidden gadgets
+                    if (gadget.hidden) {
+                        return;
+                    }
+                    
                     gadgetsData[gadget.id] = {
                         name: gadget.id,
                         description: gadget.desc || 'No description available',
