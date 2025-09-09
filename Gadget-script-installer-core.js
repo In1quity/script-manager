@@ -469,6 +469,7 @@
     }
 
     function loadGadgetsLabel() {
+        console.log('Loading gadgets label from MediaWiki:Prefs-gadgets');
         return api.get({
             action: 'query',
             titles: 'MediaWiki:Prefs-gadgets',
@@ -477,13 +478,19 @@
             explaintext: true,
             format: 'json'
         }).then(function(data) {
+            console.log('Gadgets label API response:', data);
             var page = Object.values(data.query.pages)[0];
+            console.log('Page data:', page);
             if (page && page.extract) {
-                return page.extract.trim();
+                var label = page.extract.trim();
+                console.log('Loaded gadgets label:', label);
+                return label;
             } else {
+                console.log('No extract found, using fallback');
                 return 'Gadgets'; // Fallback
             }
-        }).catch(function() {
+        }).catch(function(error) {
+            console.log('Error loading gadgets label:', error);
             return 'Gadgets'; // Fallback
         });
     }
