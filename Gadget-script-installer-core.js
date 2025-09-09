@@ -547,8 +547,8 @@
                 // Create skin tabs
                 var skinTabs = [
                     { name: 'all', label: STRINGS.allSkins },
-                    { name: 'common', label: STRINGS.commonAppliesToAllSkins },
-                    { name: 'global', label: STRINGS.globalAppliesToAllWikis }
+                    { name: 'global', label: 'global' },
+                    { name: 'common', label: 'common' }
                 ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
                     return { name: skin, label: skin };
                 }));
