@@ -473,20 +473,19 @@
         return api.get({
             action: 'query',
             titles: 'MediaWiki:Prefs-gadgets',
-            prop: 'extracts',
-            exintro: true,
-            explaintext: true,
+            prop: 'revisions',
+            rvprop: 'content',
             format: 'json'
         }).then(function(data) {
             console.log('Gadgets label API response:', data);
             var page = Object.values(data.query.pages)[0];
             console.log('Page data:', page);
-            if (page && page.extract) {
-                var label = page.extract.trim();
+            if (page && page.revisions && page.revisions[0] && page.revisions[0]['*']) {
+                var label = page.revisions[0]['*'].trim();
                 console.log('Loaded gadgets label:', label);
                 return label;
             } else {
-                console.log('No extract found, using fallback');
+                console.log('No content found, using fallback');
                 return 'Gadgets'; // Fallback
             }
         }).catch(function(error) {
