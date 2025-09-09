@@ -515,12 +515,14 @@
             var CdxTextInput = CodexPkg.CdxTextInput || (CodexPkg.components && CodexPkg.components.CdxTextInput);
             var CdxSelect = CodexPkg.CdxSelect || (CodexPkg.components && CodexPkg.components.CdxSelect);
             var CdxField = CodexPkg.CdxField || (CodexPkg.components && CodexPkg.components.CdxField);
+            var CdxTabs = CodexPkg.CdxTabs || (CodexPkg.components && CodexPkg.components.CdxTabs);
+            var CdxTab = CodexPkg.CdxTab || (CodexPkg.components && CodexPkg.components.CdxTab);
             
-            if (!createApp || !CdxDialog || !CdxButton || !CdxTextInput || !CdxSelect || !CdxField) {
+            if (!createApp || !CdxDialog || !CdxButton || !CdxTextInput || !CdxSelect || !CdxField || !CdxTabs || !CdxTab) {
                 throw new Error('Codex/Vue components not available');
             }
             
-            createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField);
+            createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab);
         }).catch(function(error) {
             console.error('[script-installer] Failed to load Vue/Codex:', error);
             container.html('<div class="error">Failed to load interface. Please refresh the page.</div>');
@@ -529,12 +531,12 @@
         return container;
     }
 
-    function createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField) {
+    function createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab) {
         // Make imports reactive and set global reference
         importsRef = ref(imports);
         
         var ScriptManager = defineComponent({
-            components: { CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField },
+            components: { CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab },
             setup() {
                 var dialogOpen = ref(true);
                 var filterText = ref('');
@@ -542,13 +544,13 @@
                 var loadingStates = ref({});
                 var removedScripts = ref([]);
                 
-                // Create skin options
-                var skinOptions = [
-                    { label: STRINGS.allSkins, value: 'all' },
-                    { label: STRINGS.commonAppliesToAllSkins, value: 'common' },
-                    { label: STRINGS.globalAppliesToAllWikis, value: 'global' }
+                // Create skin tabs
+                var skinTabs = [
+                    { name: 'all', label: STRINGS.allSkins },
+                    { name: 'common', label: STRINGS.commonAppliesToAllSkins },
+                    { name: 'global', label: STRINGS.globalAppliesToAllWikis }
                 ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
-                    return { label: skin, value: skin };
+                    return { name: skin, label: skin };
                 }));
                 
                 var filteredImports = computed(function() {
@@ -721,7 +723,7 @@
                     dialogOpen,
                     filterText,
                     selectedSkin,
-                    skinOptions,
+                    skinTabs,
                     filteredImports,
                     loadingStates,
                     removedScripts,
@@ -755,15 +757,12 @@
                             />
                         </div>
                         
-                        <div class="script-installer-skin-selector">
-                            <cdx-field>
-                                <template #label>{{ STRINGS.selectSkin }}:</template>
-                                <cdx-select
-                                    v-model:selected="selectedSkin"
-                                    :menu-items="skinOptions"
-                                    :default-label="STRINGS.allSkins"
-                                />
-                            </cdx-field>
+                        <div class="script-installer-skin-tabs-bar">
+                            <div class="script-installer-skin-tabs">
+                                <cdx-tabs v-model:active="selectedSkin">
+                                    <cdx-tab v-for="tab in skinTabs" :key="tab.name" :name="tab.name" :label="tab.label"></cdx-tab>
+                                </cdx-tabs>
+                            </div>
                         </div>
                     </div>
                     

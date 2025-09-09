@@ -28,13 +28,18 @@
 	width: 100%;
 }
 
-.script-installer-skin-selector {
-	width: 100%;
+/* Tabs bar with skins on the left */
+.script-installer-skin-tabs-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
 	margin: 0 0 10px 0;
 }
 
-.script-installer-skin-selector .cdx-text-input {
-	width: 100%;
+.script-installer-skin-tabs {
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
 .script-installer-scroll {
