@@ -403,13 +403,21 @@
                         return;
                     }
                     
+                    // Get section for categorization
+                    var section = 'other';
+                    if (gadget.metadata && gadget.metadata.settings && gadget.metadata.settings.section) {
+                        section = gadget.metadata.settings.section;
+                    }
+                    
                     gadgetsData[gadget.id] = {
                         name: gadget.id,
                         description: gadget.desc || 'No description available',
+                        section: section,
                         scripts: [],
                         styles: []
                     };
                 });
+                
                 return gadgetsData;
             } else {
                 gadgetsData = {};
@@ -419,6 +427,58 @@
             console.error('Failed to load gadgets:', error);
             gadgetsData = {};
             return gadgetsData;
+        });
+    }
+
+    function loadSectionLabels() {
+        // Get unique sections from loaded gadgets
+        var sections = new Set();
+        Object.values(gadgetsData).forEach(function(gadget) {
+            sections.add(gadget.section);
+        });
+        
+        // Create promises for all section label requests
+        var sectionPromises = [];
+        sections.forEach(function(section) {
+            if (section !== 'other') {
+                sectionPromises.push(
+                    api.get({
+                        action: 'query',
+                        titles: 'MediaWiki:Gadget-section-' + section,
+                        prop: 'extracts',
+                        exintro: true,
+                        explaintext: true,
+                        format: 'json'
+                    }).then(function(data) {
+                        var page = Object.values(data.query.pages)[0];
+                        if (page && page.extract) {
+                            return {
+                                section: section,
+                                label: page.extract.trim()
+                            };
+                        } else {
+                            return {
+                                section: section,
+                                label: section.charAt(0).toUpperCase() + section.slice(1)
+                            };
+                        }
+                    }).catch(function() {
+                        return {
+                            section: section,
+                            label: section.charAt(0).toUpperCase() + section.slice(1)
+                        };
+                    })
+                );
+            }
+        });
+        
+        // Return promise that resolves when all labels are loaded
+        return Promise.all(sectionPromises).then(function(labels) {
+            var sectionLabels = {};
+            labels.forEach(function(item) {
+                sectionLabels[item.section] = item.label;
+            });
+            return sectionLabels;
         });
     }
 
@@ -628,9 +688,10 @@
             setup() {
                 var dialogOpen = ref(true);
                 var filterText = ref('');
-                var selectedSkin = ref('all');
+                var selectedSkin = ref('gadgets');
                 var loadingStates = ref({});
                 var removedScripts = ref([]);
+                var gadgetSectionLabels = ref(window.gadgetSectionLabels || {});
                 
                 // Create skin tabs
                 var skinTabs = [
@@ -647,7 +708,33 @@
                     
                     // Handle gadgets tab separately
                     if (selectedSkin.value === 'gadgets') {
-                        return gadgetsData;
+                        // Group gadgets by section
+                        var groupedGadgets = {};
+                        Object.keys(gadgetsData).forEach(function(gadgetName) {
+                            var gadget = gadgetsData[gadgetName];
+                            var section = gadget.section || 'other';
+                            
+                            if (!groupedGadgets[section]) {
+                                groupedGadgets[section] = {};
+                            }
+                            groupedGadgets[section][gadgetName] = gadget;
+                        });
+                        
+                        // Sort sections and gadgets within sections
+                        var sortedSections = Object.keys(groupedGadgets).sort();
+                        sortedSections.forEach(function(section) {
+                            var sectionGadgets = groupedGadgets[section];
+                            var sortedGadgets = {};
+                            Object.keys(sectionGadgets).sort().forEach(function(gadgetName) {
+                                sortedGadgets[gadgetName] = sectionGadgets[gadgetName];
+                            });
+                            result[section] = {
+                                gadgets: sortedGadgets,
+                                label: section.charAt(0).toUpperCase() + section.slice(1) // Temporary label
+                            };
+                        });
+                        
+                        return result;
                     }
                     
                     if (importsRef.value) {
@@ -840,6 +927,7 @@
                     filteredImports,
                     loadingStates,
                     removedScripts,
+                    gadgetSectionLabels,
                     handleNormalize,
                     handleUninstall,
                     handleToggleDisabled,
@@ -896,35 +984,40 @@
                                     </ul>
                                 </div>
                                 <div v-else class="gadgets-list">
-                                    <cdx-card 
-                                        v-for="(gadget, gadgetName) in filteredImports" 
-                                        :key="gadgetName"
-                                        class="gadget-item"
-                                        :class="{ 
-                                            enabled: isGadgetEnabled(gadgetName)
-                                        }"
-                                    >
-                                        <div class="gadget-info">
-                                            <div class="gadget-name">{{ gadgetName }}</div>
-                                            <div class="gadget-description" v-if="gadget.description" v-html="gadget.description"></div>
-                                            <div class="gadget-details" v-if="gadget.scripts || gadget.styles">
-                                                <span v-if="gadget.scripts" class="gadget-scripts">{{ gadget.scripts.length }} script(s)</span>
-                                                <span v-if="gadget.styles" class="gadget-styles">{{ gadget.styles.length }} style(s)</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="gadget-actions">
-                                            <cdx-button 
-                                                weight="quiet" 
-                                                size="small"
-                                                :disabled="loadingStates['gadget-' + gadgetName]"
-                                                @click="handleGadgetToggle(gadgetName, !isGadgetEnabled(gadgetName))"
+                                    <div v-for="(sectionData, sectionName) in filteredImports" :key="sectionName" class="gadget-section">
+                                        <h4 class="gadget-section-title">{{ gadgetSectionLabels[sectionName] || sectionData.label }}</h4>
+                                        <div class="gadget-section-content">
+                                            <cdx-card 
+                                                v-for="(gadget, gadgetName) in sectionData.gadgets" 
+                                                :key="gadgetName"
+                                                class="gadget-item"
+                                                :class="{ 
+                                                    enabled: isGadgetEnabled(gadgetName)
+                                                }"
                                             >
-                                                {{ loadingStates['gadget-' + gadgetName] ? '...' : 
-                                                   (isGadgetEnabled(gadgetName) ? 'Disable' : 'Enable') }}
-                                            </cdx-button>
+                                                <div class="gadget-info">
+                                                    <div class="gadget-name">{{ gadgetName }}</div>
+                                                    <div class="gadget-description" v-if="gadget.description" v-html="gadget.description"></div>
+                                                    <div class="gadget-details" v-if="gadget.scripts || gadget.styles">
+                                                        <span v-if="gadget.scripts" class="gadget-scripts">{{ gadget.scripts.length }} script(s)</span>
+                                                        <span v-if="gadget.styles" class="gadget-styles">{{ gadget.styles.length }} style(s)</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="gadget-actions">
+                                                    <cdx-button 
+                                                        weight="quiet" 
+                                                        size="small"
+                                                        :disabled="loadingStates['gadget-' + gadgetName]"
+                                                        @click="handleGadgetToggle(gadgetName, !isGadgetEnabled(gadgetName))"
+                                                    >
+                                                        {{ loadingStates['gadget-' + gadgetName] ? '...' : 
+                                                           (isGadgetEnabled(gadgetName) ? 'Disable' : 'Enable') }}
+                                                    </cdx-button>
+                                                </div>
+                                            </cdx-card>
                                         </div>
-                                    </cdx-card>
+                                    </div>
                                 </div>
                             </div>
                         </template>
@@ -1701,7 +1794,14 @@
           buildImportList(),
           loadGadgets(),
           loadUserGadgetSettings()
-        ).then(function () {
+        ).then(function (imports, gadgets, userSettings) {
+          // Load section labels after gadgets are loaded
+          return loadSectionLabels().then(function(sectionLabels) {
+            // Store section labels globally for Vue component
+            window.gadgetSectionLabels = sectionLabels;
+            return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionLabels: sectionLabels };
+          });
+        }).then(function(data) {
           attachInstallLinks();
           if (jsPage) showUi();
           if (document.cookie.indexOf("open_script_installer=yes") >= 0) {

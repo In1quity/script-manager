@@ -211,6 +211,29 @@
 .gadgets-list {
 	display: flex;
 	flex-direction: column;
+	gap: 1.25rem;
+}
+
+.gadget-section {
+	margin-bottom: 1.5rem;
+}
+
+.gadget-section:last-child {
+	margin-bottom: 0;
+}
+
+.gadget-section-title {
+	font-size: 1rem;
+	font-weight: 600;
+	color: var(--color-base, #202122);
+	margin: 0 0 0.75rem 0;
+	padding-bottom: 0.5rem;
+	border-bottom: 1px solid var(--border-color-subtle, #eaecf0);
+}
+
+.gadget-section-content {
+	display: flex;
+	flex-direction: column;
 	gap: 0.5rem;
 }
 
