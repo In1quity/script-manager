@@ -730,7 +730,7 @@
             setup() {
                 var dialogOpen = ref(true);
                 var filterText = ref('');
-                var selectedSkin = ref('gadgets');
+                var selectedSkin = ref('common');
                 var loadingStates = ref({});
                 var removedScripts = ref([]);
                 var gadgetSectionLabels = ref(window.gadgetSectionLabels || {});
@@ -738,9 +738,9 @@
                 // Create skin tabs
                 var skinTabs = [
                     { name: 'all', label: STRINGS.allSkins },
+                    { name: 'gadgets', label: STRINGS.gadgets },
                     { name: 'global', label: 'global' },
-                    { name: 'common', label: 'common' },
-                    { name: 'gadgets', label: STRINGS.gadgets }
+                    { name: 'common', label: 'common' }             
                 ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
                     return { name: skin, label: skin };
                 }));
