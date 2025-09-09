@@ -518,6 +518,25 @@
             
             console.log('✅ User gadget settings loaded:', userGadgetSettings);
             console.log('Number of gadget settings:', Object.keys(userGadgetSettings).length);
+            
+            // Create gadgetsData from user settings if gadgetsData is empty
+            if (Object.keys(gadgetsData).length === 0) {
+                console.log('Creating gadgetsData from user settings...');
+                gadgetsData = {};
+                Object.keys(userGadgetSettings).forEach(function(key) {
+                    var gadgetName = key.replace('gadget-', '');
+                    gadgetsData[gadgetName] = {
+                        name: gadgetName,
+                        description: 'Gadget loaded from user settings',
+                        scripts: [],
+                        styles: [],
+                        enabled: userGadgetSettings[key] === '1'
+                    };
+                });
+                console.log('✅ Created gadgetsData from user settings:', gadgetsData);
+                console.log('Number of gadgets created:', Object.keys(gadgetsData).length);
+            }
+            
             return userGadgetSettings;
         }).catch(function(error) {
             console.error('❌ Failed to load user gadget settings:', error);
