@@ -469,27 +469,24 @@
     }
 
     function loadGadgetsLabel() {
-        console.log('Loading gadgets label from MediaWiki:Prefs-gadgets');
+        console.log('Loading gadgets label from system messages');
         return api.get({
             action: 'query',
-            titles: 'MediaWiki:Prefs-gadgets',
-            prop: 'revisions',
-            rvprop: 'content',
+            meta: 'allmessages',
+            ammessages: 'prefs-gadgets',
             format: 'json'
-        }).then(function(data) {
-            console.log('Gadgets label API response:', data);
-            var page = Object.values(data.query.pages)[0];
-            console.log('Page data:', page);
-            if (page && page.revisions && page.revisions[0] && page.revisions[0]['*']) {
-                var label = page.revisions[0]['*'].trim();
-                console.log('Loaded gadgets label:', label);
+        }).then(function(msgData) {
+            console.log('System message response:', msgData);
+            if (msgData.query && msgData.query.allmessages && msgData.query.allmessages[0] && msgData.query.allmessages[0]['*']) {
+                var label = msgData.query.allmessages[0]['*'];
+                console.log('Loaded gadgets label from system message:', label);
                 return label;
             } else {
-                console.log('No content found, using fallback');
+                console.log('No system message found, using fallback');
                 return 'Gadgets'; // Fallback
             }
-        }).catch(function(error) {
-            console.log('Error loading gadgets label:', error);
+        }).catch(function() {
+            console.log('Error loading system message, using fallback');
             return 'Gadgets'; // Fallback
         });
     }
