@@ -524,35 +524,6 @@
         });
     }
 
-    function loadGadgetTranslations() {
-        // Load gadget descriptions in user's language
-        var gadgetNames = Object.keys(gadgetsData);
-        if (gadgetNames.length === 0) {
-            return Promise.resolve({});
-        }
-        
-        return api.get({
-            action: 'query',
-            titles: gadgetNames.map(function(name) { return 'MediaWiki:Gadget-' + name; }),
-            prop: 'extracts',
-            exintro: true,
-            explaintext: true,
-            format: 'json'
-        }).then(function(data) {
-            var translations = {};
-            Object.values(data.query.pages).forEach(function(page) {
-                if (page.extract) {
-                    // Extract gadget name from title
-                    var gadgetName = page.title.replace('MediaWiki:Gadget-', '');
-                    translations[gadgetName] = page.extract.trim();
-                }
-            });
-            return translations;
-        }).catch(function() {
-            return {};
-        });
-    }
-
     function loadUserGadgetSettings() {
         return api.get({
             action: 'query',
@@ -1072,7 +1043,6 @@
                         <!-- Gadgets tab -->
                         <template v-if="selectedSkin === 'gadgets'">
                             <div class="gadgets-section">
-                                <h3>{{ STRINGS.gadgets }}</h3>
                                 <div v-if="Object.keys(filteredImports).length === 0" class="no-gadgets">
                                     <p>{{ STRINGS.noGadgetsAvailable }}</p>
                                     <p>{{ STRINGS.thisMightBeBecause }}</p>
