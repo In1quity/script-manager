@@ -203,6 +203,78 @@
 	font-weight: bold;
 }
 
+/* Gadgets styling */
+.gadgets-section {
+	margin-bottom: 1rem;
+}
+
+.gadgets-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.gadget-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 1rem;
+	border: 1px solid var(--border-color-base, #a2a9b1);
+	border-radius: 4px;
+	background-color: var(--background-color-base, #ffffff);
+	transition: background-color 0.2s ease;
+}
+
+.gadget-item:hover {
+	background-color: var(--background-color-interactive, #f8f9fa);
+}
+
+.gadget-item.enabled {
+	border-color: var(--border-color-progressive, #36c);
+	background-color: var(--background-color-progressive-subtle, #f1f4fd);
+}
+
+.gadget-info {
+	flex: 1;
+}
+
+.gadget-name {
+	font-weight: 600;
+	font-size: 1rem;
+	color: var(--color-base, #000000);
+	margin-bottom: 0.25rem;
+}
+
+.gadget-description {
+	color: var(--color-subtle, #54595d);
+	font-size: 0.875rem;
+	margin-bottom: 0.5rem;
+}
+
+.gadget-details {
+	display: flex;
+	gap: 1rem;
+	font-size: 0.75rem;
+	color: var(--color-subtle, #54595d);
+}
+
+.gadget-scripts,
+.gadget-styles {
+	background-color: var(--background-color-subtle, #f8f9fa);
+	padding: 0.125rem 0.5rem;
+	border-radius: 3px;
+}
+
+.gadget-actions {
+	display: flex;
+	gap: 0.5rem;
+	flex-shrink: 0;
+}
+
+.gadget-actions .cdx-button {
+	min-width: auto;
+}
+
 /* Message stack container for notifications */
 .script-installer-message-stack {
 	position: fixed;

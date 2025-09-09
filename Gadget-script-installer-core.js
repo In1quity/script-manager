@@ -24,6 +24,10 @@
     // Reactive reference for Vue component
     var importsRef = null;
 
+    // Gadgets data
+    var gadgetsData = {};
+    var userGadgetSettings = {};
+
     // Goes on the end of edit summaries
     var ADVERT = "";
 
@@ -383,6 +387,60 @@
         } );
     }
 
+    function loadGadgets() {
+        return api.get({
+            action: 'query',
+            meta: 'gadgets',
+            format: 'json'
+        }).then(function(data) {
+            gadgetsData = data.query.gadgets || {};
+            return gadgetsData;
+        }).catch(function(error) {
+            console.error('Failed to load gadgets:', error);
+            gadgetsData = {};
+            return {};
+        });
+    }
+
+    function loadUserGadgetSettings() {
+        return api.get({
+            action: 'query',
+            meta: 'userinfo',
+            uiprop: 'options'
+        }).then(function(data) {
+            var options = data.query.userinfo.options || {};
+            userGadgetSettings = {};
+            
+            // Extract gadget settings
+            Object.keys(options).forEach(function(key) {
+                if (key.startsWith('gadget-')) {
+                    userGadgetSettings[key] = options[key];
+                }
+            });
+            
+            return userGadgetSettings;
+        }).catch(function(error) {
+            console.error('Failed to load user gadget settings:', error);
+            userGadgetSettings = {};
+            return {};
+        });
+    }
+
+    function toggleGadget(gadgetName, enabled) {
+        return api.postWithToken('csrf', {
+            action: 'options',
+            optionname: 'gadget-' + gadgetName,
+            optionvalue: enabled ? '1' : '0'
+        }).then(function() {
+            // Update local settings
+            userGadgetSettings['gadget-' + gadgetName] = enabled ? '1' : '0';
+            return true;
+        }).catch(function(error) {
+            console.error('Failed to toggle gadget:', error);
+            throw error;
+        });
+    }
+
 
     /*
      * "Normalizes" (standardizes the format of) lines in the given
@@ -558,13 +616,20 @@
                 var skinTabs = [
                     { name: 'all', label: STRINGS.allSkins },
                     { name: 'global', label: 'global' },
-                    { name: 'common', label: 'common' }
+                    { name: 'common', label: 'common' },
+                    { name: 'gadgets', label: 'Gadgets' }
                 ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
                     return { name: skin, label: skin };
                 }));
                 
                 var filteredImports = computed(function() {
                     var result = {};
+                    
+                    // Handle gadgets tab separately
+                    if (selectedSkin.value === 'gadgets') {
+                        return gadgetsData;
+                    }
+                    
                     if (importsRef.value) {
                         // Define the order: common first, then global, then others
                         var orderedKeys = ['common', 'global'];
@@ -720,6 +785,24 @@
                         alert('Failed to normalize some scripts. Please try again.');
                     });
                 };
+
+                var handleGadgetToggle = function(gadgetName, enabled) {
+                    var key = 'gadget-' + gadgetName;
+                    setLoading(key, true);
+                    
+                    toggleGadget(gadgetName, enabled).then(function() {
+                        showNotification('Gadget ' + gadgetName + ' ' + (enabled ? 'enabled' : 'disabled'), 'success');
+                    }).catch(function(error) {
+                        console.error('Failed to toggle gadget:', error);
+                        showNotification('Failed to toggle gadget', 'error');
+                    }).always(function() {
+                        setLoading(key, false);
+                    });
+                };
+
+                var isGadgetEnabled = function(gadgetName) {
+                    return userGadgetSettings['gadget-' + gadgetName] === '1';
+                };
                 
                 var getSkinUrl = function(skinName) {
                     if (skinName === 'global') {
@@ -742,6 +825,8 @@
                     handleToggleDisabled,
                     handleMove,
                     handleNormalizeAll,
+                    handleGadgetToggle,
+                    isGadgetEnabled,
                     getSkinUrl,
                     STRINGS: STRINGS,
                     SKINS: SKINS,
@@ -777,73 +862,114 @@
                     </div>
                     
                     <div class="script-installer-scroll">
-                        <div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
-                        <h3>
-                            <template v-if="targetName === 'common'">
-                                <a :href="getSkinUrl(targetName)" target="_blank">
-                                    {{ STRINGS.skinCommon }}
-                                </a>
-                            </template>
-                            <template v-else-if="targetName === 'global'">
-                                <a :href="getSkinUrl(targetName)" target="_blank">
-                                    {{ STRINGS.globalAppliesToAllWikis }}
-                                </a>
-                            </template>
-                            <template v-else>
-                                <a :href="getSkinUrl(targetName)" target="_blank">
-                                    {{ targetName }}
-                                </a>
-                            </template>
-                        </h3>
+                        <!-- Gadgets tab -->
+                        <template v-if="selectedSkin === 'gadgets'">
+                            <div class="gadgets-section">
+                                <h3>Gadgets</h3>
+                                <div class="gadgets-list">
+                                    <cdx-card 
+                                        v-for="(gadget, gadgetName) in filteredImports" 
+                                        :key="gadgetName"
+                                        class="gadget-item"
+                                        :class="{ 
+                                            enabled: isGadgetEnabled(gadgetName)
+                                        }"
+                                    >
+                                        <div class="gadget-info">
+                                            <div class="gadget-name">{{ gadgetName }}</div>
+                                            <div class="gadget-description" v-if="gadget.description">{{ gadget.description }}</div>
+                                            <div class="gadget-details" v-if="gadget.scripts || gadget.styles">
+                                                <span v-if="gadget.scripts" class="gadget-scripts">{{ gadget.scripts.length }} script(s)</span>
+                                                <span v-if="gadget.styles" class="gadget-styles">{{ gadget.styles.length }} style(s)</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="gadget-actions">
+                                            <cdx-button 
+                                                weight="quiet" 
+                                                size="small"
+                                                :disabled="loadingStates['gadget-' + gadgetName]"
+                                                @click="handleGadgetToggle(gadgetName, !isGadgetEnabled(gadgetName))"
+                                            >
+                                                {{ loadingStates['gadget-' + gadgetName] ? '...' : 
+                                                   (isGadgetEnabled(gadgetName) ? 'Disable' : 'Enable') }}
+                                            </cdx-button>
+                                        </div>
+                                    </cdx-card>
+                                </div>
+                            </div>
+                        </template>
                         
-                        <div class="script-list">
-                            <cdx-card 
-                                v-for="anImport in targetImports" 
-                                :key="anImport.getDescription()"
-                                class="script-item"
-                                :class="{ 
-                                    disabled: anImport.disabled,
-                                    'script-item-removed': removedScripts.includes(anImport.getDescription())
-                                }"
-                            >
-                                <div class="script-info">
-                                    <a :href="anImport.getHumanUrl()" class="script-link">
-                                        {{ anImport.getDescription() }}
+                        <!-- Scripts tabs -->
+                        <template v-else>
+                            <div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
+                            <h3>
+                                <template v-if="targetName === 'common'">
+                                    <a :href="getSkinUrl(targetName)" target="_blank">
+                                        {{ STRINGS.skinCommon }}
                                     </a>
-                                </div>
-                                
-                                <div class="script-actions">
-                                    <cdx-button 
-                                        weight="quiet" 
-                                        size="small"
-                                        :disabled="loadingStates['uninstall-' + anImport.getDescription()]"
-                                        @click="handleUninstall(anImport)"
-                                    >
-                                        {{ loadingStates['uninstall-' + anImport.getDescription()] ? '...' : 
-                                           (removedScripts.includes(anImport.getDescription()) ? STRINGS.restoreLinkText : STRINGS.uninstallLinkText) }}
-                                    </cdx-button>
+                                </template>
+                                <template v-else-if="targetName === 'global'">
+                                    <a :href="getSkinUrl(targetName)" target="_blank">
+                                        {{ STRINGS.globalAppliesToAllWikis }}
+                                    </a>
+                                </template>
+                                <template v-else>
+                                    <a :href="getSkinUrl(targetName)" target="_blank">
+                                        {{ targetName }}
+                                    </a>
+                                </template>
+                            </h3>
+                            
+                            <div class="script-list">
+                                <cdx-card 
+                                    v-for="anImport in targetImports" 
+                                    :key="anImport.getDescription()"
+                                    class="script-item"
+                                    :class="{ 
+                                        disabled: anImport.disabled,
+                                        'script-item-removed': removedScripts.includes(anImport.getDescription())
+                                    }"
+                                >
+                                    <div class="script-info">
+                                        <a :href="anImport.getHumanUrl()" class="script-link">
+                                            {{ anImport.getDescription() }}
+                                        </a>
+                                    </div>
                                     
-                                    <cdx-button 
-                                        weight="quiet" 
-                                        size="small"
-                                        :disabled="loadingStates['toggle-' + anImport.getDescription()]"
-                                        @click="handleToggleDisabled(anImport)"
-                                    >
-                                        {{ loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? STRINGS.enableLinkText : STRINGS.disableLinkText) }}
-                                    </cdx-button>
-                                    
-                                    <cdx-button 
-                                        weight="quiet" 
-                                        size="small"
-                                        :disabled="loadingStates['move-' + anImport.getDescription()]"
-                                        @click="handleMove(anImport)"
-                                    >
-                                        {{ loadingStates['move-' + anImport.getDescription()] ? '...' : STRINGS.moveLinkText }}
-                                    </cdx-button>
-                                </div>
-                            </cdx-card>
+                                    <div class="script-actions">
+                                        <cdx-button 
+                                            weight="quiet" 
+                                            size="small"
+                                            :disabled="loadingStates['uninstall-' + anImport.getDescription()]"
+                                            @click="handleUninstall(anImport)"
+                                        >
+                                            {{ loadingStates['uninstall-' + anImport.getDescription()] ? '...' : 
+                                               (removedScripts.includes(anImport.getDescription()) ? STRINGS.restoreLinkText : STRINGS.uninstallLinkText) }}
+                                        </cdx-button>
+                                        
+                                        <cdx-button 
+                                            weight="quiet" 
+                                            size="small"
+                                            :disabled="loadingStates['toggle-' + anImport.getDescription()]"
+                                            @click="handleToggleDisabled(anImport)"
+                                        >
+                                            {{ loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? STRINGS.enableLinkText : STRINGS.disableLinkText) }}
+                                        </cdx-button>
+                                        
+                                        <cdx-button 
+                                            weight="quiet" 
+                                            size="small"
+                                            :disabled="loadingStates['move-' + anImport.getDescription()]"
+                                            @click="handleMove(anImport)"
+                                        >
+                                            {{ loadingStates['move-' + anImport.getDescription()] ? '...' : STRINGS.moveLinkText }}
+                                        </cdx-button>
+                                    </div>
+                                </cdx-card>
+                            </div>
                         </div>
-                    </div>
+                        </template>
                     </div>
                     
                     <div class="script-installer-dialog-module">
@@ -1540,7 +1666,13 @@
       ).then(function () {
         api = new mw.Api();
         metaApi = new mw.ForeignApi( 'https://meta.wikimedia.org/w/api.php' );
-        buildImportList().then(function () {
+        
+        // Load both scripts and gadgets
+        $.when(
+          buildImportList(),
+          loadGadgets(),
+          loadUserGadgetSettings()
+        ).then(function () {
           attachInstallLinks();
           if (jsPage) showUi();
           if (document.cookie.indexOf("open_script_installer=yes") >= 0) {
