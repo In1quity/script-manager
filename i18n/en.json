@@ -56,6 +56,8 @@
   "notificationDisableError": "Failed to disable script $1",
   "notificationMoveError": "Failed to move script $1",
   "notificationNormalizeError": "Failed to normalize scripts",
+  "notificationRestoreError": "Failed to restore script $1",
+  "notificationGeneralError": "An error occurred. Please try again.",
   "gadgets": "Gadgets",
   "noGadgetsAvailable": "No gadgets available or failed to load gadgets data.",
   "gadgetsNotInstalled": "Gadgets extension is not installed on this wiki",

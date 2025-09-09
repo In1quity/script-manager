@@ -847,7 +847,7 @@
                         });
                     }).fail(function(error) {
                         console.error('Failed to normalize:', error);
-                        alert('Failed to normalize scripts. Please try again.');
+                        showNotification('notificationNormalizeError', 'error');
                     }).always(function() {
                         setLoading(key, false);
                     });
@@ -876,7 +876,7 @@
                             });
                         }).fail(function(error) {
                             console.error('Failed to restore:', error);
-                            alert('Failed to restore script. Please try again.');
+                            showNotification('notificationRestoreError', 'error', anImport.getDescription());
                         }).always(function() {
                             setLoading(key, false);
                         });
@@ -893,7 +893,7 @@
                             });
                         }).fail(function(error) {
                             console.error('Failed to uninstall:', error);
-                            alert('Failed to uninstall script. Please try again.');
+                            showNotification('notificationUninstallError', 'error', anImport.getDescription());
                         }).always(function() {
                             setLoading(key, false);
                         });
@@ -912,7 +912,7 @@
                         });
                     }).fail(function(error) {
                         console.error('Failed to toggle disabled state:', error);
-                        alert('Failed to change script state. Please try again.');
+                        showNotification('notificationGeneralError', 'error');
                     }).always(function() {
                         setLoading(key, false);
                     });
@@ -943,7 +943,7 @@
                         });
                     }).fail(function(error) {
                         console.error('Failed to normalize some scripts:', error);
-                        alert('Failed to normalize some scripts. Please try again.');
+                        showNotification('notificationNormalizeError', 'error');
                     });
                 };
 
@@ -1392,7 +1392,7 @@
                         conditionalReload(false);
                     }).fail(function(error) {
                         console.error('Failed to install script:', error);
-                        alert('Failed to install script. Please try again.');
+                        showNotification('notificationInstallError', 'error', anImport.getDescription());
                         buttonElement.text(STRINGS.installLinkText);
                     }).always(function() {
                         isInstalling.value = false;
@@ -1491,7 +1491,7 @@
                 });
             }).fail(function(error) {
                 console.error('Failed to move script:', error);
-                alert('Failed to move script. Please try again.');
+                showNotification('notificationMoveError', 'error', anImport.getDescription());
             }).always(function() {
                 setLoading(key, false);
             });
@@ -1542,7 +1542,7 @@
                         dialogOpen.value = false;
                     }).fail(function(error) {
                         console.error('Failed to move script:', error);
-                        alert('Failed to move script. Please try again.');
+                        showNotification('notificationMoveError', 'error', anImport.getDescription());
                     }).always(function() {
                         isMoving.value = false;
                     });

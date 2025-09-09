@@ -58,6 +58,8 @@
   "notificationDisableError": "Не удалось выключить скрипт $1",
   "notificationMoveError": "Не удалось переместить скрипт $1",
   "notificationNormalizeError": "Не удалось нормализовать скрипты",
+  "notificationRestoreError": "Не удалось восстановить скрипт $1",
+  "notificationGeneralError": "Произошла ошибка. Попробуйте еще раз.",
   "gadgets": "Гаджеты",
   "noGadgetsAvailable": "Гаджеты недоступны или не удалось загрузить данные о гаджетах.",
   "gadgetsNotInstalled": "Расширение Gadgets не установлено на этой вики",
