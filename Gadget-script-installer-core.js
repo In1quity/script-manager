@@ -901,7 +901,7 @@
                                     >
                                         <div class="gadget-info">
                                             <div class="gadget-name">{{ gadgetName }}</div>
-                                            <div class="gadget-description" v-if="gadget.description">{{ gadget.description }}</div>
+                                            <div class="gadget-description" v-if="gadget.description" v-html="gadget.description"></div>
                                             <div class="gadget-details" v-if="gadget.scripts || gadget.styles">
                                                 <span v-if="gadget.scripts" class="gadget-scripts">{{ gadget.scripts.length }} script(s)</span>
                                                 <span v-if="gadget.styles" class="gadget-styles">{{ gadget.styles.length }} style(s)</span>
