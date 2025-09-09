@@ -1374,9 +1374,12 @@
           .then(i18n => {
             if (tryLang === 'en') {
               STRINGS_EN = i18n;
-              STRINGS = i18n; // Also set STRINGS to English if it's the only language
+              // Only set STRINGS to English if no other language was loaded
+              if (loadedCount === 0) {
+                STRINGS = i18n;
+              }
             } else {
-            STRINGS = i18n;
+              STRINGS = i18n;
             }
             loadedCount++;
             if (loadedCount >= 2 || (loadedCount === 1 && !chain.includes('en')) || (loadedCount === 1 && tryLang === 'en')) {
