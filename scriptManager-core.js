@@ -1299,9 +1299,7 @@
                     :use-close-button="true"
                     @close="onPanelClose"
                 >
-                    <div class="sm-subtitle">
-                        {{ SM_t('panelHeader') }}
-                    </div>
+                    <div class="sm-subtitle" v-text="SM_t('panelHeader')"></div>
                     <div class="sm-controls">
                         <div class="sm-search-wrap">
                             <cdx-text-input
@@ -1319,7 +1317,7 @@
                             </div>
                             <div class="sm-enabled-toggle">
                                 <cdx-toggle-button v-model="enabledOnly" :aria-label="SM_t('enabledOnly')">
-                                    {{ SM_t('enabledOnly') }}
+                                    <span v-text="SM_t('enabledOnly')"></span>
                                 </cdx-toggle-button>
                             </div>
                         </div>
@@ -1330,17 +1328,17 @@
                         <template v-if="selectedSkin === 'gadgets'">
                             <div class="gadgets-section">
                                 <div v-if="Object.keys(filteredImports).length === 0" class="no-gadgets">
-                                    <p>{{ SM_t('noGadgetsAvailable') }}</p>
-                                    <p>{{ SM_t('thisMightBeBecause') }}</p>
+                                    <p v-text="SM_t('noGadgetsAvailable')"></p>
+                                    <p v-text="SM_t('thisMightBeBecause')"></p>
                                     <ul>
-                                        <li>{{ SM_t('gadgetsNotInstalled') }}</li>
-                                        <li>{{ SM_t('noGadgetsConfigured') }}</li>
-                                        <li>{{ SM_t('apiAccessRestricted') }}</li>
+                                        <li v-text="SM_t('gadgetsNotInstalled')"></li>
+                                        <li v-text="SM_t('noGadgetsConfigured')"></li>
+                                        <li v-text="SM_t('apiAccessRestricted')"></li>
                                     </ul>
                                 </div>
                                 <div v-else class="gadgets-list">
                                     <div v-for="(sectionData, sectionName) in filteredImports" :key="sectionName" class="gadget-section">
-                                        <h4 class="gadget-section-title">{{ gadgetSectionLabels[sectionName] || sectionData.label }}</h4>
+                                        <h4 class="gadget-section-title" v-text="gadgetSectionLabels[sectionName] || sectionData.label"></h4>
                                         <div class="gadget-section-content">
                                             <cdx-card 
                                                 v-for="(gadget, gadgetName) in sectionData.gadgets" 
@@ -1351,7 +1349,7 @@
                                                 }"
                                             >
                                                 <div class="gadget-info">
-                                                    <div class="gadget-name">{{ gadgetName }}</div>
+                                                    <div class="gadget-name" v-text="gadgetName"></div>
                                                     <div class="gadget-description" v-if="gadget.description" v-html="gadget.description"></div>
                                                 </div>
                                                 
@@ -1362,8 +1360,7 @@
                                                         :disabled="loadingStates['gadget-' + gadgetName]"
                                                         @click="handleGadgetToggle(gadgetName, !isGadgetEnabled(gadgetName))"
                                                     >
-                                                        {{ loadingStates['gadget-' + gadgetName] ? '...' : 
-                                                           (isGadgetEnabled(gadgetName) ? SM_t('disableLinkText') : SM_t('enableLinkText')) }}
+                                                        <span v-text="loadingStates['gadget-' + gadgetName] ? '...' : (isGadgetEnabled(gadgetName) ? SM_t('disableLinkText') : SM_t('enableLinkText'))"></span>
                                                     </cdx-button>
                                                 </div>
                                             </cdx-card>
@@ -1378,19 +1375,13 @@
                             <div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
                             <h3>
                                 <template v-if="targetName === 'common'">
-                                    <a :href="getSkinUrl(targetName)" target="_blank">
-                                        {{ SM_t('skinCommon') }}
-                                    </a>
+                                    <a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skinCommon')"></a>
                                 </template>
                                 <template v-else-if="targetName === 'global'">
-                                    <a :href="getSkinUrl(targetName)" target="_blank">
-                                        {{ SM_t('globalAppliesToAllWikis') }}
-                                    </a>
+                                    <a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('globalAppliesToAllWikis')"></a>
                                 </template>
                                 <template v-else>
-                                    <a :href="getSkinUrl(targetName)" target="_blank">
-                                        {{ targetName }}
-                                    </a>
+                                    <a :href="getSkinUrl(targetName)" target="_blank" v-text="targetName"></a>
                                 </template>
                             </h3>
                             
@@ -1405,9 +1396,7 @@
                                     }"
                                 >
                                     <div class="script-info">
-                                        <a :href="getImportHumanUrl(anImport)" class="script-link">
-                                            {{ anImport.getDescription() }}
-                                        </a>
+                                        <a :href="getImportHumanUrl(anImport)" class="script-link" v-text="anImport.getDescription()"></a>
                                     </div>
                                     
                                     <div class="script-actions">                                        
@@ -1417,7 +1406,7 @@
                                             :disabled="loadingStates['toggle-' + anImport.getDescription()]"
                                             @click="handleToggleDisabled(anImport)"
                                         >
-                                            {{ loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? SM_t('enableLinkText') : SM_t('disableLinkText')) }}
+                                            <span v-text="loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? SM_t('enableLinkText') : SM_t('disableLinkText'))"></span>
                                         </cdx-button>
                                         
                                         <cdx-button 
@@ -1426,7 +1415,7 @@
                                             :disabled="loadingStates['move-' + anImport.getDescription()]"
                                             @click="handleMove(anImport)"
                                         >
-                                            {{ loadingStates['move-' + anImport.getDescription()] ? '...' : SM_t('moveLinkText') }}
+                                            <span v-text="loadingStates['move-' + anImport.getDescription()] ? '...' : SM_t('moveLinkText')"></span>
                                         </cdx-button>
 
                                         <cdx-button 
@@ -1436,8 +1425,7 @@
                                             :disabled="loadingStates['uninstall-' + anImport.getDescription()]"
                                             @click="handleUninstall(anImport)"
                                         >
-                                            {{ loadingStates['uninstall-' + anImport.getDescription()] ? '...' : 
-                                               (removedScripts.includes(anImport.getDescription()) ? SM_t('restoreLinkText') : SM_t('uninstallLinkText')) }}
+                                            <span v-text="loadingStates['uninstall-' + anImport.getDescription()] ? '...' : (removedScripts.includes(anImport.getDescription()) ? SM_t('restoreLinkText') : SM_t('uninstallLinkText'))"></span>
                                         </cdx-button>
                                     </div>
                                 </cdx-card>
@@ -1456,7 +1444,7 @@
                                 :disabled="Object.keys(filteredImports).length === 0 || selectedSkin === 'gadgets' || isNormalizing || normalizeCompleted"
                                 @click="handleNormalizeAll"
                             >
-                                {{ isNormalizing ? SM_t('normalizing') : (normalizeCompleted ? SM_t('normalized') : SM_t('normalize')) }}
+                                <span v-text="isNormalizing ? SM_t('normalizing') : (normalizeCompleted ? SM_t('normalized') : SM_t('normalize'))"></span>
                             </cdx-button>
                         </div>
                     </div>
@@ -1466,6 +1454,7 @@
         
         try {
             app = createApp(ScriptManager);
+            try { if (app && app.config && app.config.compilerOptions) { app.config.compilerOptions.delimiters = ['[%','%]']; } } catch(_) {}
             var mountedApp = app.mount(rootEl);
             // keep internal reference for reactive updates from async loaders
             scriptInstallerVueComponent = mountedApp;
@@ -1651,8 +1640,9 @@
                             }
                         }
                     },
-                    template: '<CdxButton :action="actionType" weight="primary" :disabled="busy" @click="onClick">{{ label }}</CdxButton>'
+                    template: '<CdxButton :action="actionType" weight="primary" :disabled="busy" @click="onClick"><span v-text="label"></span></CdxButton>'
                 });
+                try { if (app && app.config && app.config.compilerOptions) { app.config.compilerOptions.delimiters = ['[%','%]']; } } catch(_) {}
                 app.component('CdxButton', libs.CdxButton);
                 app.mount(hostEl);
             });
@@ -1660,7 +1650,7 @@
     }
 
     function attachInstallLinks() {
-        // At the end of each {{Userscript}} transclusion, there is
+        // At the end of each {Userscript} transclusion, there is
         // <span id='User:Foo/Bar.js' class='scriptInstallerLink'></span>
         $( "span.scriptInstallerLink" ).each( function () {
             var scriptName = this.id;
@@ -1820,10 +1810,10 @@
                     @update:open="handleOpenUpdate"
                     @primary="handleInstall"
                 >
-                    <p>{{ SM_t('bigSecurityWarning').replace('$1', SM_t('securityWarningSection').replace('$1', scriptName)) }}</p>
+                    <p v-text="SM_t('bigSecurityWarning').replace('$1', SM_t('securityWarningSection').replace('$1', scriptName))"></p>
                     
                     <cdx-field>
-                        <template #label>{{ SM_t('moveToSkin') }}</template>
+                        <template #label><span v-text="SM_t('moveToSkin')"></span></template>
                         <cdx-select
                             v-model:selected="selectedSkin"
                             :menu-items="skinOptions"
@@ -1835,7 +1825,13 @@
         });
         
         try {
-            app = mountVueApp(createApp, InstallDialog, container[0]);
+            app = createApp(InstallDialog);
+            try { if (app && app.config && app.config.compilerOptions) { app.config.compilerOptions.delimiters = ['[%','%]']; } } catch(_) {}
+            app.component('CdxDialog', CdxDialog);
+            app.component('CdxButton', CdxButton);
+            app.component('CdxSelect', CdxSelect);
+            app.component('CdxField', CdxField);
+            app.mount(container);
             smLog('InstallDialog: mounted');
         } catch (error) {
             smLog('Error mounting install dialog:', error);
@@ -1959,10 +1955,10 @@
                     @close="handleClose"
                 >
                     <div class="sm-move-content">
-                        <p><strong>{{ SM_t('currentLocation') }}</strong> {{ currentTarget === 'global' ? SM_t('globalAppliesToAllWikis') : currentTarget }}</p>
-                        
-                        <CdxField>
-                            <template #label>{{ SM_t('moveToSkin') }}</template>
+                        <p><strong><span v-text="SM_t('currentLocation')"></span></strong> <span v-text="currentTarget === 'global' ? SM_t('globalAppliesToAllWikis') : currentTarget"></span></p>
+                         
+                         <CdxField>
+                            <template #label><span v-text="SM_t('moveToSkin')"></span></template>
                             <CdxSelect
                                 v-model:selected="selectedTarget"
                                 :menu-items="targetOptions"
@@ -1977,7 +1973,7 @@
                                 :disabled="isMoving"
                                 action="progressive"
                             >
-                                {{ isMoving ? SM_t('movingProgress') : SM_t('moveScriptButton') }}
+                                <span v-text="isMoving ? SM_t('movingProgress') : SM_t('moveScriptButton')"></span>
                             </CdxButton>
                         </div>
                     </div>
@@ -1986,7 +1982,13 @@
         });
         
         try {
-            app = mountVueApp(createApp, MoveDialog, container[0]);
+            app = createApp(MoveDialog);
+            try { if (app && app.config && app.config.compilerOptions) { app.config.compilerOptions.delimiters = ['[%','%]']; } } catch(_) {}
+            app.component('CdxDialog', CdxDialog);
+            app.component('CdxButton', CdxButton);
+            app.component('CdxSelect', CdxSelect);
+            app.component('CdxField', CdxField);
+            app.mount(container);
         } catch (error) {
             smLog('Error mounting move dialog:', error);
             container.remove();
