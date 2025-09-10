@@ -1563,7 +1563,7 @@
                     STRINGS.securityWarningSection.replace( '$1', scriptName ) ) );
             if( okay ) {
                 buttonElement.text( STRINGS.installProgressMsg )
-                Import.ofLocal( scriptName, window.scriptInstallerInstallTarget ).install().done( function () {
+                Import.ofLocal( scriptName, window.SM_DEFAULT_SKIN ).install().done( function () {
                     buttonElement.text( STRINGS.uninstallLinkText );
                     reloadAfterChange();
                 }.bind( buttonElement ) );
@@ -1951,6 +1951,9 @@
     if( window.scriptInstallerInstallTarget === undefined ) {
         window.scriptInstallerInstallTarget = "common"; // by default, install things to the user's common.js
     }
+    
+    // Create alias for scriptInstallerInstallTarget in our style
+    window.SM_DEFAULT_SKIN = window.scriptInstallerInstallTarget;
 
     // SUMMARY_TAG is now set via window.SUMMARY_TAG or uses the default value
     if (typeof window.SUMMARY_TAG === 'string') {
