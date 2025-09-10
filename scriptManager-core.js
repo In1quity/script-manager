@@ -270,15 +270,15 @@
     }
 
     Import.fromJs = function ( line, target ) {
-        var IMPORT_RGX = /^\s*(\/\/)?\s*importScript\s*\(\s*(?:"|')(.+?)(?:"|')\s*\)/;
+        var IMPORT_RGX = /^\s*(\/\/)?\s*importScript\s*\(\s*(['\"])\s*(.+?)\s*\2\s*\)\s*;?/;
         var match;
         if( match = IMPORT_RGX.exec( line ) ) {
-            return Import.ofLocal( unescapeForJsString( match[2] ), target, !!match[1] );
+            return Import.ofLocal( unescapeForJsString( match[3] ), target, !!match[1] );
         }
 
-        var LOADER_RGX = /^\s*(\/\/)?\s*mw\.loader\.load\s*\(\s*(?:"|')(.+?)(?:"|')\s*(?:,\s*(?:"|')text\/css(?:"|'))?\s*\)/;
+        var LOADER_RGX = /^\s*(\/\/)?\s*mw\s*\.\s*loader\s*\.\s*load\s*\(\s*(['\"])\s*(.+?)\s*\2\s*(?:,\s*(['\"])\s*(?:text\/css|application\/css|text\/javascript|application\/javascript)\s*\4\s*)?\)\s*;?/;
         if( match = LOADER_RGX.exec( line ) ) {
-            return Import.ofUrl( unescapeForJsString( match[2] ), target, !!match[1] );
+            return Import.ofUrl( unescapeForJsString( match[3] ), target, !!match[1] );
         }
     }
 
@@ -307,7 +307,15 @@
             ? ""
             : (" // " + backlinkText + " [[" + escapeForJsComment( this.page ) + "]]");
 
-        var isCss = /\.css$/i.test(String(this.page||''));
+        var isCss = false;
+        if (this.type === 2) {
+            try {
+                var urlForCheck = String(url || '').replace(/[?#].*$/, '');
+                isCss = /\.css$/i.test(urlForCheck);
+            } catch(_) { isCss = false; }
+        } else {
+            isCss = /\.css$/i.test(String(this.page||''));
+        }
         var typeArg = isCss ? ", 'text/css'" : "";
         return dis + "mw.loader.load('" + escapeForJsString( url ) + "'" + typeArg + ");" + suffix;
     }
@@ -607,7 +615,7 @@
             smError('Failed to load gadgets:', error);
             gadgetsData = {};
             return gadgetsData;
-        }).finally(function(){ _pLoadGadgets = null; });
+        }).always(function(){ _pLoadGadgets = null; });
         return _pLoadGadgets;
     }
 
@@ -744,7 +752,7 @@
             smError('Failed to load user gadget settings:', error);
             userGadgetSettings = {};
             return {};
-        }).finally(function(){ _pLoadUserGadgetSettings = null; });
+        }).always(function(){ _pLoadUserGadgetSettings = null; });
         return _pLoadUserGadgetSettings;
     }
 
