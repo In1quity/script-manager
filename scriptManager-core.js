@@ -536,8 +536,10 @@
         } );
     }
 
+    var _pBuildImportList = null;
     function buildImportList() {
-        return getAllTargetWikitexts().then( function ( wikitexts ) {
+        if (_pBuildImportList) return _pBuildImportList;
+        _pBuildImportList = getAllTargetWikitexts().then( function ( wikitexts ) {
             Object.keys( wikitexts ).forEach( function ( targetName ) {
                 var targetImports = [];
                 if( wikitexts[ targetName ] ) {
@@ -556,11 +558,14 @@
             if (importsRef) {
                 importsRef.value = imports;
             }
-        } );
+        } ).catch(function(err){ _pBuildImportList = null; throw err; });
+        return _pBuildImportList;
     }
 
+    var _pLoadGadgets = null;
     function loadGadgets() {
-        return api.get({
+        if (_pLoadGadgets) return _pLoadGadgets;
+        _pLoadGadgets = api.get({
             action: 'query',
             list: 'gadgets',
             gaprop: 'id|desc|metadata',
@@ -602,7 +607,8 @@
             smError('Failed to load gadgets:', error);
             gadgetsData = {};
             return gadgetsData;
-        });
+        }).finally(function(){ _pLoadGadgets = null; });
+        return _pLoadGadgets;
     }
 
     function loadSectionOrder() {
@@ -715,8 +721,10 @@
         });
     }
 
+    var _pLoadUserGadgetSettings = null;
     function loadUserGadgetSettings() {
-        return api.get({
+        if (_pLoadUserGadgetSettings) return _pLoadUserGadgetSettings;
+        _pLoadUserGadgetSettings = api.get({
             action: 'query',
             meta: 'userinfo',
             uiprop: 'options'
@@ -736,7 +744,8 @@
             smError('Failed to load user gadget settings:', error);
             userGadgetSettings = {};
             return {};
-        });
+        }).finally(function(){ _pLoadUserGadgetSettings = null; });
+        return _pLoadUserGadgetSettings;
     }
 
     function toggleGadget(gadgetName, enabled) {
