@@ -947,6 +947,8 @@
                 var gadgetsLabel = ref(gadgetsLabelVar || 'Gadgets');
                 var enabledOnly = ref(false);
                 var reloadOnClose = ref(false);
+                var isNormalizing = ref(false);
+                var normalizeCompleted = ref(false);
 
                 try {
                     if (watch) {
@@ -1151,7 +1153,10 @@
                 
                 var handleNormalizeAll = function() {
                     var targets = Object.keys(filteredImports.value);
-                    if (targets.length === 0) return;
+                    if (targets.length === 0 || isNormalizing.value) return;
+                    
+                    isNormalizing.value = true;
+                    normalizeCompleted.value = false;
                     
                     var normalizePromises = targets.map(function(targetName) {
                         var key = 'normalize-' + targetName;
@@ -1162,10 +1167,13 @@
                     });
                     
                     $.when.apply($, normalizePromises).done(function() {
+                        normalizeCompleted.value = true;
                         reloadOnClose.value = true;
                     }).fail(function(error) {
                         smError('Failed to normalize some scripts:', error);
                         showNotification('notificationNormalizeError', 'error');
+                    }).always(function() {
+                        isNormalizing.value = false;
                     });
                 };
 
@@ -1229,6 +1237,8 @@
                     gadgetSectionLabels,
                     gadgetsLabel,
                     enabledOnly,
+                    isNormalizing,
+                    normalizeCompleted,
                     handleNormalize,
                     handleUninstall,
                     handleToggleDisabled,
@@ -1406,10 +1416,10 @@
                         <div class="sm-dialog-actions">
                             <cdx-button 
                                 weight="primary"
-                                :disabled="Object.keys(filteredImports).length === 0 || selectedSkin === 'gadgets'"
+                                :disabled="Object.keys(filteredImports).length === 0 || selectedSkin === 'gadgets' || isNormalizing || normalizeCompleted"
                                 @click="handleNormalizeAll"
                             >
-                                {{ SM_t('normalize') }}
+                                {{ isNormalizing ? SM_t('normalizing') : (normalizeCompleted ? SM_t('normalized') : SM_t('normalize')) }}
                             </cdx-button>
                         </div>
                     </div>
