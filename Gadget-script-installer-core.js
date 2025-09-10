@@ -686,11 +686,8 @@
         });
     }
 
-    function conditionalReload( openPanel ) {
-        if( window.scriptInstallerAutoReload ) {
-            if( openPanel ) document.cookie = "open_script_installer=yes";
-            window.location.reload( true );
-        }
+    function reloadAfterChange(){
+        try { window.location.reload(true); } catch(e) { smLog('reloadAfterChange error', e); }
     }
 
     /********************************************
@@ -788,7 +785,8 @@
             if (!libs.createApp || !libs.CdxDialog || !libs.CdxButton || !libs.CdxTextInput || !libs.CdxSelect || !libs.CdxField || !libs.CdxTabs || !libs.CdxTab || !libs.CdxToggleButton) {
                 throw new Error('Codex/Vue components not available');
             }
-            createVuePanel(container, libs.createApp, libs.defineComponent, libs.ref, libs.computed, libs.CdxDialog, libs.CdxButton, libs.CdxTextInput, libs.CdxSelect, libs.CdxField, libs.CdxTabs, libs.CdxTab, libs.CdxToggleButton);
+            // Pass container[0] down so we can unmount exactly this root
+            createVuePanel(container, libs.createApp, libs.defineComponent, libs.ref, libs.computed, libs.watch, libs.CdxDialog, libs.CdxButton, libs.CdxTextInput, libs.CdxSelect, libs.CdxField, libs.CdxTabs, libs.CdxTab, libs.CdxToggleButton);
         }).catch(function(error) {
             smLog('Failed to load Vue/Codex:', error);
             container.html('<div class="error">Failed to load interface. Please refresh the page.</div>');
@@ -797,11 +795,13 @@
         return container;
     }
 
-    function createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab, CdxToggleButton) {
+    function createVuePanel(container, createApp, defineComponent, ref, computed, watch, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab, CdxToggleButton) {
         // Make imports reactive and set global reference
         smLog('createVuePanel: start');
         importsRef = ref(imports);
+        var rootEl = container[0];
         
+        var app; // to unmount on close
         var ScriptManager = defineComponent({
             components: { CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab, CdxToggleButton },
             setup() {
@@ -813,7 +813,26 @@
                 var gadgetSectionLabels = ref(window.gadgetSectionLabels || {});
                 var gadgetsLabel = ref(window.gadgetsLabel || 'Gadgets');
                 var enabledOnly = ref(false);
-                
+                var reloadOnClose = ref(false);
+
+                try {
+                    if (watch) {
+                        watch(dialogOpen, function(v){
+                            smLog('Panel: dialogOpen changed ->', v, 'reloadOnClose=', reloadOnClose.value);
+                            if (v === false) {
+                                if (reloadOnClose.value) { reloadOnClose.value = false; setTimeout(function(){ reloadAfterChange(); }, 0); }
+                                // immediate unmount/remove just like maintenance-core
+                                try { safeUnmount(app, rootEl); } catch(e) { smLog('Panel: safeUnmount error', e); }
+                            }
+                        });
+                    }
+                } catch(e) { smLog('watch(dialogOpen) failed', e); }
+
+                var onPanelClose = function(){
+                    smLog('Panel: close button clicked');
+                    dialogOpen.value = false;
+                };
+
                 // Create skin tabs
                 var skinTabs = computed(function() {
                     return [
@@ -910,17 +929,18 @@
                                 
                                 if (filterText.value && filterText.value.trim()) {
                                     var filtered = targetImports.filter(function(anImport) {
-                                        return anImport.getDescription().toLowerCase().includes(filterText.value.toLowerCase().trim());
+                                        return anImport.getDescription().toLowerCase().indexOf(filterText.value.toLowerCase()) >= 0;
                                     });
                                     if (filtered.length > 0) {
                                         result[targetName] = filtered;
                                     }
-                            } else {
+                                } else {
                                     result[targetName] = targetImports;
                                 }
                             }
                         });
                     }
+                    
                     return result;
                 });
                 
@@ -932,12 +952,7 @@
                     var key = 'normalize-' + targetName;
                     setLoading(key, true);
                     normalize(targetName).done(function() {
-                        // Reload data without closing dialog
-                        buildImportList().then(function() {
-                            if (importsRef) {
-                                importsRef.value = imports;
-                            }
-                        });
+                        reloadOnClose.value = true;
                     }).fail(function(error) {
                         smLog('Failed to normalize:', error);
                         showNotification('notificationNormalizeError', 'error');
@@ -961,12 +976,7 @@
                             if (index > -1) {
                                 removedScripts.value.splice(index, 1);
                             }
-                            // Reload data without closing dialog
-                            buildImportList().then(function() {
-                                if (importsRef) {
-                                    importsRef.value = imports;
-                                }
-                            });
+                            reloadOnClose.value = true;
                         }).fail(function(error) {
                             smLog('Failed to restore:', error);
                             showNotification('notificationRestoreError', 'error', anImport.getDescription());
@@ -978,12 +988,7 @@
                         anImport.uninstall().done(function() {
                             // Add to removed list
                             removedScripts.value.push(scriptName);
-                            // Reload data without closing dialog
-                            buildImportList().then(function() {
-                                if (importsRef) {
-                                    importsRef.value = imports;
-                                }
-                            });
+                            reloadOnClose.value = true;
                         }).fail(function(error) {
                             smLog('Failed to uninstall:', error);
                             showNotification('notificationUninstallError', 'error', anImport.getDescription());
@@ -997,12 +1002,7 @@
                     var key = 'toggle-' + anImport.getDescription();
                     setLoading(key, true);
                     anImport.toggleDisabled().done(function() {
-                        // Reload data without closing dialog
-                        buildImportList().then(function() {
-                            if (importsRef) {
-                                importsRef.value = imports;
-                            }
-                        });
+                        reloadOnClose.value = true;
                     }).fail(function(error) {
                         smLog('Failed to toggle disabled state:', error);
                         showNotification('notificationGeneralError', 'error');
@@ -1013,6 +1013,7 @@
                 
                 var handleMove = function(anImport) {
                     showMoveDialog(anImport);
+                    // Reload will be triggered by move dialog itself; but also reload after closing main panel if further actions occurred
                 };
                 
                 var handleNormalizeAll = function() {
@@ -1028,12 +1029,7 @@
                     });
                     
                     $.when.apply($, normalizePromises).done(function() {
-                        // Reload data without closing dialog
-                        buildImportList().then(function() {
-                            if (importsRef) {
-                                importsRef.value = imports;
-                            }
-                        });
+                        reloadOnClose.value = true;
                     }).fail(function(error) {
                         smLog('Failed to normalize some scripts:', error);
                         showNotification('notificationNormalizeError', 'error');
@@ -1046,6 +1042,7 @@
                     
                     toggleGadget(gadgetName, enabled).then(function() {
                         showNotification('Gadget ' + gadgetName + ' ' + (enabled ? 'enabled' : 'disabled'), 'success');
+                        reloadOnClose.value = true;
                     }).catch(function(error) {
                         smLog('Failed to toggle gadget:', error);
                         showNotification('Failed to toggle gadget', 'error');
@@ -1110,7 +1107,8 @@
                     getImportHumanUrl,
                     STRINGS: STRINGS,
                     SKINS: SKINS,
-                    mw: mw
+                    mw: mw,
+                    onPanelClose
                 };
             },
             template: `
@@ -1119,6 +1117,7 @@
                     v-model:open="dialogOpen"
                     :title="STRINGS.scriptManagerTitle"
                     :use-close-button="true"
+                    @close="onPanelClose"
                 >
                     <div class="script-installer-subtitle">
                         {{ STRINGS.panelHeader }}
@@ -1285,8 +1284,8 @@
         });
         
         try {
-            var app = createApp(ScriptManager);
-            var mountedApp = app.mount(container[0]);
+            app = createApp(ScriptManager);
+            var mountedApp = app.mount(rootEl);
             // expose for reactive updates from async loaders
             window.scriptInstallerVueComponent = mountedApp;
             smLog('createVuePanel: mounted');
@@ -1361,7 +1360,7 @@
                         .click( function () {
                             $( this ).text( STRINGS.enableProgressMsg );
                             importObj.setDisabled( false ).done( function () {
-                                conditionalReload( false );
+                                reloadAfterChange();
                             } );
                         } ) );
             }
@@ -1437,7 +1436,7 @@
                         .map( function ( target ) { return Import.ofLocal( scriptName, target ).uninstall(); } )
                 $.when.apply( $, uninstalls ).then( function () {
                     $( this ).text( STRINGS.installLinkText );
-                    conditionalReload( false );
+                    reloadAfterChange();
                 }.bind( this ) );
             }
          };
@@ -1464,7 +1463,7 @@
                 buttonElement.text( STRINGS.installProgressMsg )
                 Import.ofLocal( scriptName, window.scriptInstallerInstallTarget ).install().done( function () {
                     buttonElement.text( STRINGS.uninstallLinkText );
-                    conditionalReload( false );
+                    reloadAfterChange();
                 }.bind( buttonElement ) );
             }
         });
@@ -1495,7 +1494,7 @@
                         buttonElement.text(STRINGS.uninstallLinkText);
                         dialogOpen.value = false;
                         try { safeUnmount(app, container[0]); } catch(e) {}
-                        conditionalReload(false);
+                        reloadAfterChange();
                     }).fail(function(error) {
                         smLog('Failed to install script:', error);
                         showNotification('notificationInstallError', 'error', scriptName);
@@ -1845,9 +1844,7 @@
         });
     }
 
-    if( window.scriptInstallerAutoReload === undefined ) {
-        window.scriptInstallerAutoReload = true;
-    }
+    // scriptInstallerAutoReload removed: always reload explicitly via reloadAfterChange()
 
     if( window.scriptInstallerInstallTarget === undefined ) {
         window.scriptInstallerInstallTarget = "common"; // by default, install things to the user's common.js
@@ -1976,10 +1973,7 @@
         }).then(function(data) {
           attachInstallLinks();
           if (jsPage) showUi();
-          if (document.cookie.indexOf("open_script_installer=yes") >= 0) {
-            document.cookie = "open_script_installer=; expires=Thu, 01 Jan 1970 00:00:01 GMT";
-            $("#script-installer-top-container a:contains('Manage')").trigger("click");
-          }
+          // auto-open via cookie removed
         });
       });
     });
