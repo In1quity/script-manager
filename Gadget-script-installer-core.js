@@ -2093,8 +2093,13 @@
     } catch(e) {}
 
     // Using:
+    // I18N readiness signaling for lazy openers
+    var SM_I18N_DONE = false;
+    try { window.SM_waitI18n = function(cb){ try { if (SM_I18N_DONE) { cb(); } else { (window.SM__i18nCbs||(window.SM__i18nCbs=[])).push(cb); } } catch(_){} }; } catch(_) {}
+
     var userLang = mw.config.get('wgUserLanguage') || 'en';
     loadI18nWithFallback(userLang, function() {
+      SM_I18N_DONE = true; try { (window.SM__i18nCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
       $.when(
         $.ready,
         mw.loader.using(["mediawiki.api", "mediawiki.ForeignApi", "mediawiki.util"])
@@ -2134,14 +2139,17 @@
     // Public opener for lazy init loaders
     try {
         window.SM_openScriptManager = function(){
-            try {
-                var exists = !!document.getElementById('sm-panel');
-                if (!exists) {
-                    $("#mw-content-text").before( makePanel() );
-                } else {
-                    $("#sm-panel").remove();
-                }
-            } catch(e) { smLog('SM_openScriptManager error', e); }
+            var doOpen = function(){
+                try {
+                    var exists = !!document.getElementById('sm-panel');
+                    if (!exists) {
+                        $("#mw-content-text").before( makePanel() );
+                    } else {
+                        $("#sm-panel").remove();
+                    }
+                } catch(e) { smLog('SM_openScriptManager error', e); }
+            };
+            try { if (typeof window.SM_waitI18n === 'function') { window.SM_waitI18n(doOpen); } else { doOpen(); } } catch(_) { doOpen(); }
         };
     } catch(e) {}
 } )();
