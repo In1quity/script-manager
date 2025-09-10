@@ -329,7 +329,11 @@
         var url = (this.type === 2)
             ? this.url
             : buildRawLoaderUrl(host, title);
-        var backlinkText = (this.target === 'global') ? STRINGS_EN.backlink : SM_t('backlink');
+        // Use English backlink for global.js, meta.wikimedia.org, and wikidata.org
+        var useEnglishBacklink = (this.target === 'global') || 
+                                (mw.config.get('wgServerName') === 'meta.wikimedia.org') ||
+                                (mw.config.get('wgServerName') === 'wikidata.org');
+        var backlinkText = useEnglishBacklink ? STRINGS_EN.backlink : SM_t('backlink');
 
         var suffix = (this.type === 2)
             ? ""
@@ -828,7 +832,11 @@
                     newLines[i] = lines[i];
                 }
             }
-            var summaryText = (target === 'global' && STRINGS_EN && STRINGS_EN.normalizeSummary)
+            // Use English summary for global.js, meta.wikimedia.org, and wikidata.org
+            var useEnglishSummary = (target === 'global') || 
+                                   (mw.config.get('wgServerName') === 'meta.wikimedia.org') ||
+                                   (mw.config.get('wgServerName') === 'wikidata.org');
+            var summaryText = (useEnglishSummary && STRINGS_EN && STRINGS_EN.normalizeSummary)
                 ? STRINGS_EN.normalizeSummary
                 : SM_t('normalizeSummary');
             return getApiForTarget( target ).postWithEditToken( {
@@ -2128,8 +2136,13 @@
     }
 
     function getSummaryForTarget( target, summaryKey, description ) {
-        if ( target === 'global' ) {
-            // Use English summary for global.js from en.json
+        // Use English summary for global.js, meta.wikimedia.org, and wikidata.org
+        var useEnglish = (target === 'global') || 
+                        (mw.config.get('wgServerName') === 'meta.wikimedia.org') ||
+                        (mw.config.get('wgServerName') === 'wikidata.org');
+        
+        if ( useEnglish ) {
+            // Use English summary for global scripts and special wikis
             return STRINGS_EN[summaryKey].replace( "$1", description ) + (SUMMARY_TAG ? " " + SUMMARY_TAG : "");
         } else {
             // Use localized summary for local scripts
