@@ -47,13 +47,36 @@
     var SM_USER_NAMESPACE_NUMBER = 2;
     var SM_MEDIAWIKI_NAMESPACE_NUMBER = 8;
 
-    // Debug logger (no-op unless window.scriptInstallerDebug is truthy)
-    function smLog() {
-        if (window.scriptInstallerDebug) {
-            try { console.log.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch (e) {}
-        }
+    // Leveled logger
+    function getLogLevel(){
+        try {
+            var lvl = (window.SM_LOG_LEVEL || (window.scriptInstallerDebug ? 'debug' : 'info') || '').toString().toLowerCase();
+            var map = { silent:0, error:1, warn:2, info:3, debug:4 };
+            return map.hasOwnProperty(lvl) ? map[lvl] : 3;
+        } catch(_) { return 3; }
+    }
+    function smLog(){
+        var lvl = getLogLevel();
+        if (lvl < 4) return; // debug only
+        try { console.debug.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch(_) {}
+    }
+    function smInfo(){
+        var lvl = getLogLevel();
+        if (lvl < 3) return;
+        try { console.info.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch(_) {}
+    }
+    function smWarn(){
+        var lvl = getLogLevel();
+        if (lvl < 2) return;
+        try { console.warn.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch(_) {}
+    }
+    function smError(){
+        var lvl = getLogLevel();
+        if (lvl < 1) return;
+        try { console.error.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch(_) {}
     }
     try { window.smLog = smLog; } catch(e) {}
+    try { window.smInfo = smInfo; window.smWarn = smWarn; window.smError = smError; } catch(_) {}
 
     // Normalize localized User namespace to canonical English for URLs
     function canonicalizeUserNamespace(title) {
@@ -253,7 +276,7 @@
     Import.prototype.getDescription = function ( useWikitext ) {
         switch( this.type ) {
             case 0: return useWikitext ? ( "[[" + this.page + "]]" ) : this.page;
-            case 1: return STRINGS.remoteUrlDesc.replace( "$1", this.page ).replace( "$2", this.wiki );
+            case 1: return SM_t('remoteUrlDesc').replace( "$1", this.page ).replace( "$2", this.wiki );
             case 2: return this.url;
         }
     }
@@ -269,7 +292,7 @@
         var url = (this.type === 2)
             ? this.url
             : buildRawLoaderUrl(host, title);
-        var backlinkText = (this.type === 0 && this.target === 'global') ? STRINGS_EN.backlink : STRINGS.backlink;
+        var backlinkText = (this.type === 0 && this.target === 'global') ? STRINGS_EN.backlink : SM_t('backlink');
 
         var suffix = (this.type === 2)
             ? ""
@@ -296,7 +319,7 @@
         return req.then(function() {
             showNotification('notificationInstallSuccess', 'success', this.getDescription());
         }.bind(this)).catch(function(error) {
-            smLog('Install failed:', error);
+            smError('Install failed:', error);
             showNotification('notificationInstallError', 'error', this.getDescription());
             throw error;
         }.bind(this));
@@ -356,7 +379,7 @@
         return chain.then(function() {
             showNotification('notificationUninstallSuccess', 'success', that.getDescription());
         }).catch(function(error) {
-            smLog('Uninstall failed:', error);
+            smError('Uninstall failed:', error);
             showNotification('notificationUninstallError', 'error', that.getDescription());
             throw error;
         });
@@ -399,7 +422,7 @@
             var notificationKey = disabled ? 'notificationDisableSuccess' : 'notificationEnableSuccess';
             showNotification(notificationKey, 'success', that.getDescription());
         }).catch(function(error) {
-            smLog('Set disabled failed:', error);
+            smError('Set disabled failed:', error);
             var notificationKey = disabled ? 'notificationDisableError' : 'notificationEnableError';
             showNotification(notificationKey, 'error', that.getDescription());
         });
@@ -427,7 +450,7 @@
         }).then(function(){
             showNotification('notificationMoveSuccess', 'success', that.getDescription());
         }).catch(function(error){
-            smLog('Move failed:', error);
+            smError('Move failed:', error);
             showNotification('notificationMoveError', 'error', that.getDescription());
         });
     }
@@ -555,7 +578,7 @@
                     
                     gadgetsData[gadget.id] = {
                         name: gadget.id,
-                        description: gadget.desc || STRINGS.noDescriptionAvailable,
+                        description: gadget.desc || SM_t('noDescriptionAvailable'),
                         section: section,
                         isDefault: isDefault
                     };
@@ -567,7 +590,7 @@
                 return gadgetsData;
             }
         }).catch(function(error) {
-            smLog('Failed to load gadgets:', error);
+            smError('Failed to load gadgets:', error);
             gadgetsData = {};
             return gadgetsData;
         });
@@ -609,7 +632,7 @@
     }
 
     function loadGadgetsLabel() {
-        smLog('Loading gadgets label from system messages');
+        smInfo('Loading gadgets label from system messages');
         return api.get({
             action: 'query',
             meta: 'allmessages',
@@ -619,14 +642,14 @@
             smLog('System message response:', msgData);
             if (msgData.query && msgData.query.allmessages && msgData.query.allmessages[0] && msgData.query.allmessages[0]['*']) {
                 var label = msgData.query.allmessages[0]['*'];
-                smLog('Loaded gadgets label from system message:', label);
+                smInfo('Loaded gadgets label from system message:', label);
                 return label;
             } else {
-                smLog('No system message found, using fallback');
+                smWarn('No system message found, using fallback');
                 return 'Gadgets'; // Fallback
             }
         }).catch(function() {
-            smLog('Error loading system message, using fallback');
+            smWarn('Error loading system message, using fallback');
             return 'Gadgets'; // Fallback
         });
     }
@@ -701,7 +724,7 @@
             
             return userGadgetSettings;
         }).catch(function(error) {
-            smLog('Failed to load user gadget settings:', error);
+            smError('Failed to load user gadget settings:', error);
             userGadgetSettings = {};
             return {};
         });
@@ -717,7 +740,7 @@
             userGadgetSettings['gadget-' + gadgetName] = enabled ? '1' : '0';
             return true;
         }).catch(function(error) {
-            smLog('Failed to toggle gadget:', error);
+            smError('Failed to toggle gadget:', error);
             throw error;
         });
     }
@@ -742,13 +765,13 @@
             return getApiForTarget( target ).postWithEditToken( {
                 action: "edit",
                 title: getFullTarget( target ),
-                summary: STRINGS.normalizeSummary,
+                summary: SM_t('normalizeSummary'),
                 text: newLines.join( "\n" )
             } );
         } ).then(function() {
             showNotification('notificationNormalizeSuccess', 'success');
         }).catch(function(error) {
-            smLog('Normalize failed:', error);
+            smError('Normalize failed:', error);
             showNotification('notificationNormalizeError', 'error');
         });
     }
@@ -855,7 +878,7 @@
             // Pass container[0] down so we can unmount exactly this root
             createVuePanel(container, libs.createApp, libs.defineComponent, libs.ref, libs.computed, libs.watch, libs.CdxDialog, libs.CdxButton, libs.CdxTextInput, libs.CdxSelect, libs.CdxField, libs.CdxTabs, libs.CdxTab, libs.CdxToggleButton);
         }).catch(function(error) {
-            smLog('Failed to load Vue/Codex:', error);
+            smError('Failed to load Vue/Codex:', error);
             container.html('<div class="error">Failed to load interface. Please refresh the page.</div>');
         });
         
@@ -903,7 +926,7 @@
                 // Create skin tabs
                 var skinTabs = computed(function() {
                     return [
-                        { name: 'all', label: STRINGS.allSkins },
+                        { name: 'all', label: SM_t('allSkins') },
                         { name: 'gadgets', label: gadgetsLabel.value },
                         { name: 'global', label: 'global' },
                         { name: 'common', label: 'common' }             
@@ -1021,7 +1044,7 @@
                     normalize(targetName).done(function() {
                         reloadOnClose.value = true;
                     }).fail(function(error) {
-                        smLog('Failed to normalize:', error);
+                        smError('Failed to normalize:', error);
                         showNotification('notificationNormalizeError', 'error');
                     }).always(function() {
                         setLoading(key, false);
@@ -1045,7 +1068,7 @@
                             }
                             reloadOnClose.value = true;
                         }).fail(function(error) {
-                            smLog('Failed to restore:', error);
+                            smError('Failed to restore:', error);
                             showNotification('notificationRestoreError', 'error', anImport.getDescription());
                         }).always(function() {
                             setLoading(key, false);
@@ -1057,7 +1080,7 @@
                             removedScripts.value.push(scriptName);
                             reloadOnClose.value = true;
                         }).fail(function(error) {
-                            smLog('Failed to uninstall:', error);
+                            smError('Failed to uninstall:', error);
                             showNotification('notificationUninstallError', 'error', anImport.getDescription());
                         }).always(function() {
                             setLoading(key, false);
@@ -1071,7 +1094,7 @@
                     anImport.toggleDisabled().done(function() {
                         reloadOnClose.value = true;
                     }).fail(function(error) {
-                        smLog('Failed to toggle disabled state:', error);
+                        smError('Failed to toggle disabled state:', error);
                         showNotification('notificationGeneralError', 'error');
                     }).always(function() {
                         setLoading(key, false);
@@ -1098,7 +1121,7 @@
                     $.when.apply($, normalizePromises).done(function() {
                         reloadOnClose.value = true;
                     }).fail(function(error) {
-                        smLog('Failed to normalize some scripts:', error);
+                        smError('Failed to normalize some scripts:', error);
                         showNotification('notificationNormalizeError', 'error');
                     });
                 };
@@ -1111,7 +1134,7 @@
                         showNotification('Gadget ' + gadgetName + ' ' + (enabled ? 'enabled' : 'disabled'), 'success');
                         reloadOnClose.value = true;
                     }).catch(function(error) {
-                        smLog('Failed to toggle gadget:', error);
+                        smError('Failed to toggle gadget:', error);
                         showNotification('Failed to toggle gadget', 'error');
                     }).always(function() {
                         setLoading(key, false);
@@ -1172,7 +1195,7 @@
                     isGadgetEnabled,
                     getSkinUrl,
                     getImportHumanUrl,
-                    STRINGS: STRINGS,
+                    SM_t: t,
                     SKINS: SKINS,
                     mw: mw,
                     onPanelClose
@@ -1182,18 +1205,18 @@
                 <cdx-dialog
                     class="sm-cdx-dialog"
                     v-model:open="dialogOpen"
-                    :title="STRINGS.scriptManagerTitle"
+                    :title="SM_t('scriptManagerTitle')"
                     :use-close-button="true"
                     @close="onPanelClose"
                 >
                     <div class="sm-subtitle">
-                        {{ STRINGS.panelHeader }}
+                        {{ SM_t('panelHeader') }}
                     </div>
                     <div class="sm-controls">
                         <div class="sm-search-wrap">
                             <cdx-text-input
                                 v-model="filterText"
-                                :placeholder="STRINGS.quickFilter"
+                                :placeholder="SM_t('quickFilter')"
                                 clearable
                             />
                         </div>
@@ -1205,8 +1228,8 @@
                                 </cdx-tabs>
                             </div>
                             <div class="sm-enabled-toggle">
-                                <cdx-toggle-button v-model="enabledOnly" :aria-label="STRINGS.enabledOnly">
-                                    {{ STRINGS.enabledOnly }}
+                                <cdx-toggle-button v-model="enabledOnly" :aria-label="SM_t('enabledOnly')">
+                                    {{ SM_t('enabledOnly') }}
                                 </cdx-toggle-button>
                             </div>
                         </div>
@@ -1217,12 +1240,12 @@
                         <template v-if="selectedSkin === 'gadgets'">
                             <div class="gadgets-section">
                                 <div v-if="Object.keys(filteredImports).length === 0" class="no-gadgets">
-                                    <p>{{ STRINGS.noGadgetsAvailable }}</p>
-                                    <p>{{ STRINGS.thisMightBeBecause }}</p>
+                                    <p>{{ SM_t('noGadgetsAvailable') }}</p>
+                                    <p>{{ SM_t('thisMightBeBecause') }}</p>
                                     <ul>
-                                        <li>{{ STRINGS.gadgetsNotInstalled }}</li>
-                                        <li>{{ STRINGS.noGadgetsConfigured }}</li>
-                                        <li>{{ STRINGS.apiAccessRestricted }}</li>
+                                        <li>{{ SM_t('gadgetsNotInstalled') }}</li>
+                                        <li>{{ SM_t('noGadgetsConfigured') }}</li>
+                                        <li>{{ SM_t('apiAccessRestricted') }}</li>
                                     </ul>
                                 </div>
                                 <div v-else class="gadgets-list">
@@ -1250,7 +1273,7 @@
                                                         @click="handleGadgetToggle(gadgetName, !isGadgetEnabled(gadgetName))"
                                                     >
                                                         {{ loadingStates['gadget-' + gadgetName] ? '...' : 
-                                                           (isGadgetEnabled(gadgetName) ? STRINGS.disableLinkText : STRINGS.enableLinkText) }}
+                                                           (isGadgetEnabled(gadgetName) ? SM_t('disableLinkText') : SM_t('enableLinkText')) }}
                                                     </cdx-button>
                                                 </div>
                                             </cdx-card>
@@ -1266,12 +1289,12 @@
                             <h3>
                                 <template v-if="targetName === 'common'">
                                     <a :href="getSkinUrl(targetName)" target="_blank">
-                                        {{ STRINGS.skinCommon }}
+                                        {{ SM_t('skinCommon') }}
                                     </a>
                                 </template>
                                 <template v-else-if="targetName === 'global'">
                                     <a :href="getSkinUrl(targetName)" target="_blank">
-                                        {{ STRINGS.globalAppliesToAllWikis }}
+                                        {{ SM_t('globalAppliesToAllWikis') }}
                                     </a>
                                 </template>
                                 <template v-else>
@@ -1304,7 +1327,7 @@
                                             :disabled="loadingStates['toggle-' + anImport.getDescription()]"
                                             @click="handleToggleDisabled(anImport)"
                                         >
-                                            {{ loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? STRINGS.enableLinkText : STRINGS.disableLinkText) }}
+                                            {{ loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? SM_t('enableLinkText') : SM_t('disableLinkText')) }}
                                         </cdx-button>
                                         
                                         <cdx-button 
@@ -1313,7 +1336,7 @@
                                             :disabled="loadingStates['move-' + anImport.getDescription()]"
                                             @click="handleMove(anImport)"
                                         >
-                                            {{ loadingStates['move-' + anImport.getDescription()] ? '...' : STRINGS.moveLinkText }}
+                                            {{ loadingStates['move-' + anImport.getDescription()] ? '...' : SM_t('moveLinkText') }}
                                         </cdx-button>
 
                                         <cdx-button 
@@ -1324,7 +1347,7 @@
                                             @click="handleUninstall(anImport)"
                                         >
                                             {{ loadingStates['uninstall-' + anImport.getDescription()] ? '...' : 
-                                               (removedScripts.includes(anImport.getDescription()) ? STRINGS.restoreLinkText : STRINGS.uninstallLinkText) }}
+                                               (removedScripts.includes(anImport.getDescription()) ? SM_t('restoreLinkText') : SM_t('uninstallLinkText')) }}
                                         </cdx-button>
                                     </div>
                                 </cdx-card>
@@ -1343,7 +1366,7 @@
                                 :disabled="Object.keys(filteredImports).length === 0 || selectedSkin === 'gadgets'"
                                 @click="handleNormalizeAll"
                             >
-                                {{ STRINGS.normalize }}
+                                {{ SM_t('normalize') }}
                             </cdx-button>
                         </div>
                     </div>
@@ -1358,7 +1381,7 @@
             window.scriptInstallerVueComponent = mountedApp;
             smLog('createVuePanel: mounted');
         } catch (error) {
-            smLog('Error mounting Vue app:', error);
+            smError('Error mounting Vue app:', error);
             container.html('<div class="error">Error creating Vue component: ' + error.message + '</div>');
         }
     }
@@ -1383,20 +1406,20 @@
                     var baseSkinName = nameWithoutNs.replace(/\.(?:js|css)$/i, '');
                     var skinIndex = SKINS.indexOf( baseSkinName );
                     if( skinIndex >= 0 ) {
-                        return $( "<abbr>" ).text( STRINGS.cannotInstall )
-                                .attr( "title", STRINGS.cannotInstallSkin );
+                        return $( "<abbr>" ).text( SM_t('cannotInstall') )
+                                .attr( "title", SM_t('cannotInstallSkin') );
                     }
                 }
                 addingInstallLink = true;
             } else {
-                return $( "<abbr>" ).text( STRINGS.cannotInstall + " (" + STRINGS.notJavaScript + ")" )
-                        .attr( "title", STRINGS.cannotInstallContentModel.replace( "$1", contentModel ) );
+                return $( "<abbr>" ).text( SM_t('cannotInstall') + " (" + SM_t('notJavaScript') + ")" )
+                        .attr( "title", SM_t('cannotInstallContentModel').replace( "$1", contentModel ) );
             }
         }
 
         // Namespace 8 is MediaWiki
         if( namespaceNumber === SM_MEDIAWIKI_NAMESPACE_NUMBER ) {
-            return $( "<a>" ).text( STRINGS.installViaPreferences )
+            return $( "<a>" ).text( SM_t('installViaPreferences') )
                     .attr( "href", mw.util.getUrl( "Special:Preferences" ) + "#mw-prefsection-gadgets" );
         }
 
@@ -1407,8 +1430,8 @@
             installElement.append( " ",
                 $( "<abbr>" ).append(
                     $( "<img>" ).attr( "src", "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Achtung-yellow.svg/20px-Achtung-yellow.svg.png" ).addClass( "warning" ),
-                    STRINGS.insecure )
-                .attr( "title", STRINGS.tempWarning ) );
+                    SM_t('insecure') )
+                .attr( "title", SM_t('tempWarning') ) );
             addingInstallLink = true;
         }
 
@@ -1417,7 +1440,7 @@
             var installedTargets = getTargetsForScript(fixedPageName);
             installElement.prepend( $( "<a>" )
                     .attr( "id", "script-installer-main-install" )
-                    .text( installedTargets.length ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
+                    .text( installedTargets.length ? SM_t('uninstallLinkText') : SM_t('installLinkText') )
                     .click( makeLocalInstallClickHandler( fixedPageName ) ) );
 
             // If the script is installed but disabled, allow the user to enable it
@@ -1427,9 +1450,9 @@
                 installElement.append( " | ",
                     $( "<a>" )
                         .attr( "id", "script-installer-main-enable" )
-                        .text( STRINGS.enableLinkText )
+                        .text( SM_t('enableLinkText') )
                         .click( function () {
-                            $( this ).text( STRINGS.enableProgressMsg );
+                            $( this ).text( SM_t('enableProgressMsg') );
                             importObj.setDisabled( false ).done( function () {
                                 reloadAfterChange();
                             } );
@@ -1438,8 +1461,8 @@
             return installElement;
         }
 
-        return $( "<abbr>" ).text( STRINGS.cannotInstall + " " + STRINGS.insecure )
-                .attr( "title", STRINGS.badPageError );
+        return $( "<abbr>" ).text( SM_t('cannotInstall') + " " + SM_t('insecure') )
+                .attr( "title", SM_t('badPageError') );
     }
 
     function showUi() {
@@ -1452,7 +1475,7 @@
                     (function(){
                         var $btn = $( "<a>" )
                             .attr( "id", "sm-manage-button" )
-                            .attr( "title", STRINGS.manageUserScripts )
+                            .attr( "title", SM_t('manageUserScripts') )
                             .addClass( "sm-manage-button" )
                             .append(
                                 $( '<span class="sm-gear-icon"></span>' ),
@@ -1510,30 +1533,30 @@
     // Helper to mount Codex Install/Uninstall button into a host element for given scriptName
     function mountInstallButton(hostEl, scriptName) {
         try {
-            var initialLabel = (getTargetsForScript(scriptName).length ? STRINGS.uninstallLinkText : STRINGS.installLinkText);
+            var initialLabel = (getTargetsForScript(scriptName).length ? SM_t('uninstallLinkText') : SM_t('installLinkText'));
             loadVueCodex().then(function(libs){
                 var app = libs.createApp({
-                    data: function(){ return { label: initialLabel, busy: false, STRINGS: STRINGS }; },
+                    data: function(){ return { label: initialLabel, busy: false }; },
                     computed: {
-                        actionType: function(){ return this.label === this.STRINGS.installLinkText ? 'progressive' : 'destructive'; }
+                        actionType: function(){ return this.label === SM_t('installLinkText') ? 'progressive' : 'destructive'; }
                     },
                     methods: {
                         onClick: function(){
                             var self=this;
                             smLog('install button click', { busy: !!self.busy, label: self.label, scriptName: scriptName });
                             if (self.busy) return; self.busy=true; smLog('install button set busy=true');
-                            if (self.label === STRINGS.installLinkText) {
+                            if (self.label === SM_t('installLinkText')) {
                                 var adapter = {
                                     text: function(t){ try { self.label = String(t); smLog('adapter.text set label', t); } catch(e){} },
                                     resetBusy: function(){ try { self.busy = false; smLog('adapter.resetBusy executed'); } catch(e){} }
                                 };
                                 try { smLog('opening install dialog for', scriptName); showInstallDialog(scriptName, adapter); } catch(e) { self.busy=false; smLog('showInstallDialog error', e); }
                             } else {
-                                self.label = STRINGS.uninstallProgressMsg; smLog('uninstall start', { scriptName: scriptName });
+                                self.label = SM_t('uninstallProgressMsg'); smLog('uninstall start', { scriptName: scriptName });
                                 var targets = getTargetsForScript(scriptName);
                                 var uninstalls = uniques(targets).map(function(target){ return Import.ofLocal(scriptName, target).uninstall(); });
                                 $.when.apply($, uninstalls).then(function(){
-                                    self.label = STRINGS.installLinkText; smLog('uninstall done; reloading');
+                                    self.label = SM_t('installLinkText'); smLog('uninstall done; reloading');
                                     reloadAfterChange();
                                 }).always(function(){ self.busy=false; });
                             }
@@ -1555,7 +1578,7 @@
             if( $( this ).find( "a" ).length === 0 ) {
                 var installedTargets = getTargetsForScript(scriptName);
                 $( this ).append( " | ", $( "<a>" )
-                        .text( installedTargets.length ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
+                        .text( installedTargets.length ? SM_t('uninstallLinkText') : SM_t('installLinkText') )
                         .click( makeLocalInstallClickHandler( scriptName ) ) );
             }
         } );
@@ -1579,16 +1602,16 @@
     function makeLocalInstallClickHandler( scriptName ) {
         return function () {
             var $this = $( this );
-            if( $this.text() === STRINGS.installLinkText ) {
+            if( $this.text() === SM_t('installLinkText') ) {
                 // Show install dialog instead of confirm
                 showInstallDialog( scriptName, $this );
             } else {
-                $( this ).text( STRINGS.uninstallProgressMsg )
+                $( this ).text( SM_t('uninstallProgressMsg') )
                 var targets = getTargetsForScript(scriptName);
                 var uninstalls = uniques( targets )
                         .map( function ( target ) { return Import.ofLocal( scriptName, target ).uninstall(); } )
                 $.when.apply( $, uninstalls ).then( function () {
-                    $( this ).text( STRINGS.installLinkText );
+                    $( this ).text( SM_t('installLinkText') );
                     reloadAfterChange();
                 }.bind( this ) );
             }
@@ -1625,12 +1648,12 @@
             smLog('Failed to load Vue/Codex for install dialog:', error);
             // Fallback to old confirm dialog
             var okay = window.confirm(
-                STRINGS.bigSecurityWarning.replace( '$1',
-                    STRINGS.securityWarningSection.replace( '$1', scriptName ) ) );
+                SM_t('bigSecurityWarning').replace( '$1',
+                    SM_t('securityWarningSection').replace( '$1', scriptName ) ) );
             if( okay ) {
-                buttonElement.text( STRINGS.installProgressMsg )
+                buttonElement.text( SM_t('installProgressMsg') )
                 Import.ofLocal( scriptName, window.SM_DEFAULT_SKIN ).install().done( function () {
-                    buttonElement.text( STRINGS.uninstallLinkText );
+                    buttonElement.text( SM_t('uninstallLinkText') );
                     reloadAfterChange();
                 }.bind( buttonElement ) );
             }
@@ -1651,23 +1674,23 @@
                 
                 // Create skin options
                 var skinOptions = SKINS.map(function(skin) {
-                    var label = skin === 'common' ? STRINGS.skinCommon : skin;
+                    var label = skin === 'common' ? (typeof t === 'function' ? t('skinCommon') : SM_t('skinCommon')) : skin;
                     return { label: label, value: skin };
                 });
                 
                 var handleInstall = function() {
                     isInstalling.value = true;
-                    buttonElement.text(STRINGS.installProgressMsg);
+                    buttonElement.text(SM_t('installProgressMsg'));
                     
                     Import.ofLocal(scriptName, selectedSkin.value).install().done(function() {
-                        buttonElement.text(STRINGS.uninstallLinkText);
+                        buttonElement.text(SM_t('uninstallLinkText'));
                         dialogOpen.value = false;
                         try { safeUnmount(app, container[0]); } catch(e) {}
                         reloadAfterChange();
                     }).fail(function(error) {
                         smLog('Failed to install script:', error);
                         showNotification('notificationInstallError', 'error', scriptName);
-                        buttonElement.text(STRINGS.installLinkText);
+                        buttonElement.text(SM_t('installLinkText'));
                     }).always(function() {
                         isInstalling.value = false;
                     });
@@ -1692,30 +1715,30 @@
                     handleInstall,
                     handleCancel,
                     handleOpenUpdate,
-                    STRINGS: STRINGS,
+                    SM_t: t,
                     scriptName: scriptName
                 };
             },
             template: `
                 <cdx-dialog
                     v-model:open="dialogOpen"
-                    :title="STRINGS.installDialogTitle ? STRINGS.installDialogTitle.replace('$1', scriptName) : ('Install ' + scriptName)"
+                    :title="SM_t('installDialogTitle').replace ? SM_t('installDialogTitle').replace('$1', scriptName) : ('Install ' + scriptName)"
                     :use-close-button="true"
-                    :default-action="{ label: STRINGS.cancel || 'Cancel' }"
-                    :primary-action="{ label: isInstalling ? STRINGS.installProgressMsg : STRINGS.installLinkText, actionType: 'progressive', disabled: isInstalling }"
+                    :default-action="{ label: SM_t('cancel') }"
+                    :primary-action="{ label: isInstalling ? SM_t('installProgressMsg') : SM_t('installLinkText'), actionType: 'progressive', disabled: isInstalling }"
                     @default="handleCancel"
                     @close="handleCancel"
                     @update:open="handleOpenUpdate"
                     @primary="handleInstall"
                 >
-                    <p>{{ STRINGS.bigSecurityWarning.replace('$1', STRINGS.securityWarningSection.replace('$1', scriptName)) }}</p>
+                    <p>{{ SM_t('bigSecurityWarning').replace('$1', SM_t('securityWarningSection').replace('$1', scriptName)) }}</p>
                     
                     <cdx-field>
-                        <template #label>{{ STRINGS.moveToSkin }}</template>
+                        <template #label>{{ SM_t('moveToSkin') }}</template>
                         <cdx-select
                             v-model:selected="selectedSkin"
                             :menu-items="skinOptions"
-                            :default-label="STRINGS.selectTargetSkin"
+                            :default-label="SM_t('selectTargetSkin')"
                         />
                     </cdx-field>
                 </cdx-dialog>
@@ -1746,7 +1769,7 @@
             smLog('Failed to load Vue/Codex for move dialog:', error);
             // Fallback to old prompt dialog
             var dest = null;
-            var PROMPT = STRINGS.movePrompt + " " + SKINS.join(", ");
+            var PROMPT = SM_t('movePrompt') + " " + SKINS.join(", ");
             do {
                 dest = (window.prompt(PROMPT) || "").toLowerCase();
             } while (dest && SKINS.indexOf(dest) < 0);
@@ -1787,7 +1810,7 @@
                     return skin !== anImport.target;
                 }).map(function(skin) {
                     return {
-                        label: skin === 'global' ? STRINGS.globalAppliesToAllWikis : skin,
+                        label: skin === 'global' ? SM_t('globalAppliesToAllWikis') : skin,
                         value: skin
                     };
                 });
@@ -1815,7 +1838,7 @@
                         dialogOpen.value = false;
                         try { safeUnmount(app, container[0]); } catch(e) {}
                     }).fail(function(error) {
-                        console.error('Failed to move script:', error);
+                        smError('Failed to move script:', error);
                         showNotification('notificationMoveError', 'error', anImport.getDescription());
                     }).always(function() {
                         isMoving.value = false;
@@ -1836,26 +1859,26 @@
                     handleClose,
                     scriptName: anImport.getDescription(),
                     currentTarget: anImport.target,
-                    STRINGS: STRINGS
+                    SM_t: t
                 };
             },
             template: `
                 <CdxDialog
                     v-model:open="dialogOpen"
-                    :title="STRINGS.moveDialogTitle.replace('$1', scriptName)"
+                    :title="SM_t('moveDialogTitle').replace('$1', scriptName)"
                     :use-close-button="true"
                     @close="handleClose"
                 >
                     <div class="sm-move-content">
-                        <p><strong>{{ STRINGS.currentLocation }}</strong> {{ currentTarget === 'global' ? STRINGS.globalAppliesToAllWikis : currentTarget }}</p>
+                        <p><strong>{{ SM_t('currentLocation') }}</strong> {{ currentTarget === 'global' ? SM_t('globalAppliesToAllWikis') : currentTarget }}</p>
                         
                         <CdxField>
-                            <template #label>{{ STRINGS.moveToSkin }}</template>
+                            <template #label>{{ SM_t('moveToSkin') }}</template>
                             <CdxSelect
                                 v-model:selected="selectedTarget"
                                 :menu-items="targetOptions"
                                 :disabled="isMoving"
-                                :default-label="STRINGS.selectTargetSkin"
+                                :default-label="SM_t('selectTargetSkin')"
                             />
                         </CdxField>
                         
@@ -1865,7 +1888,7 @@
                                 :disabled="isMoving"
                                 action="progressive"
                             >
-                                {{ isMoving ? STRINGS.movingProgress : STRINGS.moveScriptButton }}
+                                {{ isMoving ? SM_t('movingProgress') : SM_t('moveScriptButton') }}
                             </CdxButton>
                         </div>
                     </div>
@@ -2072,6 +2095,16 @@
       if (!chain.includes('en')) chain.push('en');
       return chain;
     }
+
+    // i18n helpers
+    function t(key){
+        try {
+            if (STRINGS && Object.prototype.hasOwnProperty.call(STRINGS, key)) return STRINGS[key];
+            if (STRINGS_EN && Object.prototype.hasOwnProperty.call(STRINGS_EN, key)) { smWarn('Missing i18n key in current language:', key); return STRINGS_EN[key]; }
+            smWarn('Missing i18n key in all languages:', key); return key;
+        } catch(e){ return key; }
+    }
+    try { window.SM_t = t; } catch(_) {}
 
     function loadI18nWithFallback(lang, callback) {
       const chain = getLanguageChain(lang);
