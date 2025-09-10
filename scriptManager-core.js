@@ -1522,7 +1522,10 @@
                             var self=this;
                             if (self.busy) return; self.busy=true;
                             if (self.label === STRINGS.installLinkText) {
-                                var adapter = { text: function(t){ try { self.label = String(t); } catch(e){} } };
+                                var adapter = {
+                                    text: function(t){ try { self.label = String(t); } catch(e){} },
+                                    resetBusy: function(){ try { self.busy = false; } catch(e){} }
+                                };
                                 try { showInstallDialog(scriptName, adapter); } catch(e) { self.busy=false; }
                             } else {
                                 self.label = STRINGS.uninstallProgressMsg;
@@ -1657,6 +1660,7 @@
                 var handleCancel = function() {
                     dialogOpen.value = false;
                     try { safeUnmount(app, container[0]); } catch(e) {}
+                    try { if (buttonElement && typeof buttonElement.resetBusy === 'function') buttonElement.resetBusy(); } catch(_) {}
                 };
                 
                 return {
@@ -1678,6 +1682,7 @@
                     :default-action="{ label: STRINGS.cancel || 'Cancel' }"
                     :primary-action="{ label: isInstalling ? STRINGS.installProgressMsg : STRINGS.installLinkText, actionType: 'progressive', disabled: isInstalling }"
                     @default="handleCancel"
+                    @close="handleCancel"
                     @primary="handleInstall"
                 >
                     <p>{{ STRINGS.bigSecurityWarning.replace('$1', STRINGS.securityWarningSection.replace('$1', scriptName)) }}</p>
