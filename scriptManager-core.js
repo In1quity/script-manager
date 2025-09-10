@@ -2010,7 +2010,7 @@
 
     // Load languageFallbacks.json from GitLab via CORS proxy
     var languageFallbacks = {};
-    fetch('https://gitlab-content.toolforge.org/iniquity/script-installer/-/raw/main/data/languageFallbacks.json?mime=application/json')
+    fetch('https://gitlab-content.toolforge.org/iniquity/script-manager/-/raw/main/data/languageFallbacks.json?mime=application/json')
       .then(resp => resp.json())
       .then(fallbacks => { languageFallbacks = fallbacks; })
       .catch(() => { languageFallbacks = {}; });
@@ -2045,7 +2045,7 @@
           return;
         }
         const tryLang = chain[idx++];
-        const url = `https://gitlab-content.toolforge.org/iniquity/script-installer/-/raw/main/i18n/${tryLang}.json?mime=application/json`;
+        const url = `https://gitlab-content.toolforge.org/iniquity/script-manager/-/raw/main/i18n/${tryLang}.json?mime=application/json`;
         fetch(url)
           .then(resp => resp.ok ? resp.json() : Promise.reject('HTTP ' + resp.status))
           .then(i18n => {
