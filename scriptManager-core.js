@@ -36,7 +36,7 @@
     var scriptInstallerVueComponent = null;
 
     // Goes on the end of edit summaries
-    var SUMMARY_TAG = "";
+    var SUMMARY_TAG = "([[mw:User:Iniquity/scriptManager.js|Script Manager]])";
 
     /**
      * Strings, for translation
@@ -800,6 +800,10 @@
             stack = document.createElement('div');
             stack.id = 'sm-message-stack';
             stack.className = 'sm-message-stack';
+            try {
+                stack.setAttribute('aria-live', 'polite');
+                stack.setAttribute('aria-atomic', 'true');
+            } catch(_) {}
             document.body.appendChild(stack);
         }
         return stack;
@@ -835,6 +839,15 @@
                 var stack = getMessageStack();
                 var host = document.createElement('div');
                 host.className = 'sm-message-host';
+                try {
+                    if (status === 'error' || status === 'warning') {
+                        host.setAttribute('role', 'alert');
+                        host.setAttribute('aria-live', 'assertive');
+                    } else {
+                        host.setAttribute('role', 'status');
+                        host.setAttribute('aria-live', 'polite');
+                    }
+                } catch(_) {}
                 stack.appendChild(host);
                 
                 var app = createApp({
@@ -1499,12 +1512,12 @@
                                 try { $(this).toggleClass('open', !exists); } catch(_) {}
                              } );
                         // Defer icon rendering until inserted
-                        setTimeout(function(){
-                            try {
-                                var gear = document.querySelector('#sm-manage-button .sm-gear-icon');
-                                if (gear) smRenderIconInto(gear, 'cdxIconSettings', 'currentColor', 16);
-                            } catch(e) { smLog('render icons failed', e); }
-                        }, 0);
+                        (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(function(){
+                             try {
+                                 var gear = document.querySelector('#sm-manage-button .sm-gear-icon');
+                                 if (gear) smRenderIconInto(gear, 'cdxIconSettings', 'currentColor', 16);
+                             } catch(e) { smLog('render icons failed', e); }
+                         }, 0);
                         return $btn;
                     })()
                 ) );
@@ -1529,7 +1542,7 @@
                     return true;
                 } catch(e) { smLog('mw-indicators injection failed', e); return false; }
             }
-            // Try now and shortly after to avoid race conditions with skin layout
+            // Try now; then via hook; then via observer as fallback
             var ok = injectInstallIndicator();
             if (!ok) { setTimeout(injectInstallIndicator, 100); }
             try { if (mw && mw.hook && mw.hook('wikipage.content')) mw.hook('wikipage.content').add(function(){ setTimeout(injectInstallIndicator, 0); }); } catch(_) {}
@@ -2065,12 +2078,8 @@
     // Keep legacy alias in sync for any external consumers
     try { window.scriptInstallerInstallTarget = window.SM_DEFAULT_SKIN; } catch(_) {}
 
-    // SUMMARY_TAG: use internal default; allow override via SM_SUMMARY_TAG only if explicitly set
-    if (typeof window.SM_SUMMARY_TAG === 'string') {
-        SUMMARY_TAG = window.SM_SUMMARY_TAG;
-    } else {
-        SUMMARY_TAG = "([[mw:User:Iniquity/scriptManager.js|Script Manager]])";
-    }
+    // SUMMARY_TAG: internal constant
+    // SUMMARY_TAG already initialized above
 
     var jsPage = (function(){
         try {
