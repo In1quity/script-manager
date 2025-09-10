@@ -95,7 +95,7 @@
                     if (!link) return;
                     link.addEventListener('click', function(e){
                         e.preventDefault();
-                        window.SUMMARY_TAG = "([[mw:User:Iniquity/scriptManager.js|Script Manager]])";
+                        // SUMMARY_TAG is now handled internally by the core
                         ensureCoreLoaded(function(){
                             try {
                                 if (mw && mw.hook) { mw.hook('scriptManager.open').fire(); return; }
@@ -121,7 +121,7 @@
     function bootstrap(){
         addSidebarLink();
         if (shouldAutoload()) {
-            window.SUMMARY_TAG = "([[mw:User:Iniquity/scriptManager.js|Script Manager]])";
+            // SUMMARY_TAG is now handled internally by the core
             ensureCoreLoaded();
         }
     }
