@@ -330,9 +330,7 @@
 }
 
 #sm-top-container {
-	bottom: 5px;
 	font-size: 70%;
-	margin-left: 1em;
 	user-select: none;
 }
 
@@ -351,6 +349,18 @@ body.skin-cologneblue #sm-top-container a {
 	top: -2px;
 	margin-right: 3px;
 }
+
+/* Manage button: gear + caret */
+.sm-manage-button {
+	margin: 0 8px;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: inherit;
+	text-decoration: none;
+}
+.sm-gear-icon svg { width: 16px; height: 16px; display: inline-block; }
+.sm-manage-button:hover { opacity: .85; }
 
 td.sm-ibx {
 	text-align: center

@@ -1,4 +1,3 @@
-/* Adapted version of [[User:Enterprisey/script-installer|script-installer]] */
 ( function () {
     // An mw.Api object
     var api;
@@ -21,7 +20,7 @@
     var userGadgetSettings = {};
 
     // Goes on the end of edit summaries
-    var ADVERT = "";
+    var SUMMARY_TAG = "";
 
     /**
      * Strings, for translation
@@ -104,6 +103,49 @@
         var app = createApp(RootComponent);
         app.mount(rootEl);
         return app;
+    }
+
+    // Generic Codex icon loader (mirrors maintenance-core.js approach)
+    function smLoadCodexIconViaAPI(iconName) {
+        var keyRaw = 'SM_ICON_RAW_' + iconName;
+        var cached = null;
+        try { cached = localStorage.getItem(keyRaw); } catch(e) {}
+        if (cached) { return Promise.resolve(cached); }
+        var url = 'https://www.mediawiki.org/w/api.php?action=query&format=json&formatversion=2&origin=*'
+            + '&list=codexicons&names=' + encodeURIComponent(iconName);
+        return fetch(url)
+            .then(function(r){ return r.json(); })
+            .then(function(data){
+                var ci = data && data.query && data.query.codexicons;
+                var raw = null;
+                if (Array.isArray(ci)) {
+                    var item = ci[0] || null;
+                    raw = item && (item.icon || item.svg || item.value || null);
+                } else if (ci && typeof ci === 'object') {
+                    raw = ci[iconName] || null;
+                }
+                try { if (typeof raw === 'string') localStorage.setItem(keyRaw, raw); } catch(e){}
+                return raw;
+            }).catch(function(){ return null; });
+    }
+
+    function smRenderIconInto(el, iconName, colorHex, sizePx) {
+        var keyMarkup = 'SM_ICON_MARKUP_' + iconName + '_' + (colorHex||'') + '_' + (sizePx||'');
+        try { var cm = localStorage.getItem(keyMarkup); if (cm) { el.innerHTML = cm; return; } } catch(e) {}
+        smLoadCodexIconViaAPI(iconName).then(function(raw){
+            if (!raw || !el) return;
+            var markup = '';
+            var size = sizePx || 16;
+            var color = colorHex || 'currentColor';
+            if (typeof raw === 'string') {
+                if (raw.indexOf('<svg') !== -1) { markup = raw; }
+                else { markup = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="' + size + '" height="' + size + '" fill="' + color + '">' + raw + '</svg>'; }
+            }
+            if (markup) {
+                el.innerHTML = markup;
+                try { localStorage.setItem(keyMarkup, markup); } catch(e) {}
+            }
+        });
     }
 
     // Apply gadget labels to globals and Vue component
@@ -1389,20 +1431,37 @@
             $( "#firstHeading" ).append( $( "<span>" )
                 .attr( "id", "sm-top-container" )
                 .append(
-                    buildCurrentPageInstallElement(),
-                    " | ",
-                    $( "<a>" )
-                        .text( STRINGS.manageUserScripts ).click( function () {
-                            var exists = !!document.getElementById( "sm-panel" );
-                            smLog('showUi: Manage clicked; panel exists?', exists);
-                            if( !exists ) {
-                                smLog('showUi: mount panel');
-                                $( "#mw-content-text" ).before( makePanel() );
-                            } else {
-                                smLog('showUi: remove panel');
-                                $( "#sm-panel" ).remove();
-                            }
-                         } ) ) );
+                    (function(){
+                        var $btn = $( "<a>" )
+                            .attr( "id", "sm-manage-button" )
+                            .attr( "title", STRINGS.manageUserScripts )
+                            .addClass( "sm-manage-button" )
+                            .append(
+                                $( '<span class="sm-gear-icon"></span>' ),
+                            )
+                            .click( function () {
+                                var exists = !!document.getElementById( "sm-panel" );
+                                smLog('showUi: Manage clicked; panel exists?', exists);
+                                if( !exists ) {
+                                    smLog('showUi: mount panel');
+                                    $( "#mw-content-text" ).before( makePanel() );
+                                } else {
+                                    smLog('showUi: remove panel');
+                                    $( "#sm-panel" ).remove();
+                                }
+                                try { $(this).toggleClass('open', !exists); } catch(_) {}
+                             } );
+                        // Defer icon rendering until inserted
+                        setTimeout(function(){
+                            try {
+                                var gear = document.querySelector('#sm-manage-button .sm-gear-icon');
+                                if (gear) smRenderIconInto(gear, 'cdxIconSettings', 'currentColor', 16);
+                            } catch(e) { smLog('render icons failed', e); }
+                        }, 0);
+                        return $btn;
+                    })(),
+                    buildCurrentPageInstallElement()
+                ) );
         }
     }
 
@@ -1873,10 +1932,10 @@
     function getSummaryForTarget( target, summaryKey, description ) {
         if ( target === 'global' ) {
             // Use English summary for global.js from en.json
-            return STRINGS_EN[summaryKey].replace( "$1", description ) + (ADVERT ? " " + ADVERT : "");
+            return STRINGS_EN[summaryKey].replace( "$1", description ) + (SUMMARY_TAG ? " " + SUMMARY_TAG : "");
         } else {
             // Use localized summary for local scripts
-            return STRINGS[summaryKey].replace( "$1", description ) + (ADVERT ? " " + ADVERT : "");
+            return STRINGS[summaryKey].replace( "$1", description ) + (SUMMARY_TAG ? " " + SUMMARY_TAG : "");
         }
     }
 
@@ -1893,11 +1952,11 @@
         window.scriptInstallerInstallTarget = "common"; // by default, install things to the user's common.js
     }
 
-    // ADVERT is now set via window.ADVERT or uses the default value
-    if (typeof window.ADVERT === 'string') {
-        ADVERT = window.ADVERT;
+    // SUMMARY_TAG is now set via window.SUMMARY_TAG or uses the default value
+    if (typeof window.SUMMARY_TAG === 'string') {
+        SUMMARY_TAG = window.SUMMARY_TAG;
     } else {
-        ADVERT = "([[User:Enterprisey/script-installer|script-installer]])";
+        SUMMARY_TAG = "([[mw:User:Iniquity/scriptManager.js|Script Manager]])";
     }
 
     var jsPage = mw.config.get( "wgPageName" ).slice( -3 ) === ".js" ||
@@ -2026,5 +2085,18 @@
         });
       });
     });
+    // Public opener for lazy init loaders
+    try {
+        window.SM_openScriptManager = function(){
+            try {
+                var exists = !!document.getElementById('sm-panel');
+                if (!exists) {
+                    $("#mw-content-text").before( makePanel() );
+                } else {
+                    $("#sm-panel").remove();
+                }
+            } catch(e) { smLog('SM_openScriptManager error', e); }
+        };
+    } catch(e) {}
 } )();
 

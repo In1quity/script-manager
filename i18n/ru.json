@@ -66,5 +66,7 @@
   "apiAccessRestricted": "Доступ к API ограничен",
   "noDescriptionAvailable": "Описание недоступно",
   "thisMightBeBecause": "Это может быть потому что:",
-  "enabledOnly": "Включенные"
+  "enabledOnly": "Включенные",
+  "scriptManagerLink": "Менеджер скриптов",
+  "scriptManagerLinkTitle": "Открыть менеджер скриптов"
 } 

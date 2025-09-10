@@ -64,5 +64,7 @@
   "apiAccessRestricted": "API access is restricted",
   "noDescriptionAvailable": "No description available",
   "thisMightBeBecause": "This might be because:",
-  "enabledOnly": "Enabled only"
+  "enabledOnly": "Enabled only",
+  "scriptManagerLink": "Script Manager",
+  "scriptManagerLinkTitle": "Open Script Manager"
 }
