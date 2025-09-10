@@ -2307,9 +2307,9 @@
         });
       });
     });
-    // Public opener for lazy init loaders
+    // Public opener (non-global): listen to hook/event and open
     try {
-        window.SM_openScriptManager = function(){
+        function SM_openScriptManager(){
             var doOpen = function(){
                 try {
                     var exists = !!document.getElementById('sm-panel');
@@ -2320,7 +2320,9 @@
                     }
                 } catch(e) { smLog('SM_openScriptManager error', e); }
             };
-            try { if (typeof window.SM_waitI18n === 'function') { window.SM_waitI18n(doOpen); } else { doOpen(); } } catch(_) { doOpen(); }
-        };
+            try { if (typeof SM_waitI18n === 'function') { SM_waitI18n(doOpen); } else { doOpen(); } } catch(_) { doOpen(); }
+        }
+        try { if (mw && mw.hook) mw.hook('scriptManager.open').add(function(){ SM_openScriptManager(); }); } catch(_) {}
+        try { document.addEventListener('sm:open', function(){ try { SM_openScriptManager(); } catch(_){} }); } catch(_) {}
     } catch(e) {}
 } )();
