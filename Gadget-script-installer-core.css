@@ -344,6 +344,11 @@ body.skin-cologneblue #sm-top-container a {
 	cursor: pointer
 }
 
+/* Remove default margin to keep gear + indicator tight */
+.sm-contentSub {
+	margin: 0;
+}
+
 #sm-top-container img.warning {
 	position: relative;
 	top: -2px;

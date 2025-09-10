@@ -1428,6 +1428,7 @@
     function showUi() {
         if( !document.getElementById( "sm-top-container" ) ) {
             var fixedPageName = mw.config.get( "wgPageName" ).replace( /_/g, " " );
+            try { var sub = document.getElementById('contentSub'); if (sub) sub.classList.add('sm-contentSub'); } catch(_) {}
             $( "#firstHeading" ).append( $( "<span>" )
                 .attr( "id", "sm-top-container" )
                 .append(
@@ -1459,11 +1460,70 @@
                             } catch(e) { smLog('render icons failed', e); }
                         }, 0);
                         return $btn;
-                    })(),
-                    " — ", // Long dash between gear and delete button
-                    buildCurrentPageInstallElement()
+                    })()
                 ) );
+
+            function injectInstallIndicator(){
+                try {
+                    var $indRoot = $("#mw-indicators, .mw-indicators").first();
+                    if (!$indRoot || !$indRoot.length) return false;
+                    // Gate using existing logic: create element and ensure install anchor exists
+                    var $installEl = buildCurrentPageInstallElement();
+                    var canInstall = ($installEl && $installEl.find && $installEl.find('#script-installer-main-install').length);
+                    if (!canInstall) return false;
+                    var $slot = $("#mw-indicator-sm-install");
+                    if (!$slot.length) { $slot = $('<div id="mw-indicator-sm-install" class="mw-indicator"></div>').appendTo($indRoot); }
+                    $slot.empty();
+
+                    // Mount a Codex button via helper for current page
+                    var host = $('<div id="sm-install-indicator-host"></div>');
+                    $slot.append(host);
+                    var scriptName = fixedPageName; // current page
+                    mountInstallButton(host[0], scriptName);
+                    return true;
+                } catch(e) { smLog('mw-indicators injection failed', e); return false; }
+            }
+            // Try now and shortly after to avoid race conditions with skin layout
+            var ok = injectInstallIndicator();
+            if (!ok) { setTimeout(injectInstallIndicator, 100); }
+            try { if (mw && mw.hook && mw.hook('wikipage.content')) mw.hook('wikipage.content').add(function(){ setTimeout(injectInstallIndicator, 0); }); } catch(_) {}
         }
+    }
+
+    // Helper to mount Codex Install/Uninstall button into a host element for given scriptName
+    function mountInstallButton(hostEl, scriptName) {
+        try {
+            var initialLabel = (getTargetsForScript(scriptName).length ? STRINGS.uninstallLinkText : STRINGS.installLinkText);
+            loadVueCodex().then(function(libs){
+                var app = libs.createApp({
+                    data: function(){ return { label: initialLabel, busy: false, STRINGS: STRINGS }; },
+                    computed: {
+                        actionType: function(){ return this.label === this.STRINGS.installLinkText ? 'progressive' : 'destructive'; }
+                    },
+                    methods: {
+                        onClick: function(){
+                            var self=this;
+                            if (self.busy) return; self.busy=true;
+                            if (self.label === STRINGS.installLinkText) {
+                                var adapter = { text: function(t){ try { self.label = String(t); } catch(e){} } };
+                                try { showInstallDialog(scriptName, adapter); } catch(e) { self.busy=false; }
+                            } else {
+                                self.label = STRINGS.uninstallProgressMsg;
+                                var targets = getTargetsForScript(scriptName);
+                                var uninstalls = uniques(targets).map(function(target){ return Import.ofLocal(scriptName, target).uninstall(); });
+                                $.when.apply($, uninstalls).then(function(){
+                                    self.label = STRINGS.installLinkText;
+                                    reloadAfterChange();
+                                }).always(function(){ self.busy=false; });
+                            }
+                        }
+                    },
+                    template: '<CdxButton :action="actionType" weight="primary" :disabled="busy" @click="onClick">{{ label }}</CdxButton>'
+                });
+                app.component('CdxButton', libs.CdxButton);
+                app.mount(hostEl);
+            });
+        } catch(e) { smLog('mountInstallButton error', e); }
     }
 
     function attachInstallLinks() {
@@ -1490,38 +1550,7 @@
                     .find('td.sm-ibx');
                 var host = $( '<div class="sm-ibx-host"></div>' );
                 td.append( host );
-                var initialLabel = (getTargetsForScript(scriptName).length ? STRINGS.uninstallLinkText : STRINGS.installLinkText);
-                loadVueCodex().then(function(libs){
-                    var app = libs.createApp({
-                        data: function(){ return { label: initialLabel, busy: false, STRINGS: STRINGS }; },
-                        computed: {
-                            actionType: function(){ return this.label === this.STRINGS.installLinkText ? 'progressive' : 'destructive'; }
-                        },
-                        methods: {
-                            onClick: function(){
-                                var self=this;
-                                if (self.busy) return; self.busy=true;
-                                if (self.label === STRINGS.installLinkText) {
-                                    // install via dialog; adapt buttonElement.text to update label
-                                    var adapter = { text: function(t){ try { self.label = String(t); } catch(e){} } };
-                                    try { showInstallDialog(scriptName, adapter); } catch(e) { self.busy=false; }
-                                } else {
-                                    // uninstall all targets
-                                    self.label = STRINGS.uninstallProgressMsg;
-                                    var targets = getTargetsForScript(scriptName);
-                                    var uninstalls = uniques(targets).map(function(target){ return Import.ofLocal(scriptName, target).uninstall(); });
-                                    $.when.apply($, uninstalls).then(function(){
-                                        self.label = STRINGS.installLinkText;
-                                        reloadAfterChange();
-                                    }).always(function(){ self.busy=false; });
-                                }
-                            }
-                        },
-                        template: '<CdxButton :action="actionType" weight="primary" :disabled="busy" @click="onClick">{{ label }}</CdxButton>'
-                    });
-                    app.component('CdxButton', libs.CdxButton);
-                    app.mount(host[0]);
-                });
+                mountInstallButton(host[0], scriptName);
             }
         } );
     }
