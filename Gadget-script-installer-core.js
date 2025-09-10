@@ -794,8 +794,8 @@
                 var selectedSkin = ref('common');
                 var loadingStates = ref({});
                 var removedScripts = ref([]);
-                var gadgetSectionLabels = ref(window.gadgetSectionLabels || {});
-                var gadgetsLabel = ref(window.gadgetsLabel || 'Gadgets');
+                var gadgetSectionLabels = ref({});
+                var gadgetsLabel = ref('Gadgets');
                 var enabledOnly = ref(false);
                 
                 // Create skin tabs
@@ -1087,7 +1087,17 @@
                     getSkinUrl,
                     STRINGS: STRINGS,
                     SKINS: SKINS,
-                    mw: mw
+                    mw: mw,
+                    mounted: function() {
+                        var self = this;
+                        // Update data from global variables after mount
+                        if (window.gadgetSectionLabels) {
+                            self.gadgetSectionLabels = window.gadgetSectionLabels;
+                        }
+                        if (window.gadgetsLabel) {
+                            self.gadgetsLabel = window.gadgetsLabel;
+                        }
+                    }
                 };
             },
             template: `
@@ -1973,8 +1983,12 @@
             
             // Update Vue component if it exists
             if (window.scriptInstallerVueComponent) {
-                window.scriptInstallerVueComponent.gadgetSectionLabels.value = sectionLabels;
-                window.scriptInstallerVueComponent.gadgetsLabel.value = gadgetsLabel;
+                window.scriptInstallerVueComponent.gadgetSectionLabels = sectionLabels;
+                window.scriptInstallerVueComponent.gadgetsLabel = gadgetsLabel;
+                // Force update like in maintenance-core.js
+                if (typeof window.scriptInstallerVueComponent.$forceUpdate === 'function') {
+                    window.scriptInstallerVueComponent.$forceUpdate();
+                }
             }
             
             return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels, gadgetsLabel: gadgetsLabel };
