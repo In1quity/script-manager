@@ -1,3 +1,13 @@
+/**
+ * Core module for Script Manager: [[mw:User:Iniquity/scriptManager.js]]
+ * Based on [[en:User:Equazcion/ScriptInstaller]]
+ * Adapted version of [[en:User:Enterprisey/script-installer]]
+ * Refactoring and upgrade [[mw:User:Iniquity]]
+ * Authors: Equazcion, Enterprisey, Iniquity
+ * Licenses: (MIT OR CC-BY-SA-4.0)
+ * Documentation: https://www.mediawiki.org/wiki/Script_Manager
+*/
+
 ( function () {
     // An mw.Api object
     var api;
