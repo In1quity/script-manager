@@ -1460,6 +1460,7 @@
                         }, 0);
                         return $btn;
                     })(),
+                    " — ", // Long dash between gear and delete button
                     buildCurrentPageInstallElement()
                 ) );
         }
@@ -2102,4 +2103,3 @@
         };
     } catch(e) {}
 } )();
-
