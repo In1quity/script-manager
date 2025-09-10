@@ -68,5 +68,7 @@
   "thisMightBeBecause": "Это может быть потому что:",
   "enabledOnly": "Включенные",
   "scriptManagerLink": "Менеджер скриптов",
-  "scriptManagerLinkTitle": "Открыть менеджер скриптов"
+  "scriptManagerLinkTitle": "Открыть менеджер скриптов",
+  "cancel": "Отмена",
+  "installDialogTitle": "Установка $1"
 } 

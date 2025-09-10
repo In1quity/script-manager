@@ -1596,7 +1596,7 @@
         var container = $( "<div>" ).attr( "id", "sm-install-dialog" );
         
         // Load Vue and Codex for install dialog
-        loadVueCodex().then(function(libs) {
+        var open = function(){ loadVueCodex().then(function(libs) {
             smLog('showInstallDialog: libs loaded');
             if (!libs.createApp || !libs.CdxDialog || !libs.CdxButton || !libs.CdxSelect || !libs.CdxField) {
                 throw new Error('Codex/Vue components not available for install dialog');
@@ -1615,7 +1615,8 @@
                     reloadAfterChange();
                 }.bind( buttonElement ) );
             }
-        });
+        }); };
+        try { if (typeof window.SM_waitI18n === 'function') { window.SM_waitI18n(open); } else { open(); } } catch(_) { open(); }
         
         // Add to body
         $('body').append(container);
@@ -1672,21 +1673,21 @@
             template: `
                 <cdx-dialog
                     v-model:open="dialogOpen"
-                    :title="'Install ' + scriptName"
+                    :title="STRINGS.installDialogTitle ? STRINGS.installDialogTitle.replace('$1', scriptName) : ('Install ' + scriptName)"
                     :use-close-button="true"
-                    :default-action="{ label: 'Cancel' }"
-                    :primary-action="{ label: isInstalling ? 'Installing...' : 'Install', actionType: 'progressive', disabled: isInstalling }"
+                    :default-action="{ label: STRINGS.cancel || 'Cancel' }"
+                    :primary-action="{ label: isInstalling ? STRINGS.installProgressMsg : STRINGS.installLinkText, actionType: 'progressive', disabled: isInstalling }"
                     @default="handleCancel"
                     @primary="handleInstall"
                 >
                     <p>{{ STRINGS.bigSecurityWarning.replace('$1', STRINGS.securityWarningSection.replace('$1', scriptName)) }}</p>
                     
                     <cdx-field>
-                        <template #label>Install to skin:</template>
+                        <template #label>{{ STRINGS.moveToSkin }}</template>
                         <cdx-select
                             v-model:selected="selectedSkin"
                             :menu-items="skinOptions"
-                            default-label="Select skin"
+                            :default-label="STRINGS.selectTargetSkin"
                         />
                     </cdx-field>
                 </cdx-dialog>

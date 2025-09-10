@@ -66,5 +66,7 @@
   "thisMightBeBecause": "This might be because:",
   "enabledOnly": "Enabled only",
   "scriptManagerLink": "Script Manager",
-  "scriptManagerLinkTitle": "Open Script Manager"
+  "scriptManagerLinkTitle": "Open Script Manager",
+  "cancel": "Cancel",
+  "installDialogTitle": "Install $1"
 }
