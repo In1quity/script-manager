@@ -296,7 +296,11 @@
 
     Import.prototype.toJs = function () {
         var dis = this.disabled ? "//" : "";
-        var host = (this.type === 1 ? (this.wiki + ".org") : mw.config.get('wgServerName'));
+        var host = (function(self){
+            if (self.type === 1) return self.wiki + ".org";
+            if (self.target === 'global') return 'meta.wikimedia.org';
+            return mw.config.get('wgServerName');
+        })(this);
         var title = (this.type === 2 ? null : this.page);
         var url = (this.type === 2)
             ? this.url
@@ -788,10 +792,13 @@
                     newLines[i] = lines[i];
                 }
             }
+            var summaryText = (target === 'global' && STRINGS_EN && STRINGS_EN.normalizeSummary)
+                ? STRINGS_EN.normalizeSummary
+                : SM_t('normalizeSummary');
             return getApiForTarget( target ).postWithEditToken( {
                 action: "edit",
                 title: getFullTarget( target ),
-                summary: SM_t('normalizeSummary'),
+                summary: summaryText,
                 text: newLines.join( "\n" )
             } );
         } ).then(function() {
