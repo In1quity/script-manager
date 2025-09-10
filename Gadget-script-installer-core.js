@@ -227,18 +227,22 @@
     /**
      * Installs the import.
      */
-    Import.prototype.install = function () {
+    Import.prototype.install = function (options) {
+        options = options || {};
         var targetApi = getApiForTarget( this.target );
-        return targetApi.postWithEditToken( {
+        var req = targetApi.postWithEditToken( {
             action: "edit",
             title: getFullTarget( this.target ),
             summary: getSummaryForTarget( this.target, 'installSummary', this.getDescription( /* useWikitext */ true ) ),
             appendtext: "\n" + this.toJs()
-        } ).then(function() {
+        } );
+        if (options.silent) return req;
+        return req.then(function() {
             showNotification('notificationInstallSuccess', 'success', this.getDescription());
         }.bind(this)).catch(function(error) {
             smLog('Install failed:', error);
             showNotification('notificationInstallError', 'error', this.getDescription());
+            throw error;
         }.bind(this));
     }
 
@@ -277,9 +281,10 @@
      * Uninstalls the given import. That is, delete all lines from the
      * target page that import the specified script.
      */
-    Import.prototype.uninstall = function () {
+    Import.prototype.uninstall = function (options) {
+        options = options || {};
         var that = this;
-        return getWikitext( getFullTarget( this.target ) ).then( function ( wikitext ) {
+        var chain = getWikitext( getFullTarget( this.target ) ).then( function ( wikitext ) {
             var lineNums = that.getLineNums( wikitext ),
                 newWikitext = wikitext.split( "\n" ).filter( function ( _, idx ) {
                     return lineNums.indexOf( idx ) < 0;
@@ -290,11 +295,14 @@
                 summary: getSummaryForTarget( that.target, 'uninstallSummary', that.getDescription( /* useWikitext */ true ) ),
                 text: newWikitext
             } );
-        } ).then(function() {
+        } );
+        if (options.silent) return chain;
+        return chain.then(function() {
             showNotification('notificationUninstallSuccess', 'success', that.getDescription());
         }).catch(function(error) {
             smLog('Uninstall failed:', error);
             showNotification('notificationUninstallError', 'error', that.getDescription());
+            throw error;
         });
     }
 
@@ -355,10 +363,14 @@
         var that = this;
         var old = new Import( this.page, this.wiki, this.url, this.target, this.disabled );
         this.target = newTarget;
-        smLog('Import.move - calling uninstall and install');
-        return $.when( old.uninstall(), this.install() ).then(function() {
+        smLog('Import.move - calling install then uninstall');
+        // 1) Try to install to the new place
+        // 2) Only after successful install, uninstall from the old place
+        return this.install({silent:true}).then(function(){
+            return old.uninstall({silent:true});
+        }).then(function(){
             showNotification('notificationMoveSuccess', 'success', that.getDescription());
-        }).catch(function(error) {
+        }).catch(function(error){
             smLog('Move failed:', error);
             showNotification('notificationMoveError', 'error', that.getDescription());
         });
@@ -1229,17 +1241,7 @@
                                         </a>
                                     </div>
                                     
-                                    <div class="script-actions">
-                                        <cdx-button 
-                                            weight="quiet" 
-                                            size="small"
-                                            :disabled="loadingStates['uninstall-' + anImport.getDescription()]"
-                                            @click="handleUninstall(anImport)"
-                                        >
-                                            {{ loadingStates['uninstall-' + anImport.getDescription()] ? '...' : 
-                                               (removedScripts.includes(anImport.getDescription()) ? STRINGS.restoreLinkText : STRINGS.uninstallLinkText) }}
-                                        </cdx-button>
-                                        
+                                    <div class="script-actions">                                        
                                         <cdx-button 
                                             weight="quiet" 
                                             size="small"
@@ -1256,6 +1258,17 @@
                                             @click="handleMove(anImport)"
                                         >
                                             {{ loadingStates['move-' + anImport.getDescription()] ? '...' : STRINGS.moveLinkText }}
+                                        </cdx-button>
+
+                                        <cdx-button 
+                                            action="destructive"
+                                            weight="quiet" 
+                                            size="small"
+                                            :disabled="loadingStates['uninstall-' + anImport.getDescription()]"
+                                            @click="handleUninstall(anImport)"
+                                        >
+                                            {{ loadingStates['uninstall-' + anImport.getDescription()] ? '...' : 
+                                               (removedScripts.includes(anImport.getDescription()) ? STRINGS.restoreLinkText : STRINGS.uninstallLinkText) }}
                                         </cdx-button>
                                     </div>
                                 </cdx-card>
