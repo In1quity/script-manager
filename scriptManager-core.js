@@ -229,6 +229,16 @@
         } catch(e) { smLog('applyGadgetLabels failed', e); }
     }
 
+    // Notify UI that gadgets data has changed so computed props recompute on first render
+    function bumpGadgetsVersion(){
+        try {
+            var comp = scriptInstallerVueComponent;
+            if (comp && comp.gadgetsDataVersion && typeof comp.gadgetsDataVersion === 'object' && 'value' in comp.gadgetsDataVersion) {
+                comp.gadgetsDataVersion.value++;
+            }
+        } catch(e) { smLog('bumpGadgetsVersion failed', e); }
+    }
+
     /**
      * Derive all targets where given script is installed from current imports
      * @param {string} name script page name
@@ -994,6 +1004,7 @@
                 var reloadOnClose = ref(false);
                 var isNormalizing = ref(false);
                 var normalizeCompleted = ref(false);
+                var gadgetsDataVersion = ref(0);
 
                 try {
                     if (watch) {
@@ -1016,8 +1027,8 @@
                 // Create skin tabs
                 var skinTabs = computed(function() {
                     return [
-                        { name: 'all', label: SM_t('allSkins') },
                         { name: 'gadgets', label: gadgetsLabel.value },
+                        { name: 'all', label: SM_t('allSkins') },
                         { name: 'global', label: 'global' },
                         { name: 'common', label: 'common' }             
                     ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
@@ -1284,6 +1295,7 @@
                     enabledOnly,
                     isNormalizing,
                     normalizeCompleted,
+                    gadgetsDataVersion,
                     handleNormalize,
                     handleUninstall,
                     handleToggleDisabled,
@@ -2325,6 +2337,8 @@
             // Store data internally and update Vue component reactively
             gadgetSectionOrderVar = sectionOrder;
             applyGadgetLabels(sectionLabels, gadgetsLabel);
+            // Trigger UI recompute for initial render when opened outside js/css
+            try { bumpGadgetsVersion(); } catch(_) {}
             
             return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels, gadgetsLabel: gadgetsLabel };
           });
