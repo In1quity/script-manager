@@ -1,84 +1,43 @@
-/* Adapted version of [[User:Enterprisey/script-installer|script-installer]] 
- * 
- * Configuration:
- * - window.scriptInstallerInstallTarget: Set default skin for new installations (e.g., "common", "global", "vector")
- * - window.scriptInstallerAutoReload: Set to false to disable auto-reload after changes
- * - window.ADVERT: Custom suffix for edit summaries
- */
+/* Adapted version of [[User:Enterprisey/script-installer|script-installer]] */
 
 ( function () {
-    // ============================================================================
-    // Configuration and constants
-    // ============================================================================
-    
-    // MediaWiki API instances
-    var api; // Local wiki API instance
-    var metaApi; // Foreign API for global.js (meta.wikimedia.org)
-    
-    // Skin configuration - keep "common" at beginning for UI order
+    // An mw.Api object
+    var api;
+    var metaApi;
+
+    // Keep "common" at beginning
     var SKINS = [ "common", "global", "monobook", "minerva", "vector", "vector-2022", "timeless" ];
-    
-    // UI thresholds
-    var NUM_SCRIPTS_FOR_SEARCH = 5; // How many scripts before showing quick filter
-    
-    // ============================================================================
-    // Data storage
-    // ============================================================================
-    
-    // Script management data
-    var imports = {}; // Master import list, keyed by target (e.g., "common", "vector")
-    var localScriptsByName = {}; // Local scripts, keyed by name; value is target array
-    var scriptCount = 0; // Total number of installed scripts
-    var importsRef = null; // Reactive reference for Vue component
-    
+
+    // How many scripts do we need before we show the quick filter?
+    var NUM_SCRIPTS_FOR_SEARCH = 5;
+
+    // The master import list, keyed by target. (A "target" is a user JS subpage
+    // where the script is imported, like "common" or "vector".) Set in buildImportList
+    var imports = {};
+
+    // Local scripts, keyed on name; value will be the target. Set in buildImportList.
+    var localScriptsByName = {};
+
+    // How many scripts are installed?
+    var scriptCount = 0;
+
+    // Reactive reference for Vue component
+    var importsRef = null;
+
     // Gadgets data
-    var gadgetsData = {}; // Gadgets data from MediaWiki API
-    var userGadgetSettings = {}; // User's gadget preferences from options
-    
-    // ============================================================================
-    // Localization and configuration
-    // ============================================================================
-    
-    var STRINGS = {}; // Localized strings for current language
-    var STRINGS_EN = {}; // English strings fallback
-    var ADVERT = ""; // Suffix for edit summaries
-    var USER_NAMESPACE_NAME = mw.config.get( "wgFormattedNamespaces" )[2]; // User namespace name
-    
-    // ============================================================================
-    // Global configuration and state
-    // ============================================================================
-    
-    // Global configuration flags (set via window properties)
-    var scriptInstallerAutoReload = true; // Whether to auto-reload after changes
-    var scriptInstallerInstallTarget = "common"; // Default target for new installations (internal reference)
-    
-    // Global data for Vue components
-    var gadgetSectionOrder = []; // Order of gadget sections from MediaWiki:Gadgets-definition
-    var gadgetSectionLabels = {}; // Localized labels for gadget sections
-    var gadgetsLabel = "Gadgets"; // Localized label for gadgets tab
-    
-    // ============================================================================
-    // Constants (SM_ prefix for global constants only, following maintenance-core.js pattern)
-    // ============================================================================
-    
-    var SM_DEBUG_PREFIX = '[SM]'; // Debug log prefix
-    var SM_NOTIFICATION_DISPLAY_TIME = 4000; // Notification display time in ms
-    var SM_NOTIFICATION_CLEANUP_DELAY = 4200; // Notification cleanup delay in ms
-    var SM_USER_NAMESPACE_NUMBER = 2; // MediaWiki User namespace number
-    var SM_MEDIAWIKI_NAMESPACE_NUMBER = 8; // MediaWiki namespace number
-    // Note: User namespace prefix length varies by language, so we calculate it dynamically
-    
-    // ============================================================================
-    // Utility functions (following maintenance-core.js pattern)
-    // ============================================================================
-    
-    function smLog() { 
-        if (window.scriptInstallerDebug) { 
-            try { 
-                console.log.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); 
-            } catch (e) {} 
-        } 
-    }
+    var gadgetsData = {};
+    var userGadgetSettings = {};
+
+    // Goes on the end of edit summaries
+    var ADVERT = "";
+
+    /**
+     * Strings, for translation
+     */
+    var STRINGS = {};
+    var STRINGS_EN = {};
+
+    var USER_NAMESPACE_NAME = mw.config.get( "wgFormattedNamespaces" )[2];
 
     /**
      * Constructs an Import. An Import is a line in a JS file that imports a
@@ -221,18 +180,18 @@
                 var pageName = this.page.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ); // Escape regex special chars
                 // Try exact match first
                 toFind = new RegExp( pageName );
-                smLog('getLineNums - type 1 exact pattern:', toFind, 'wiki:', this.wiki, 'page:', this.page);
+                console.log('[script-installer] getLineNums - type 1 exact pattern:', toFind, 'wiki:', this.wiki, 'page:', this.page);
                 break;
             case 2: toFind = quoted( escapeForJsString( this.url ) ); break;
         }
         var lineNums = [], lines = targetWikitext.split( "\n" );
         for( var i = 0; i < lines.length; i++ ) {
             if( toFind.test( lines[i] ) ) {
-                smLog('Found matching line', i, ':', lines[i]);
+                console.log('[script-installer] Found matching line', i, ':', lines[i]);
                 lineNums.push( i );
             }
         }
-        smLog('getLineNums result:', lineNums);
+        console.log('[script-installer] getLineNums result:', lineNums);
         return lineNums;
     }
 
@@ -314,11 +273,11 @@
      */
     Import.prototype.move = function ( newTarget ) {
         if( this.target === newTarget ) return;
-        smLog('Import.move - moving from', this.target, 'to', newTarget);
+        console.log('[script-installer] Import.move - moving from', this.target, 'to', newTarget);
         var that = this;
         var old = new Import( this.page, this.wiki, this.url, this.target, this.disabled );
         this.target = newTarget;
-        smLog('Import.move - calling uninstall and install');
+        console.log('[script-installer] Import.move - calling uninstall and install');
         return $.when( old.uninstall(), this.install() ).then(function() {
             showNotification('notificationMoveSuccess', 'success', that.getDescription());
         }).catch(function(error) {
@@ -351,7 +310,7 @@
         return $.when(localPromise, globalPromise).then( function ( localData, globalData ) {
             
             var result = {};
-            prefixLength = mw.config.get( "wgUserName" ).length + USER_NAMESPACE_NAME.length + 1; // +1 for ":"
+            prefixLength = mw.config.get( "wgUserName" ).length + 6;
             
             // Process local skins - mw.ForeignApi returns data in different format
             var localPages = localData && localData.query && localData.query.pages ? localData.query.pages : 
@@ -386,7 +345,7 @@
                 titles: SKINS.filter(function(skin) { return skin !== 'global'; }).map( getFullTarget ).join( "|" )
             }).then( function ( data ) {
                 var result = {};
-                    prefixLength = mw.config.get( "wgUserName" ).length + USER_NAMESPACE_NAME.length + 1; // +1 for ":"
+                    prefixLength = mw.config.get( "wgUserName" ).length + 6;
                 if( data && data.query && data.query.pages ) {
                 Object.values( data.query.pages ).forEach( function ( moreData ) {
                     var nameWithoutExtension = new mw.Title( moreData.title ).getNameText();
@@ -510,24 +469,24 @@
     }
 
     function loadGadgetsLabel() {
-        smLog('Loading gadgets label from system messages');
+        console.log('Loading gadgets label from system messages');
         return api.get({
             action: 'query',
             meta: 'allmessages',
             ammessages: 'prefs-gadgets',
             format: 'json'
         }).then(function(msgData) {
-            smLog('System message response:', msgData);
+            console.log('System message response:', msgData);
             if (msgData.query && msgData.query.allmessages && msgData.query.allmessages[0] && msgData.query.allmessages[0]['*']) {
                 var label = msgData.query.allmessages[0]['*'];
-                smLog('Loaded gadgets label from system message:', label);
+                console.log('Loaded gadgets label from system message:', label);
                 return label;
             } else {
-                smLog('No system message found, using fallback');
+                console.log('No system message found, using fallback');
                 return 'Gadgets'; // Fallback
             }
         }).catch(function() {
-            smLog('Error loading system message, using fallback');
+            console.log('Error loading system message, using fallback');
             return 'Gadgets'; // Fallback
         });
     }
@@ -655,7 +614,7 @@
     }
 
     function conditionalReload( openPanel ) {
-        if( scriptInstallerAutoReload ) {
+        if( window.scriptInstallerAutoReload ) {
             if( openPanel ) document.cookie = "open_script_installer=yes";
             window.location.reload( true );
         }
@@ -720,7 +679,7 @@
                             show: true 
                         }; 
                     },
-                    template: '<transition name="script-installer-fade"><CdxMessage v-if="show" :type="type" :fade-in="true" :allow-user-dismiss="true" :auto-dismiss="true" :display-time="' + SM_NOTIFICATION_DISPLAY_TIME + '"><div v-html="message"></div></CdxMessage></transition>'
+                    template: '<transition name="script-installer-fade"><CdxMessage v-if="show" :type="type" :fade-in="true" :allow-user-dismiss="true" :auto-dismiss="true" :display-time="4000"><div v-html="message"></div></CdxMessage></transition>'
                 });
                 
                 app.component('CdxMessage', CdxMessage);
@@ -733,7 +692,7 @@
                             host.parentNode.removeChild(host);
                         }
                     } catch(e) {}
-                }, SM_NOTIFICATION_CLEANUP_DELAY);
+                }, 4200);
             } catch(e) { 
                 console.error('showNotification error:', e); 
             }
@@ -794,8 +753,8 @@
                 var selectedSkin = ref('common');
                 var loadingStates = ref({});
                 var removedScripts = ref([]);
-                var gadgetSectionLabels = ref({});
-                var gadgetsLabel = ref('Gadgets');
+                var gadgetSectionLabels = ref(window.gadgetSectionLabels || {});
+                var gadgetsLabel = ref(window.gadgetsLabel || 'Gadgets');
                 var enabledOnly = ref(false);
                 
                 // Create skin tabs
@@ -833,7 +792,7 @@
                         });
                         
                         // Get section order from loaded data
-                        var sectionOrder = gadgetSectionOrder;
+                        var sectionOrder = window.gadgetSectionOrder || [];
                         
                         // Sort sections according to loaded order
                         var sortedSections = sectionOrder.filter(function(section) {
@@ -1087,17 +1046,7 @@
                     getSkinUrl,
                     STRINGS: STRINGS,
                     SKINS: SKINS,
-                    mw: mw,
-                    mounted: function() {
-                        var self = this;
-                        // Update data from global variables after mount
-                        if (window.gadgetSectionLabels) {
-                            self.gadgetSectionLabels = window.gadgetSectionLabels;
-                        }
-                        if (window.gadgetsLabel) {
-                            self.gadgetsLabel = window.gadgetsLabel;
-                        }
-                    }
+                    mw: mw
                 };
             },
             template: `
@@ -1148,7 +1097,7 @@
                                 </div>
                                 <div v-else class="gadgets-list">
                                     <div v-for="(sectionData, sectionName) in filteredImports" :key="sectionName" class="gadget-section">
-                                        <h4 class="gadget-section-title">{{ (gadgetSectionLabels && gadgetSectionLabels[sectionName]) || sectionData.label }}</h4>
+                                        <h4 class="gadget-section-title">{{ gadgetSectionLabels[sectionName] || sectionData.label }}</h4>
                                         <div class="gadget-section-content">
                                             <cdx-card 
                                                 v-for="(gadget, gadgetName) in sectionData.gadgets" 
@@ -1273,10 +1222,7 @@
         
         try {
             var app = createApp(ScriptManager);
-            var mountedApp = app.mount(container[0]);
-            
-            // Store reference to Vue component for data updates
-            window.scriptInstallerVueComponent = mountedApp;
+            app.mount(container[0]);
         } catch (error) {
             console.error('[script-installer] Error mounting Vue app:', error);
             container.html('<div class="error">Error creating Vue component: ' + error.message + '</div>');
@@ -1292,11 +1238,11 @@
         var pageName = mw.config.get( "wgPageName" );
 
         // Namespace 2 is User
-        if( namespaceNumber === SM_USER_NAMESPACE_NUMBER &&
+        if( namespaceNumber === 2 &&
                 pageName.indexOf( "/" ) > 0 ) {
             var contentModel = mw.config.get( "wgPageContentModel" );
             if( contentModel === "javascript" ) {
-                var prefixLength = mw.config.get( "wgUserName" ).length + USER_NAMESPACE_NAME.length + 1; // +1 for ":"
+                var prefixLength = mw.config.get( "wgUserName" ).length + 6;
                 if( pageName.indexOf( USER_NAMESPACE_NAME + ":" + mw.config.get( "wgUserName" ) ) === 0 ) {
                     var skinIndex = SKINS.indexOf( pageName.substring( prefixLength ).slice( 0, -3 ) );
                     if( skinIndex >= 0 ) {
@@ -1312,13 +1258,13 @@
         }
 
         // Namespace 8 is MediaWiki
-        if( namespaceNumber === SM_MEDIAWIKI_NAMESPACE_NUMBER ) {
+        if( namespaceNumber === 8 ) {
             return $( "<a>" ).text( STRINGS.installViaPreferences )
                     .attr( "href", mw.util.getUrl( "Special:Preferences" ) + "#mw-prefsection-gadgets" );
         }
 
         var editRestriction = mw.config.get( "wgRestrictionEdit" ) || [];
-        if( ( namespaceNumber !== SM_USER_NAMESPACE_NUMBER && namespaceNumber !== SM_MEDIAWIKI_NAMESPACE_NUMBER ) &&
+        if( ( namespaceNumber !== 2 && namespaceNumber !== 8 ) &&
             ( editRestriction.indexOf( "sysop" ) >= 0 ||
                 editRestriction.indexOf( "editprotected" ) >= 0 ) ) {
             installElement.append( " ",
@@ -1454,8 +1400,7 @@
                     STRINGS.securityWarningSection.replace( '$1', scriptName ) ) );
             if( okay ) {
                 buttonElement.text( STRINGS.installProgressMsg )
-                    syncInstallTarget(); // Ensure we have the latest value
-                    Import.ofLocal( scriptName, window.scriptInstallerInstallTarget ).install().done( function () {
+                Import.ofLocal( scriptName, window.scriptInstallerInstallTarget ).install().done( function () {
                     buttonElement.text( STRINGS.uninstallLinkText );
                     conditionalReload( false );
                 }.bind( buttonElement ) );
@@ -1617,20 +1562,20 @@
                     };
                 });
                 
-                smLog('Move dialog - current target:', anImport.target);
-                smLog('Move dialog - target options:', targetOptions);
+                console.log('[script-installer] Move dialog - current target:', anImport.target);
+                console.log('[script-installer] Move dialog - target options:', targetOptions);
                 
                 var handleMove = function() {
                     if (isMoving.value) return;
                     
                     isMoving.value = true;
                     
-                    smLog('Moving script:', anImport.getDescription());
-                    smLog('From target:', anImport.target);
-                    smLog('To target:', selectedTarget.value);
+                    console.log('[script-installer] Moving script:', anImport.getDescription());
+                    console.log('[script-installer] From target:', anImport.target);
+                    console.log('[script-installer] To target:', selectedTarget.value);
                     
                     anImport.move(selectedTarget.value).done(function() {
-                        smLog('Move successful');
+                        console.log('[script-installer] Move successful');
                         // Reload data without closing dialog
                         buildImportList().then(function() {
                             if (importsRef) {
@@ -1846,21 +1791,13 @@
         });
     }
 
-    // Initialize global configuration from window properties
-    if( window.scriptInstallerAutoReload !== undefined ) {
-        scriptInstallerAutoReload = window.scriptInstallerAutoReload;
+    if( window.scriptInstallerAutoReload === undefined ) {
+        window.scriptInstallerAutoReload = true;
     }
 
-    // scriptInstallerInstallTarget should remain accessible via window for user configuration
     if( window.scriptInstallerInstallTarget === undefined ) {
-        window.scriptInstallerInstallTarget = "common"; // Set default if not configured
+        window.scriptInstallerInstallTarget = "common"; // by default, install things to the user's common.js
     }
-    
-    // Function to sync local reference with global value
-    function syncInstallTarget() {
-        scriptInstallerInstallTarget = window.scriptInstallerInstallTarget;
-    }
-    syncInstallTarget(); // Initial sync
 
     // ADVERT is now set via window.ADVERT or uses the default value
     if (typeof window.ADVERT === 'string') {
@@ -1946,7 +1883,7 @@
     try { 
         if (mw && mw.loader && typeof mw.loader.load === 'function') { 
             mw.loader.load(['vue', '@wikimedia/codex']); 
-            smLog('prewarm: requested vue+codex'); 
+            console.log('[script-installer] prewarm: requested vue+codex'); 
         } 
     } catch(e) {}
 
@@ -1977,19 +1914,9 @@
             var gadgetsLabel = results[2];
             
             // Store data globally for Vue component
-            gadgetSectionOrder = sectionOrder;
-            gadgetSectionLabels = sectionLabels;
-            gadgetsLabel = gadgetsLabel;
-            
-            // Update Vue component if it exists
-            if (window.scriptInstallerVueComponent) {
-                window.scriptInstallerVueComponent.gadgetSectionLabels = sectionLabels;
-                window.scriptInstallerVueComponent.gadgetsLabel = gadgetsLabel;
-                // Force update like in maintenance-core.js
-                if (typeof window.scriptInstallerVueComponent.$forceUpdate === 'function') {
-                    window.scriptInstallerVueComponent.$forceUpdate();
-                }
-            }
+            window.gadgetSectionOrder = sectionOrder;
+            window.gadgetSectionLabels = sectionLabels;
+            window.gadgetsLabel = gadgetsLabel;
             
             return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels, gadgetsLabel: gadgetsLabel };
           });
