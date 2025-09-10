@@ -44,6 +44,7 @@
     // Strings, for translation
     var STRINGS = {};
     var STRINGS_EN = {};
+    var STRINGS_SITE = {};
 
     var USER_NAMESPACE_NAME = mw.config.get( "wgFormattedNamespaces" )[2];
 
@@ -329,11 +330,7 @@
         var url = (this.type === 2)
             ? this.url
             : buildRawLoaderUrl(host, title);
-        // Use English backlink for global.js, meta.wikimedia.org, and wikidata.org
-        var useEnglishBacklink = (this.target === 'global') || 
-                                (mw.config.get('wgServerName') === 'meta.wikimedia.org') ||
-                                (mw.config.get('wgServerName') === 'wikidata.org');
-        var backlinkText = useEnglishBacklink ? STRINGS_EN.backlink : SM_t('backlink');
+        var backlinkText = (this.target === 'global') ? STRINGS_EN.backlink : SM_t('backlink');
 
         var suffix = (this.type === 2)
             ? ""
@@ -832,11 +829,7 @@
                     newLines[i] = lines[i];
                 }
             }
-            // Use English summary for global.js, meta.wikimedia.org, and wikidata.org
-            var useEnglishSummary = (target === 'global') || 
-                                   (mw.config.get('wgServerName') === 'meta.wikimedia.org') ||
-                                   (mw.config.get('wgServerName') === 'wikidata.org');
-            var summaryText = (useEnglishSummary && STRINGS_EN && STRINGS_EN.normalizeSummary)
+            var summaryText = (target === 'global' && STRINGS_EN && STRINGS_EN.normalizeSummary)
                 ? STRINGS_EN.normalizeSummary
                 : SM_t('normalizeSummary');
             return getApiForTarget( target ).postWithEditToken( {
@@ -2136,17 +2129,21 @@
     }
 
     function getSummaryForTarget( target, summaryKey, description ) {
-        // Use English summary for global.js, meta.wikimedia.org, and wikidata.org
-        var useEnglish = (target === 'global') || 
-                        (mw.config.get('wgServerName') === 'meta.wikimedia.org') ||
-                        (mw.config.get('wgServerName') === 'wikidata.org');
-        
-        if ( useEnglish ) {
-            // Use English summary for global scripts and special wikis
-            return STRINGS_EN[summaryKey].replace( "$1", description ) + (SUMMARY_TAG ? " " + SUMMARY_TAG : "");
-        } else {
-            // Use localized summary for local scripts
-            return STRINGS[summaryKey].replace( "$1", description ) + (SUMMARY_TAG ? " " + SUMMARY_TAG : "");
+        try {
+            var server = (mw && mw.config && mw.config.get ? (mw.config.get('wgServerName') || '') : '');
+            var englishOnlyHost = /(^|\.)mediawiki\.org$/i.test(server) || /(^|\.)wikidata\.org$/i.test(server);
+            if (target === 'global' || englishOnlyHost) {
+                return (STRINGS_EN[summaryKey] || summaryKey).replace( "$1", description ) + (SUMMARY_TAG ? " " + SUMMARY_TAG : "");
+            }
+            if (STRINGS_SITE && Object.prototype.hasOwnProperty.call(STRINGS_SITE, summaryKey)) {
+                return STRINGS_SITE[summaryKey].replace( "$1", description ) + (SUMMARY_TAG ? " " + SUMMARY_TAG : "");
+            }
+            if (STRINGS && Object.prototype.hasOwnProperty.call(STRINGS, summaryKey)) {
+                return STRINGS[summaryKey].replace( "$1", description ) + (SUMMARY_TAG ? " " + SUMMARY_TAG : "");
+            }
+            return (STRINGS_EN[summaryKey] || summaryKey).replace( "$1", description ) + (SUMMARY_TAG ? " " + SUMMARY_TAG : "");
+        } catch(_) {
+            return (STRINGS_EN[summaryKey] || summaryKey).replace( "$1", description );
         }
     }
 
@@ -2259,6 +2256,14 @@
         if (idx === -1) idx = chain.length;
       tryNext();
       }
+      // Additionally load site content language for summaries if different
+      try {
+        var siteLang = (mw && mw.config && mw.config.get ? (mw.config.get('wgContentLanguage') || 'en') : 'en');
+        if (siteLang && siteLang !== 'en' && siteLang !== lang) {
+          var siteUrl = 'https://gitlab-content.toolforge.org/iniquity/script-manager/-/raw/main/i18n/' + encodeURIComponent(siteLang) + '.json?mime=application/json';
+          fetch(siteUrl).then(function(r){ if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(json){ STRINGS_SITE = json || {}; }).catch(function(){});
+        }
+      } catch(_) {}
     }
 
     // Prewarm Codex bundles early to speed up first open of the modal (optional)
