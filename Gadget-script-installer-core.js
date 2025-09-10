@@ -8,18 +8,11 @@
     // Keep "common" at beginning
     var SKINS = [ "common", "global", "monobook", "minerva", "vector", "vector-2022", "timeless" ];
 
-    // How many scripts do we need before we show the quick filter?
-    var NUM_SCRIPTS_FOR_SEARCH = 5;
-
     // The master import list, keyed by target. (A "target" is a user JS subpage
     // where the script is imported, like "common" or "vector".) Set in buildImportList
     var imports = {};
 
-    // Local scripts, keyed on name; value will be the target. Set in buildImportList.
-    var localScriptsByName = {};
-
-    // How many scripts are installed?
-    var scriptCount = 0;
+    // Local script targets are now derived on demand from `imports` (no globals)
 
     // Reactive reference for Vue component
     var importsRef = null;
@@ -38,6 +31,113 @@
     var STRINGS_EN = {};
 
     var USER_NAMESPACE_NAME = mw.config.get( "wgFormattedNamespaces" )[2];
+
+    // Global constants (SM_ prefix per maintenance-core.js pattern)
+    var SM_DEBUG_PREFIX = '[SM]';
+    var SM_NOTIFICATION_DISPLAY_TIME = 4000;
+    var SM_NOTIFICATION_CLEANUP_DELAY = 4200;
+    var SM_USER_NAMESPACE_NUMBER = 2;
+    var SM_MEDIAWIKI_NAMESPACE_NUMBER = 8;
+
+    // Debug logger (no-op unless window.scriptInstallerDebug is truthy)
+    function smLog() {
+        if (window.scriptInstallerDebug) {
+            try { console.log.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch (e) {}
+        }
+    }
+    try { window.smLog = smLog; } catch(e) {}
+
+    // Normalize localized User namespace to canonical English for URLs
+    function canonicalizeUserNamespace(title) {
+        try {
+            if (typeof title !== 'string') return title;
+            var idx = title.indexOf(':');
+            if (idx <= 0) return title;
+            var ns = title.slice(0, idx);
+            var rest = title.slice(idx + 1);
+            if (ns === USER_NAMESPACE_NAME || ns.toLowerCase() === 'user') {
+                return 'User:' + rest;
+            }
+            return title;
+        } catch(e) { smLog('canonicalizeUserNamespace failed', e); return title; }
+    }
+
+    function buildRawLoaderUrl(host, title) {
+        var normalized = canonicalizeUserNamespace(title);
+        return "//" + host + "/w/index.php?title=" + normalized + "&action=raw&ctype=text/javascript";
+    }
+
+    // Lazy-load and cache Vue/Codex modules
+    var _vueCodexCache = null;
+    function loadVueCodex(){
+        if (_vueCodexCache) return _vueCodexCache;
+        _vueCodexCache = mw.loader.using(['vue', '@wikimedia/codex']).then(function(){
+            var VueMod = mw.loader.require('vue');
+            var CodexPkg = mw.loader.require('@wikimedia/codex');
+            return {
+                createApp: VueMod.createApp || VueMod.createMwApp,
+                defineComponent: VueMod.defineComponent,
+                ref: VueMod.ref,
+                computed: VueMod.computed,
+                watch: VueMod.watch,
+                CdxDialog: CodexPkg.CdxDialog || (CodexPkg.components && CodexPkg.components.CdxDialog),
+                CdxButton: CodexPkg.CdxButton || (CodexPkg.components && CodexPkg.components.CdxButton),
+                CdxTextInput: CodexPkg.CdxTextInput || (CodexPkg.components && CodexPkg.components.CdxTextInput),
+                CdxSelect: CodexPkg.CdxSelect || (CodexPkg.components && CodexPkg.components.CdxSelect),
+                CdxField: CodexPkg.CdxField || (CodexPkg.components && CodexPkg.components.CdxField),
+                CdxTabs: CodexPkg.CdxTabs || (CodexPkg.components && CodexPkg.components.CdxTabs),
+                CdxTab: CodexPkg.CdxTab || (CodexPkg.components && CodexPkg.components.CdxTab),
+                CdxToggleButton: CodexPkg.CdxToggleButton || (CodexPkg.components && CodexPkg.components.CdxToggleButton),
+                CdxMessage: CodexPkg.CdxMessage || (CodexPkg.components && CodexPkg.components.CdxMessage)
+            };
+        });
+        return _vueCodexCache;
+    }
+
+    // Safe unmount (mirrors maintenance-core.js pattern)
+    function safeUnmount(app, root){
+        try { if (app && typeof app.unmount === 'function') app.unmount(); } catch(e) {}
+        try { if (root && root.parentNode) root.parentNode.removeChild(root); } catch(e) {}
+    }
+
+    // Mount helper
+    function mountVueApp(createApp, RootComponent, rootEl){
+        var app = createApp(RootComponent);
+        app.mount(rootEl);
+        return app;
+    }
+
+    // Apply gadget labels to globals and Vue component
+    function applyGadgetLabels(sectionLabels, gadgetsLabel){
+        window.gadgetSectionLabels = sectionLabels || {};
+        window.gadgetsLabel = gadgetsLabel || 'Gadgets';
+        try {
+            var comp = window.scriptInstallerVueComponent;
+            if (comp) {
+                if (comp.gadgetSectionLabels && typeof comp.gadgetSectionLabels === 'object' && 'value' in comp.gadgetSectionLabels) {
+                    comp.gadgetSectionLabels.value = window.gadgetSectionLabels;
+                }
+                if (comp.gadgetsLabel && typeof comp.gadgetsLabel === 'object' && 'value' in comp.gadgetsLabel) {
+                    comp.gadgetsLabel.value = window.gadgetsLabel;
+                }
+                if (typeof comp.$forceUpdate === 'function') comp.$forceUpdate();
+            }
+        } catch(e) { smLog('applyGadgetLabels failed', e); }
+    }
+
+    // Derive all targets where given script is installed from current imports
+    function getTargetsForScript(name){
+        try {
+            var current = (importsRef && importsRef.value) ? importsRef.value : imports;
+            var map = Object.create(null);
+            Object.keys(current || {}).forEach(function(target){
+                (current[target] || []).forEach(function(anImport){
+                    if (anImport && anImport.page === name) { map[target] = true; }
+                });
+            });
+            return Object.keys(map);
+        } catch(e) { smLog('getTargetsForScript failed', e); return []; }
+    }
 
     /**
      * Constructs an Import. An Import is a line in a JS file that imports a
@@ -105,45 +205,24 @@
         }
     }
 
-    /**
-     * Human-readable (NOT necessarily suitable for ResourceLoader) URL.
-     */
-    Import.prototype.getHumanUrl = function () {
-        switch( this.type ) {
-            case 0: return "/wiki/" + encodeURI( this.page );
-            case 1: return "//" + this.wiki + ".org/wiki/" + encodeURI( this.page );
-            case 2: return this.url;
-        }
-    }
+    // Removed getHumanUrl in favor of component-level helper getImportHumanUrl
+
+    // Removed unused getHumanUrl()
 
     Import.prototype.toJs = function () {
         var dis = this.disabled ? "//" : "";
-        
-        switch( this.type ) {
-            case 0: 
-                // Local scripts
-                if (this.target === 'global') {
-                    // For global.js, use mw.loader.load and English backlink
-                    var globalUrl = "//" + mw.config.get('wgServerName') + "/w/index.php?title=" + 
-                                   encodeURIComponent( this.page ) + "&action=raw&ctype=text/javascript";
-                    return dis + "mw.loader.load('" + escapeForJsString( globalUrl ) + "'); // " + STRINGS_EN.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
-                } else {
-                    return dis + "importScript('" + escapeForJsString( this.page ) + "'); // " + STRINGS.backlink + " [[" + escapeForJsComment( this.page ) + "]]";
-                }
-                
-            case 1: 
-                // Remote scripts - convert to URL format
-                var remoteUrl = "//" + encodeURIComponent( this.wiki ) + ".org/w/index.php?title=" +
-                               encodeURIComponent( this.page ) + "&action=raw&ctype=text/javascript";
-                return dis + "mw.loader.load('" + escapeForJsString( remoteUrl ) + "');";
-                
-            case 2: 
-                // Direct URL scripts
-                return dis + "mw.loader.load('" + escapeForJsString( this.url ) + "');";
-                
-            default:
-                return "";
-        }
+        var host = (this.type === 1 ? (this.wiki + ".org") : mw.config.get('wgServerName'));
+        var title = (this.type === 2 ? null : this.page);
+        var url = (this.type === 2)
+            ? this.url
+            : buildRawLoaderUrl(host, title);
+        var backlinkText = (this.type === 0 && this.target === 'global') ? STRINGS_EN.backlink : STRINGS.backlink;
+
+        var suffix = (this.type === 2)
+            ? ""
+            : (" // " + backlinkText + " [[" + escapeForJsComment( this.page ) + "]]");
+
+        return dis + "mw.loader.load('" + escapeForJsString( url ) + "');" + suffix;
     }
 
     /**
@@ -159,7 +238,7 @@
         } ).then(function() {
             showNotification('notificationInstallSuccess', 'success', this.getDescription());
         }.bind(this)).catch(function(error) {
-            console.error('Install failed:', error);
+            smLog('Install failed:', error);
             showNotification('notificationInstallError', 'error', this.getDescription());
         }.bind(this));
     }
@@ -180,18 +259,18 @@
                 var pageName = this.page.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ); // Escape regex special chars
                 // Try exact match first
                 toFind = new RegExp( pageName );
-                console.log('[script-installer] getLineNums - type 1 exact pattern:', toFind, 'wiki:', this.wiki, 'page:', this.page);
+                smLog('getLineNums - type 1 exact pattern:', toFind, 'wiki:', this.wiki, 'page:', this.page);
                 break;
             case 2: toFind = quoted( escapeForJsString( this.url ) ); break;
         }
         var lineNums = [], lines = targetWikitext.split( "\n" );
         for( var i = 0; i < lines.length; i++ ) {
             if( toFind.test( lines[i] ) ) {
-                console.log('[script-installer] Found matching line', i, ':', lines[i]);
+                smLog('Found matching line', i, ':', lines[i]);
                 lineNums.push( i );
             }
         }
-        console.log('[script-installer] getLineNums result:', lineNums);
+        smLog('getLineNums result:', lineNums);
         return lineNums;
     }
 
@@ -215,7 +294,7 @@
         } ).then(function() {
             showNotification('notificationUninstallSuccess', 'success', that.getDescription());
         }).catch(function(error) {
-            console.error('Uninstall failed:', error);
+            smLog('Uninstall failed:', error);
             showNotification('notificationUninstallError', 'error', that.getDescription());
         });
     }
@@ -257,7 +336,7 @@
             var notificationKey = disabled ? 'notificationDisableSuccess' : 'notificationEnableSuccess';
             showNotification(notificationKey, 'success', that.getDescription());
         }).catch(function(error) {
-            console.error('Set disabled failed:', error);
+            smLog('Set disabled failed:', error);
             var notificationKey = disabled ? 'notificationDisableError' : 'notificationEnableError';
             showNotification(notificationKey, 'error', that.getDescription());
         });
@@ -273,15 +352,15 @@
      */
     Import.prototype.move = function ( newTarget ) {
         if( this.target === newTarget ) return;
-        console.log('[script-installer] Import.move - moving from', this.target, 'to', newTarget);
+        smLog('Import.move - moving from', this.target, 'to', newTarget);
         var that = this;
         var old = new Import( this.page, this.wiki, this.url, this.target, this.disabled );
         this.target = newTarget;
-        console.log('[script-installer] Import.move - calling uninstall and install');
+        smLog('Import.move - calling uninstall and install');
         return $.when( old.uninstall(), this.install() ).then(function() {
             showNotification('notificationMoveSuccess', 'success', that.getDescription());
         }).catch(function(error) {
-            console.error('Move failed:', error);
+            smLog('Move failed:', error);
             showNotification('notificationMoveError', 'error', that.getDescription());
         });
     }
@@ -310,7 +389,7 @@
         return $.when(localPromise, globalPromise).then( function ( localData, globalData ) {
             
             var result = {};
-            prefixLength = mw.config.get( "wgUserName" ).length + 6;
+            prefixLength = mw.config.get( "wgUserName" ).length + USER_NAMESPACE_NAME.length + 1;
             
             // Process local skins - mw.ForeignApi returns data in different format
             var localPages = localData && localData.query && localData.query.pages ? localData.query.pages : 
@@ -345,7 +424,7 @@
                 titles: SKINS.filter(function(skin) { return skin !== 'global'; }).map( getFullTarget ).join( "|" )
             }).then( function ( data ) {
                 var result = {};
-                    prefixLength = mw.config.get( "wgUserName" ).length + 6;
+                    prefixLength = mw.config.get( "wgUserName" ).length + USER_NAMESPACE_NAME.length + 1;
                 if( data && data.query && data.query.pages ) {
                 Object.values( data.query.pages ).forEach( function ( moreData ) {
                     var nameWithoutExtension = new mw.Title( moreData.title ).getNameText();
@@ -368,12 +447,6 @@
                     for( var i = 0; i < lines.length; i++ ) {
                         if( currImport = Import.fromJs( lines[i], targetName ) ) {
                             targetImports.push( currImport );
-                            scriptCount++;
-                            if( currImport.type === 0 ) {
-                                if( !localScriptsByName[ currImport.page ] )
-                                    localScriptsByName[ currImport.page ] = [];
-                                localScriptsByName[ currImport.page ].push( currImport.target );
-                            }
                         }
                     }
                 }
@@ -427,7 +500,7 @@
                 return gadgetsData;
             }
         }).catch(function(error) {
-            console.error('Failed to load gadgets:', error);
+            smLog('Failed to load gadgets:', error);
             gadgetsData = {};
             return gadgetsData;
         });
@@ -469,24 +542,24 @@
     }
 
     function loadGadgetsLabel() {
-        console.log('Loading gadgets label from system messages');
+        smLog('Loading gadgets label from system messages');
         return api.get({
             action: 'query',
             meta: 'allmessages',
             ammessages: 'prefs-gadgets',
             format: 'json'
         }).then(function(msgData) {
-            console.log('System message response:', msgData);
+            smLog('System message response:', msgData);
             if (msgData.query && msgData.query.allmessages && msgData.query.allmessages[0] && msgData.query.allmessages[0]['*']) {
                 var label = msgData.query.allmessages[0]['*'];
-                console.log('Loaded gadgets label from system message:', label);
+                smLog('Loaded gadgets label from system message:', label);
                 return label;
             } else {
-                console.log('No system message found, using fallback');
+                smLog('No system message found, using fallback');
                 return 'Gadgets'; // Fallback
             }
         }).catch(function() {
-            console.log('Error loading system message, using fallback');
+            smLog('Error loading system message, using fallback');
             return 'Gadgets'; // Fallback
         });
     }
@@ -561,7 +634,7 @@
             
             return userGadgetSettings;
         }).catch(function(error) {
-            console.error('Failed to load user gadget settings:', error);
+            smLog('Failed to load user gadget settings:', error);
             userGadgetSettings = {};
             return {};
         });
@@ -577,7 +650,7 @@
             userGadgetSettings['gadget-' + gadgetName] = enabled ? '1' : '0';
             return true;
         }).catch(function(error) {
-            console.error('Failed to toggle gadget:', error);
+            smLog('Failed to toggle gadget:', error);
             throw error;
         });
     }
@@ -608,7 +681,7 @@
         } ).then(function() {
             showNotification('notificationNormalizeSuccess', 'success');
         }).catch(function(error) {
-            console.error('Normalize failed:', error);
+            smLog('Normalize failed:', error);
             showNotification('notificationNormalizeError', 'error');
         });
     }
@@ -679,7 +752,7 @@
                             show: true 
                         }; 
                     },
-                    template: '<transition name="script-installer-fade"><CdxMessage v-if="show" :type="type" :fade-in="true" :allow-user-dismiss="true" :auto-dismiss="true" :display-time="4000"><div v-html="message"></div></CdxMessage></transition>'
+                    template: '<transition name="script-installer-fade"><CdxMessage v-if="show" :type="type" :fade-in="true" :allow-user-dismiss="true" :auto-dismiss="true" :display-time="'+SM_NOTIFICATION_DISPLAY_TIME+'"><div v-html="message"></div></CdxMessage></transition>'
                 });
                 
                 app.component('CdxMessage', CdxMessage);
@@ -692,9 +765,9 @@
                             host.parentNode.removeChild(host);
                         }
                     } catch(e) {}
-                }, 4200);
+                }, SM_NOTIFICATION_CLEANUP_DELAY);
             } catch(e) { 
-                console.error('showNotification error:', e); 
+                smLog('showNotification error:', e); 
             }
         });
     }
@@ -707,34 +780,17 @@
     function makePanel() {
         // Create container for Vue app
         var container = $( "<div>" ).attr( "id", "script-installer-panel" );
+        smLog('makePanel: create container #script-installer-panel');
         
         // Load Vue and Codex
-        mw.loader.using(['vue', '@wikimedia/codex']).then(function() {
-            // Create Vue panel
-            var VueMod = mw.loader.require('vue');
-            var CodexPkg = mw.loader.require('@wikimedia/codex');
-            
-            var createApp = VueMod.createApp || VueMod.createMwApp;
-            var defineComponent = VueMod.defineComponent;
-            var ref = VueMod.ref;
-            var computed = VueMod.computed;
-            
-            var CdxDialog = CodexPkg.CdxDialog || (CodexPkg.components && CodexPkg.components.CdxDialog);
-            var CdxButton = CodexPkg.CdxButton || (CodexPkg.components && CodexPkg.components.CdxButton);
-            var CdxTextInput = CodexPkg.CdxTextInput || (CodexPkg.components && CodexPkg.components.CdxTextInput);
-            var CdxSelect = CodexPkg.CdxSelect || (CodexPkg.components && CodexPkg.components.CdxSelect);
-            var CdxField = CodexPkg.CdxField || (CodexPkg.components && CodexPkg.components.CdxField);
-            var CdxTabs = CodexPkg.CdxTabs || (CodexPkg.components && CodexPkg.components.CdxTabs);
-            var CdxTab = CodexPkg.CdxTab || (CodexPkg.components && CodexPkg.components.CdxTab);
-            var CdxToggleButton = CodexPkg.CdxToggleButton || (CodexPkg.components && CodexPkg.components.CdxToggleButton);
-            
-            if (!createApp || !CdxDialog || !CdxButton || !CdxTextInput || !CdxSelect || !CdxField || !CdxTabs || !CdxTab || !CdxToggleButton) {
+        loadVueCodex().then(function(libs) {
+            smLog('makePanel: libs loaded, building panel');
+            if (!libs.createApp || !libs.CdxDialog || !libs.CdxButton || !libs.CdxTextInput || !libs.CdxSelect || !libs.CdxField || !libs.CdxTabs || !libs.CdxTab || !libs.CdxToggleButton) {
                 throw new Error('Codex/Vue components not available');
             }
-            
-            createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab, CdxToggleButton);
+            createVuePanel(container, libs.createApp, libs.defineComponent, libs.ref, libs.computed, libs.CdxDialog, libs.CdxButton, libs.CdxTextInput, libs.CdxSelect, libs.CdxField, libs.CdxTabs, libs.CdxTab, libs.CdxToggleButton);
         }).catch(function(error) {
-            console.error('[script-installer] Failed to load Vue/Codex:', error);
+            smLog('Failed to load Vue/Codex:', error);
             container.html('<div class="error">Failed to load interface. Please refresh the page.</div>');
         });
         
@@ -743,6 +799,7 @@
 
     function createVuePanel(container, createApp, defineComponent, ref, computed, CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab, CdxToggleButton) {
         // Make imports reactive and set global reference
+        smLog('createVuePanel: start');
         importsRef = ref(imports);
         
         var ScriptManager = defineComponent({
@@ -882,7 +939,7 @@
                             }
                         });
                     }).fail(function(error) {
-                        console.error('Failed to normalize:', error);
+                        smLog('Failed to normalize:', error);
                         showNotification('notificationNormalizeError', 'error');
                     }).always(function() {
                         setLoading(key, false);
@@ -911,7 +968,7 @@
                                 }
                             });
                         }).fail(function(error) {
-                            console.error('Failed to restore:', error);
+                            smLog('Failed to restore:', error);
                             showNotification('notificationRestoreError', 'error', anImport.getDescription());
                         }).always(function() {
                             setLoading(key, false);
@@ -928,7 +985,7 @@
                                 }
                             });
                         }).fail(function(error) {
-                            console.error('Failed to uninstall:', error);
+                            smLog('Failed to uninstall:', error);
                             showNotification('notificationUninstallError', 'error', anImport.getDescription());
                         }).always(function() {
                             setLoading(key, false);
@@ -947,7 +1004,7 @@
                             }
                         });
                     }).fail(function(error) {
-                        console.error('Failed to toggle disabled state:', error);
+                        smLog('Failed to toggle disabled state:', error);
                         showNotification('notificationGeneralError', 'error');
                     }).always(function() {
                         setLoading(key, false);
@@ -978,7 +1035,7 @@
                             }
                         });
                     }).fail(function(error) {
-                        console.error('Failed to normalize some scripts:', error);
+                        smLog('Failed to normalize some scripts:', error);
                         showNotification('notificationNormalizeError', 'error');
                     });
                 };
@@ -990,7 +1047,7 @@
                     toggleGadget(gadgetName, enabled).then(function() {
                         showNotification('Gadget ' + gadgetName + ' ' + (enabled ? 'enabled' : 'disabled'), 'success');
                     }).catch(function(error) {
-                        console.error('Failed to toggle gadget:', error);
+                        smLog('Failed to toggle gadget:', error);
                         showNotification('Failed to toggle gadget', 'error');
                     }).always(function() {
                         setLoading(key, false);
@@ -1024,6 +1081,12 @@
                         return 'https://' + mw.config.get('wgServerName') + '/wiki/User:' + mw.config.get('wgUserName') + '/' + skinName + '.js';
                     }
                 };
+                var getImportHumanUrl = function(anImport){
+                    var page = canonicalizeUserNamespace(anImport.page);
+                    if (anImport.type === 0) return '/wiki/' + encodeURI(page);
+                    if (anImport.type === 1) return '//' + anImport.wiki + '.org/wiki/' + encodeURI(page);
+                    return anImport.url;
+                };
                 
                 return {
                     dialogOpen,
@@ -1044,6 +1107,7 @@
                     handleGadgetToggle,
                     isGadgetEnabled,
                     getSkinUrl,
+                    getImportHumanUrl,
                     STRINGS: STRINGS,
                     SKINS: SKINS,
                     mw: mw
@@ -1162,7 +1226,7 @@
                                     }"
                                 >
                                     <div class="script-info">
-                                        <a :href="anImport.getHumanUrl()" class="script-link">
+                                        <a :href="getImportHumanUrl(anImport)" class="script-link">
                                             {{ anImport.getDescription() }}
                                         </a>
                                     </div>
@@ -1222,9 +1286,12 @@
         
         try {
             var app = createApp(ScriptManager);
-            app.mount(container[0]);
+            var mountedApp = app.mount(container[0]);
+            // expose for reactive updates from async loaders
+            window.scriptInstallerVueComponent = mountedApp;
+            smLog('createVuePanel: mounted');
         } catch (error) {
-            console.error('[script-installer] Error mounting Vue app:', error);
+            smLog('Error mounting Vue app:', error);
             container.html('<div class="error">Error creating Vue component: ' + error.message + '</div>');
         }
     }
@@ -1238,11 +1305,11 @@
         var pageName = mw.config.get( "wgPageName" );
 
         // Namespace 2 is User
-        if( namespaceNumber === 2 &&
+        if( namespaceNumber === SM_USER_NAMESPACE_NUMBER &&
                 pageName.indexOf( "/" ) > 0 ) {
             var contentModel = mw.config.get( "wgPageContentModel" );
             if( contentModel === "javascript" ) {
-                var prefixLength = mw.config.get( "wgUserName" ).length + 6;
+                var prefixLength = mw.config.get( "wgUserName" ).length + USER_NAMESPACE_NAME.length + 1;
                 if( pageName.indexOf( USER_NAMESPACE_NAME + ":" + mw.config.get( "wgUserName" ) ) === 0 ) {
                     var skinIndex = SKINS.indexOf( pageName.substring( prefixLength ).slice( 0, -3 ) );
                     if( skinIndex >= 0 ) {
@@ -1258,13 +1325,13 @@
         }
 
         // Namespace 8 is MediaWiki
-        if( namespaceNumber === 8 ) {
+        if( namespaceNumber === SM_MEDIAWIKI_NAMESPACE_NUMBER ) {
             return $( "<a>" ).text( STRINGS.installViaPreferences )
                     .attr( "href", mw.util.getUrl( "Special:Preferences" ) + "#mw-prefsection-gadgets" );
         }
 
         var editRestriction = mw.config.get( "wgRestrictionEdit" ) || [];
-        if( ( namespaceNumber !== 2 && namespaceNumber !== 8 ) &&
+        if( ( namespaceNumber !== SM_USER_NAMESPACE_NUMBER && namespaceNumber !== SM_MEDIAWIKI_NAMESPACE_NUMBER ) &&
             ( editRestriction.indexOf( "sysop" ) >= 0 ||
                 editRestriction.indexOf( "editprotected" ) >= 0 ) ) {
             installElement.append( " ",
@@ -1277,13 +1344,14 @@
 
         if( addingInstallLink ) {
             var fixedPageName = mw.config.get( "wgPageName" ).replace( /_/g, " " );
+            var installedTargets = getTargetsForScript(fixedPageName);
             installElement.prepend( $( "<a>" )
                     .attr( "id", "script-installer-main-install" )
-                    .text( localScriptsByName[ fixedPageName ] ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
+                    .text( installedTargets.length ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
                     .click( makeLocalInstallClickHandler( fixedPageName ) ) );
 
             // If the script is installed but disabled, allow the user to enable it
-            var allScriptsInTarget = (importsRef && importsRef.value) ? importsRef.value[ localScriptsByName[ fixedPageName ] ] : imports[ localScriptsByName[ fixedPageName ] ];
+            var allScriptsInTarget = (importsRef && importsRef.value) ? importsRef.value[ installedTargets ] : imports[ installedTargets ];
             var importObj = allScriptsInTarget && allScriptsInTarget.find( function ( anImport ) { return anImport.page === fixedPageName; } );
             if( importObj && importObj.disabled ) {
                 installElement.append( " | ",
@@ -1314,9 +1382,13 @@
                     " | ",
                     $( "<a>" )
                         .text( STRINGS.manageUserScripts ).click( function () {
-                            if( !document.getElementById( "script-installer-panel" ) ) {
+                            var exists = !!document.getElementById( "script-installer-panel" );
+                            smLog('showUi: Manage clicked; panel exists?', exists);
+                            if( !exists ) {
+                                smLog('showUi: mount panel');
                                 $( "#mw-content-text" ).before( makePanel() );
                             } else {
+                                smLog('showUi: remove panel');
                                 $( "#script-installer-panel" ).remove();
                             }
                          } ) ) );
@@ -1329,8 +1401,9 @@
         $( "span.scriptInstallerLink" ).each( function () {
             var scriptName = this.id;
             if( $( this ).find( "a" ).length === 0 ) {
+                var installedTargets = getTargetsForScript(scriptName);
                 $( this ).append( " | ", $( "<a>" )
-                        .text( localScriptsByName[ scriptName ] ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
+                        .text( installedTargets.length ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
                         .click( makeLocalInstallClickHandler( scriptName ) ) );
             }
         } );
@@ -1345,7 +1418,7 @@
                         .addClass( "script-installer-ibx" )
                         .append( $( "<button>" )
                             .addClass( "mw-ui-button mw-ui-progressive mw-ui-big" )
-                            .text( localScriptsByName[ scriptName ] ? STRINGS.uninstallLinkText : STRINGS.installLinkText )
+                            .text( (getTargetsForScript(scriptName).length ? STRINGS.uninstallLinkText : STRINGS.installLinkText) )
                             .click( makeLocalInstallClickHandler( scriptName ) ) ) ) );
             }
         } );
@@ -1359,7 +1432,8 @@
                 showInstallDialog( scriptName, $this );
             } else {
                 $( this ).text( STRINGS.uninstallProgressMsg )
-                var uninstalls = uniques( localScriptsByName[ scriptName ] )
+                var targets = getTargetsForScript(scriptName);
+                var uninstalls = uniques( targets )
                         .map( function ( target ) { return Import.ofLocal( scriptName, target ).uninstall(); } )
                 $.when.apply( $, uninstalls ).then( function () {
                     $( this ).text( STRINGS.installLinkText );
@@ -1374,26 +1448,14 @@
         var container = $( "<div>" ).attr( "id", "script-installer-install-dialog" );
         
         // Load Vue and Codex for install dialog
-        mw.loader.using(['vue', '@wikimedia/codex']).then(function() {
-            var VueMod = mw.loader.require('vue');
-            var CodexPkg = mw.loader.require('@wikimedia/codex');
-            
-            var createApp = VueMod.createApp || VueMod.createMwApp;
-            var defineComponent = VueMod.defineComponent;
-            var ref = VueMod.ref;
-            
-            var CdxDialog = CodexPkg.CdxDialog || (CodexPkg.components && CodexPkg.components.CdxDialog);
-            var CdxButton = CodexPkg.CdxButton || (CodexPkg.components && CodexPkg.components.CdxButton);
-            var CdxSelect = CodexPkg.CdxSelect || (CodexPkg.components && CodexPkg.components.CdxSelect);
-            var CdxField = CodexPkg.CdxField || (CodexPkg.components && CodexPkg.components.CdxField);
-            
-            if (!createApp || !CdxDialog || !CdxButton || !CdxSelect || !CdxField) {
+        loadVueCodex().then(function(libs) {
+            smLog('showInstallDialog: libs loaded');
+            if (!libs.createApp || !libs.CdxDialog || !libs.CdxButton || !libs.CdxSelect || !libs.CdxField) {
                 throw new Error('Codex/Vue components not available for install dialog');
             }
-            
-            createInstallDialog(container, createApp, defineComponent, ref, CdxDialog, CdxButton, CdxSelect, CdxField, scriptName, buttonElement);
+            createInstallDialog(container, libs.createApp, libs.defineComponent, libs.ref, libs.CdxDialog, libs.CdxButton, libs.CdxSelect, libs.CdxField, scriptName, buttonElement);
         }).catch(function(error) {
-            console.error('[script-installer] Failed to load Vue/Codex for install dialog:', error);
+            smLog('Failed to load Vue/Codex for install dialog:', error);
             // Fallback to old confirm dialog
             var okay = window.confirm(
                 STRINGS.bigSecurityWarning.replace( '$1',
@@ -1432,10 +1494,11 @@
                     Import.ofLocal(scriptName, selectedSkin.value).install().done(function() {
                         buttonElement.text(STRINGS.uninstallLinkText);
                         dialogOpen.value = false;
+                        try { safeUnmount(app, container[0]); } catch(e) {}
                         conditionalReload(false);
                     }).fail(function(error) {
-                        console.error('Failed to install script:', error);
-                        showNotification('notificationInstallError', 'error', anImport.getDescription());
+                        smLog('Failed to install script:', error);
+                        showNotification('notificationInstallError', 'error', scriptName);
                         buttonElement.text(STRINGS.installLinkText);
                     }).always(function() {
                         isInstalling.value = false;
@@ -1444,6 +1507,7 @@
                 
                 var handleCancel = function() {
                     dialogOpen.value = false;
+                    try { safeUnmount(app, container[0]); } catch(e) {}
                 };
                 
                 return {
@@ -1482,10 +1546,10 @@
         });
         
         try {
-            var app = createApp(InstallDialog);
-            app.mount(container[0]);
+            app = mountVueApp(createApp, InstallDialog, container[0]);
+            smLog('InstallDialog: mounted');
         } catch (error) {
-            console.error('[script-installer] Error mounting install dialog:', error);
+            smLog('Error mounting install dialog:', error);
             container.remove();
         }
     }
@@ -1495,26 +1559,14 @@
         var container = $( "<div>" ).attr( "id", "script-installer-move-dialog" );
         
         // Load Vue and Codex for move dialog
-        mw.loader.using(['vue', '@wikimedia/codex']).then(function() {
-            var VueMod = mw.loader.require('vue');
-            var CodexPkg = mw.loader.require('@wikimedia/codex');
-            
-            var createApp = VueMod.createApp || VueMod.createMwApp;
-            var defineComponent = VueMod.defineComponent;
-            var ref = VueMod.ref;
-            
-            var CdxDialog = CodexPkg.CdxDialog || (CodexPkg.components && CodexPkg.components.CdxDialog);
-            var CdxButton = CodexPkg.CdxButton || (CodexPkg.components && CodexPkg.components.CdxButton);
-            var CdxSelect = CodexPkg.CdxSelect || (CodexPkg.components && CodexPkg.components.CdxSelect);
-            var CdxField = CodexPkg.CdxField || (CodexPkg.components && CodexPkg.components.CdxField);
-            
-            if (!createApp || !CdxDialog || !CdxButton || !CdxSelect || !CdxField) {
+        loadVueCodex().then(function(libs) {
+            smLog('showMoveDialog: libs loaded');
+            if (!libs.createApp || !libs.CdxDialog || !libs.CdxButton || !libs.CdxSelect || !libs.CdxField) {
                 throw new Error('Codex/Vue components not available for move dialog');
             }
-            
-            createMoveDialog(container, createApp, defineComponent, ref, CdxDialog, CdxButton, CdxSelect, CdxField, anImport);
+            createMoveDialog(container, libs.createApp, libs.defineComponent, libs.ref, libs.CdxDialog, libs.CdxButton, libs.CdxSelect, libs.CdxField, anImport);
         }).catch(function(error) {
-            console.error('[script-installer] Failed to load Vue/Codex for move dialog:', error);
+            smLog('Failed to load Vue/Codex for move dialog:', error);
             // Fallback to old prompt dialog
             var dest = null;
             var PROMPT = STRINGS.movePrompt + " " + SKINS.join(", ");
@@ -1533,7 +1585,7 @@
                     }
                 });
             }).fail(function(error) {
-                console.error('Failed to move script:', error);
+                smLog('Failed to move script:', error);
                 showNotification('notificationMoveError', 'error', anImport.getDescription());
             }).always(function() {
                 setLoading(key, false);
@@ -1545,6 +1597,7 @@
     }
 
     function createMoveDialog(container, createApp, defineComponent, ref, CdxDialog, CdxButton, CdxSelect, CdxField, anImport) {
+        var app;
         var MoveDialog = defineComponent({
             components: { CdxDialog, CdxButton, CdxSelect, CdxField },
             setup() {
@@ -1562,20 +1615,20 @@
                     };
                 });
                 
-                console.log('[script-installer] Move dialog - current target:', anImport.target);
-                console.log('[script-installer] Move dialog - target options:', targetOptions);
+                smLog('Move dialog - current target:', anImport.target);
+                smLog('Move dialog - target options:', targetOptions);
                 
                 var handleMove = function() {
                     if (isMoving.value) return;
                     
                     isMoving.value = true;
                     
-                    console.log('[script-installer] Moving script:', anImport.getDescription());
-                    console.log('[script-installer] From target:', anImport.target);
-                    console.log('[script-installer] To target:', selectedTarget.value);
+                    smLog('Moving script:', anImport.getDescription());
+                    smLog('From target:', anImport.target);
+                    smLog('To target:', selectedTarget.value);
                     
                     anImport.move(selectedTarget.value).done(function() {
-                        console.log('[script-installer] Move successful');
+                        smLog('Move successful');
                         // Reload data without closing dialog
                         buildImportList().then(function() {
                             if (importsRef) {
@@ -1583,6 +1636,7 @@
                             }
                         });
                         dialogOpen.value = false;
+                        try { safeUnmount(app, container[0]); } catch(e) {}
                     }).fail(function(error) {
                         console.error('Failed to move script:', error);
                         showNotification('notificationMoveError', 'error', anImport.getDescription());
@@ -1593,6 +1647,7 @@
                 
                 var handleClose = function() {
                     dialogOpen.value = false;
+                    try { safeUnmount(app, container[0]); } catch(e) {}
                 };
                 
                 return {
@@ -1642,10 +1697,9 @@
         });
         
         try {
-            var app = createApp(MoveDialog);
-            app.mount(container[0]);
+            app = mountVueApp(createApp, MoveDialog, container[0]);
         } catch (error) {
-            console.error('[script-installer] Error mounting move dialog:', error);
+            smLog('Error mounting move dialog:', error);
             container.remove();
         }
     }
@@ -1842,7 +1896,7 @@
       
       function tryNext() {
         if (idx >= chain.length) {
-          console.error('No localization found for any fallback language');
+          smLog('No localization found for any fallback language');
           return;
         }
         const tryLang = chain[idx++];
@@ -1865,7 +1919,7 @@
             }
           })
           .catch(err => {
-            console.error('Failed to load i18n for', tryLang, ':', err);
+            smLog('Failed to load i18n for', tryLang, ':', err);
             tryNext();
           });
       }
@@ -1883,7 +1937,7 @@
     try { 
         if (mw && mw.loader && typeof mw.loader.load === 'function') { 
             mw.loader.load(['vue', '@wikimedia/codex']); 
-            console.log('[script-installer] prewarm: requested vue+codex'); 
+            smLog('prewarm: requested vue+codex');
         } 
     } catch(e) {}
 
@@ -1913,10 +1967,9 @@
             var sectionLabels = results[1];
             var gadgetsLabel = results[2];
             
-            // Store data globally for Vue component
+            // Store data globally and update Vue component reactively
             window.gadgetSectionOrder = sectionOrder;
-            window.gadgetSectionLabels = sectionLabels;
-            window.gadgetsLabel = gadgetsLabel;
+            applyGadgetLabels(sectionLabels, gadgetsLabel);
             
             return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels, gadgetsLabel: gadgetsLabel };
           });
