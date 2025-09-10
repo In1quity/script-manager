@@ -29,6 +29,12 @@
     var gadgetsData = {};
     var userGadgetSettings = {};
 
+    // Internal UI metadata (no globals)
+    var gadgetSectionOrderVar = [];
+    var gadgetSectionLabelsVar = {};
+    var gadgetsLabelVar = 'Gadgets';
+    var scriptInstallerVueComponent = null;
+
     // Goes on the end of edit summaries
     var SUMMARY_TAG = "";
 
@@ -48,9 +54,13 @@
     var SM_MEDIAWIKI_NAMESPACE_NUMBER = 8;
 
     // Leveled logger
+    var SM_LOG_LEVEL_VAR = (function(){
+        try { return (window.SM_LOG_LEVEL || (window.scriptInstallerDebug ? 'debug' : 'info') || 'info').toString().toLowerCase(); }
+        catch(_) { return 'info'; }
+    })();
     function getLogLevel(){
         try {
-            var lvl = (window.SM_LOG_LEVEL || (window.scriptInstallerDebug ? 'debug' : 'info') || '').toString().toLowerCase();
+            var lvl = SM_LOG_LEVEL_VAR;
             var map = { silent:0, error:1, warn:2, info:3, debug:4 };
             return map.hasOwnProperty(lvl) ? map[lvl] : 3;
         } catch(_) { return 3; }
@@ -184,16 +194,16 @@
 
     // Apply gadget labels to globals and Vue component
     function applyGadgetLabels(sectionLabels, gadgetsLabel){
-        window.gadgetSectionLabels = sectionLabels || {};
-        window.gadgetsLabel = gadgetsLabel || 'Gadgets';
+        gadgetSectionLabelsVar = sectionLabels || {};
+        gadgetsLabelVar = gadgetsLabel || 'Gadgets';
         try {
-            var comp = window.scriptInstallerVueComponent;
+            var comp = scriptInstallerVueComponent;
             if (comp) {
                 if (comp.gadgetSectionLabels && typeof comp.gadgetSectionLabels === 'object' && 'value' in comp.gadgetSectionLabels) {
-                    comp.gadgetSectionLabels.value = window.gadgetSectionLabels;
+                    comp.gadgetSectionLabels.value = gadgetSectionLabelsVar;
                 }
                 if (comp.gadgetsLabel && typeof comp.gadgetsLabel === 'object' && 'value' in comp.gadgetsLabel) {
-                    comp.gadgetsLabel.value = window.gadgetsLabel;
+                    comp.gadgetsLabel.value = gadgetsLabelVar;
                 }
                 if (typeof comp.$forceUpdate === 'function') comp.$forceUpdate();
             }
@@ -776,7 +786,7 @@
     }
 
     function reloadAfterChange(){
-        try { window.location.reload(true); } catch(e) { smLog('reloadAfterChange error', e); }
+        try { location.reload(true); } catch(e) { smLog('reloadAfterChange error', e); }
     }
 
     /********************************************
@@ -896,8 +906,8 @@
                 var selectedSkin = ref('common');
                 var loadingStates = ref({});
                 var removedScripts = ref([]);
-                var gadgetSectionLabels = ref(window.gadgetSectionLabels || {});
-                var gadgetsLabel = ref(window.gadgetsLabel || 'Gadgets');
+                var gadgetSectionLabels = ref(gadgetSectionLabelsVar || {});
+                var gadgetsLabel = ref(gadgetsLabelVar || 'Gadgets');
                 var enabledOnly = ref(false);
                 var reloadOnClose = ref(false);
 
@@ -954,7 +964,7 @@
                         });
                         
                         // Get section order from loaded data
-                        var sectionOrder = window.gadgetSectionOrder || [];
+                        var sectionOrder = gadgetSectionOrderVar || [];
                         
                         // Sort sections according to loaded order
                         var sortedSections = sectionOrder.filter(function(section) {
@@ -1373,8 +1383,8 @@
         try {
             app = createApp(ScriptManager);
             var mountedApp = app.mount(rootEl);
-            // expose for reactive updates from async loaders
-            window.scriptInstallerVueComponent = mountedApp;
+            // keep internal reference for reactive updates from async loaders
+            scriptInstallerVueComponent = mountedApp;
             smLog('createVuePanel: mounted');
         } catch (error) {
             smError('Error mounting Vue app:', error);
@@ -2044,16 +2054,20 @@
 
     // scriptInstallerAutoReload removed: always reload explicitly via reloadAfterChange()
 
-    if( window.scriptInstallerInstallTarget === undefined ) {
-        window.scriptInstallerInstallTarget = "common"; // by default, install things to the user's common.js
+    // Initialize default target: prefer new var, fallback to legacy, default to "common"
+    if (!window.SM_DEFAULT_SKIN || typeof window.SM_DEFAULT_SKIN !== 'string') {
+        if (typeof window.scriptInstallerInstallTarget === 'string' && window.scriptInstallerInstallTarget) {
+            window.SM_DEFAULT_SKIN = window.scriptInstallerInstallTarget;
+        } else {
+            window.SM_DEFAULT_SKIN = "common"; // by default, install things to the user's common.js
+        }
     }
-    
-    // Create alias for scriptInstallerInstallTarget in our style
-    window.SM_DEFAULT_SKIN = window.scriptInstallerInstallTarget;
+    // Keep legacy alias in sync for any external consumers
+    try { window.scriptInstallerInstallTarget = window.SM_DEFAULT_SKIN; } catch(_) {}
 
-    // SUMMARY_TAG is now set via window.SUMMARY_TAG or uses the default value
-    if (typeof window.SUMMARY_TAG === 'string') {
-        SUMMARY_TAG = window.SUMMARY_TAG;
+    // SUMMARY_TAG: use internal default; allow override via SM_SUMMARY_TAG only if explicitly set
+    if (typeof window.SM_SUMMARY_TAG === 'string') {
+        SUMMARY_TAG = window.SM_SUMMARY_TAG;
     } else {
         SUMMARY_TAG = "([[mw:User:Iniquity/scriptManager.js|Script Manager]])";
     }
@@ -2193,8 +2207,8 @@
             var sectionLabels = results[1];
             var gadgetsLabel = results[2];
             
-            // Store data globally and update Vue component reactively
-            window.gadgetSectionOrder = sectionOrder;
+            // Store data internally and update Vue component reactively
+            gadgetSectionOrderVar = sectionOrder;
             applyGadgetLabels(sectionLabels, gadgetsLabel);
             
             return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels, gadgetsLabel: gadgetsLabel };
