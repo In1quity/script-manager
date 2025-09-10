@@ -9,8 +9,13 @@
 
 (function(){
     var NS = mw.config.get("wgNamespaceNumber");
-    var jsPage = mw.config.get( "wgPageName" ).slice( -3 ) === ".js" ||
-        mw.config.get( "wgPageContentModel" ) === "javascript";
+    var jsPage = (function(){
+        try {
+            var pn = mw.config.get("wgPageName") || '';
+            var cm = mw.config.get("wgPageContentModel") || '';
+            return /\.js$/i.test(pn) || /\.css$/i.test(pn) || /javascript|css|sanitized-css/i.test(cm);
+        } catch(_) { return true; }
+    })();
     var CORE_JS = '//ru.wikipedia.org/w/index.php?title=User:Iniquity/Gadget-script-installer-core.js&action=raw&ctype=text/javascript';
     var CORE_CSS = '//ru.wikipedia.org/w/index.php?title=User:Iniquity/Gadget-script-installer-core.css&action=raw&ctype=text/css';
     var USER_LANG = mw.config.get('wgUserLanguage') || 'en';

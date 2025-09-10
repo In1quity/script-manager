@@ -62,7 +62,9 @@
 
     function buildRawLoaderUrl(host, title) {
         var normalized = canonicalizeUserNamespace(title);
-        return "//" + host + "/w/index.php?title=" + normalized + "&action=raw&ctype=text/javascript";
+        var isCss = /\.css$/i.test(String(normalized||''));
+        var ctype = isCss ? 'text/css' : 'text/javascript';
+        return "//" + host + "/w/index.php?title=" + normalized + "&action=raw&ctype=" + ctype;
     }
 
     // Lazy-load and cache Vue/Codex modules
@@ -232,7 +234,7 @@
             return Import.ofLocal( unescapeForJsString( match[2] ), target, !!match[1] );
         }
 
-        var LOADER_RGX = /^\s*(\/\/)?\s*mw\.loader\.load\s*\(\s*(?:"|')(.+?)(?:"|')\s*\)/;
+        var LOADER_RGX = /^\s*(\/\/)?\s*mw\.loader\.load\s*\(\s*(?:"|')(.+?)(?:"|')\s*(?:,\s*(?:"|')text\/css(?:"|'))?\s*\)/;
         if( match = LOADER_RGX.exec( line ) ) {
             return Import.ofUrl( unescapeForJsString( match[2] ), target, !!match[1] );
         }
@@ -263,7 +265,9 @@
             ? ""
             : (" // " + backlinkText + " [[" + escapeForJsComment( this.page ) + "]]");
 
-        return dis + "mw.loader.load('" + escapeForJsString( url ) + "');" + suffix;
+        var isCss = /\.css$/i.test(String(this.page||''));
+        var typeArg = isCss ? ", 'text/css'" : "";
+        return dis + "mw.loader.load('" + escapeForJsString( url ) + "'" + typeArg + ");" + suffix;
     }
 
     /**
@@ -1361,10 +1365,13 @@
         if( namespaceNumber === SM_USER_NAMESPACE_NUMBER &&
                 pageName.indexOf( "/" ) > 0 ) {
             var contentModel = mw.config.get( "wgPageContentModel" );
-            if( contentModel === "javascript" ) {
+            var isCodeModel = (contentModel === "javascript" || contentModel === "css" || contentModel === "sanitized-css");
+            if( isCodeModel ) {
                 var prefixLength = mw.config.get( "wgUserName" ).length + USER_NAMESPACE_NAME.length + 1;
                 if( pageName.indexOf( USER_NAMESPACE_NAME + ":" + mw.config.get( "wgUserName" ) ) === 0 ) {
-                    var skinIndex = SKINS.indexOf( pageName.substring( prefixLength ).slice( 0, -3 ) );
+                    var nameWithoutNs = pageName.substring( prefixLength );
+                    var baseSkinName = nameWithoutNs.replace(/\.(?:js|css)$/i, '');
+                    var skinIndex = SKINS.indexOf( baseSkinName );
                     if( skinIndex >= 0 ) {
                         return $( "<abbr>" ).text( STRINGS.cannotInstall )
                                 .attr( "title", STRINGS.cannotInstallSkin );
@@ -1944,6 +1951,7 @@
     }
 
     function getFullTarget ( target ) {
+        // CSS installs are still supported via page value ending with .css.
         if ( target === "global" ) {
             return "User:" + mw.config.get( "wgUserName" ) + "/global.js";
         }
@@ -1992,8 +2000,13 @@
         SUMMARY_TAG = "([[mw:User:Iniquity/scriptManager.js|Script Manager]])";
     }
 
-    var jsPage = mw.config.get( "wgPageName" ).slice( -3 ) === ".js" ||
-        mw.config.get( "wgPageContentModel" ) === "javascript";
+    var jsPage = (function(){
+        try {
+            var pn = mw.config.get( "wgPageName" ) || '';
+            var cm = mw.config.get( "wgPageContentModel" ) || '';
+            return /\.js$/i.test(pn) || /\.css$/i.test(pn) || /javascript|css|sanitized-css/i.test(cm);
+        } catch(_) { return true; }
+    })();
 
     // Load languageFallbacks.json from GitLab via CORS proxy
     var languageFallbacks = {};
