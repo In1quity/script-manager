@@ -1520,19 +1520,20 @@
                     methods: {
                         onClick: function(){
                             var self=this;
-                            if (self.busy) return; self.busy=true;
+                            smLog('install button click', { busy: !!self.busy, label: self.label, scriptName: scriptName });
+                            if (self.busy) return; self.busy=true; smLog('install button set busy=true');
                             if (self.label === STRINGS.installLinkText) {
                                 var adapter = {
-                                    text: function(t){ try { self.label = String(t); } catch(e){} },
-                                    resetBusy: function(){ try { self.busy = false; } catch(e){} }
+                                    text: function(t){ try { self.label = String(t); smLog('adapter.text set label', t); } catch(e){} },
+                                    resetBusy: function(){ try { self.busy = false; smLog('adapter.resetBusy executed'); } catch(e){} }
                                 };
-                                try { showInstallDialog(scriptName, adapter); } catch(e) { self.busy=false; }
+                                try { smLog('opening install dialog for', scriptName); showInstallDialog(scriptName, adapter); } catch(e) { self.busy=false; smLog('showInstallDialog error', e); }
                             } else {
-                                self.label = STRINGS.uninstallProgressMsg;
+                                self.label = STRINGS.uninstallProgressMsg; smLog('uninstall start', { scriptName: scriptName });
                                 var targets = getTargetsForScript(scriptName);
                                 var uninstalls = uniques(targets).map(function(target){ return Import.ofLocal(scriptName, target).uninstall(); });
                                 $.when.apply($, uninstalls).then(function(){
-                                    self.label = STRINGS.installLinkText;
+                                    self.label = STRINGS.installLinkText; smLog('uninstall done; reloading');
                                     reloadAfterChange();
                                 }).always(function(){ self.busy=false; });
                             }
@@ -1599,7 +1600,22 @@
         var container = $( "<div>" ).attr( "id", "sm-install-dialog" );
         
         // Load Vue and Codex for install dialog
-        var open = function(){ loadVueCodex().then(function(libs) {
+        var open = function(){
+            // Fail-safe: if dialog node disappears, make sure to reset busy on the opener
+            var mo = null;
+            try {
+                mo = new MutationObserver(function(){
+                    try {
+                        if (!document.getElementById('sm-install-dialog')) {
+                            if (buttonElement && typeof buttonElement.resetBusy === 'function') { buttonElement.resetBusy(); smLog('observer: resetBusy after dialog removal'); }
+                            if (mo) mo.disconnect();
+                        }
+                    } catch(_) {}
+                });
+                mo.observe(document.body, { childList: true, subtree: true });
+            } catch(_) {}
+
+            loadVueCodex().then(function(libs) {
             smLog('showInstallDialog: libs loaded');
             if (!libs.createApp || !libs.CdxDialog || !libs.CdxButton || !libs.CdxSelect || !libs.CdxField) {
                 throw new Error('Codex/Vue components not available for install dialog');
@@ -1662,6 +1678,11 @@
                     try { safeUnmount(app, container[0]); } catch(e) {}
                     try { if (buttonElement && typeof buttonElement.resetBusy === 'function') buttonElement.resetBusy(); } catch(_) {}
                 };
+                var handleOpenUpdate = function(v){
+                    smLog('install dialog update:open ->', v);
+                    dialogOpen.value = v;
+                    if (v === false) { try { handleCancel(); } catch(e) { smLog('handleOpenUpdate cancel error', e); } }
+                };
                 
                 return {
                     dialogOpen,
@@ -1670,6 +1691,7 @@
                     skinOptions,
                     handleInstall,
                     handleCancel,
+                    handleOpenUpdate,
                     STRINGS: STRINGS,
                     scriptName: scriptName
                 };
@@ -1683,6 +1705,7 @@
                     :primary-action="{ label: isInstalling ? STRINGS.installProgressMsg : STRINGS.installLinkText, actionType: 'progressive', disabled: isInstalling }"
                     @default="handleCancel"
                     @close="handleCancel"
+                    @update:open="handleOpenUpdate"
                     @primary="handleInstall"
                 >
                     <p>{{ STRINGS.bigSecurityWarning.replace('$1', STRINGS.securityWarningSection.replace('$1', scriptName)) }}</p>
