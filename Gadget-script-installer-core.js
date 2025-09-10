@@ -794,8 +794,8 @@
                 var selectedSkin = ref('common');
                 var loadingStates = ref({});
                 var removedScripts = ref([]);
-                var gadgetSectionLabels = ref(gadgetSectionLabels);
-                var gadgetsLabel = ref(gadgetsLabel);
+                var gadgetSectionLabels = ref(window.gadgetSectionLabels || {});
+                var gadgetsLabel = ref(window.gadgetsLabel || 'Gadgets');
                 var enabledOnly = ref(false);
                 
                 // Create skin tabs
@@ -1138,7 +1138,7 @@
                                 </div>
                                 <div v-else class="gadgets-list">
                                     <div v-for="(sectionData, sectionName) in filteredImports" :key="sectionName" class="gadget-section">
-                                        <h4 class="gadget-section-title">{{ gadgetSectionLabels[sectionName] || sectionData.label }}</h4>
+                                        <h4 class="gadget-section-title">{{ (gadgetSectionLabels && gadgetSectionLabels[sectionName]) || sectionData.label }}</h4>
                                         <div class="gadget-section-content">
                                             <cdx-card 
                                                 v-for="(gadget, gadgetName) in sectionData.gadgets" 
@@ -1263,7 +1263,10 @@
         
         try {
             var app = createApp(ScriptManager);
-            app.mount(container[0]);
+            var mountedApp = app.mount(container[0]);
+            
+            // Store reference to Vue component for data updates
+            window.scriptInstallerVueComponent = mountedApp;
         } catch (error) {
             console.error('[script-installer] Error mounting Vue app:', error);
             container.html('<div class="error">Error creating Vue component: ' + error.message + '</div>');
@@ -1967,6 +1970,12 @@
             gadgetSectionOrder = sectionOrder;
             gadgetSectionLabels = sectionLabels;
             gadgetsLabel = gadgetsLabel;
+            
+            // Update Vue component if it exists
+            if (window.scriptInstallerVueComponent) {
+                window.scriptInstallerVueComponent.gadgetSectionLabels.value = sectionLabels;
+                window.scriptInstallerVueComponent.gadgetsLabel.value = gadgetsLabel;
+            }
             
             return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels, gadgetsLabel: gadgetsLabel };
           });
