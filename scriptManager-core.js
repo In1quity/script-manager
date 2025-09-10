@@ -581,6 +581,7 @@
     function buildImportList() {
         if (_pBuildImportList) return _pBuildImportList;
         _pBuildImportList = getAllTargetWikitexts().then( function ( wikitexts ) {
+            var nextImports = {};
             Object.keys( wikitexts ).forEach( function ( targetName ) {
                 var targetImports = [];
                 if( wikitexts[ targetName ] ) {
@@ -592,12 +593,19 @@
                         }
                     }
                 }
-                imports[ targetName ] = targetImports;
+                nextImports[ targetName ] = targetImports;
             } );
-            
-            // Update reactive reference if it exists
+
+            // Replace global imports with a fresh object to trigger reactivity
+            imports = nextImports;
             if (importsRef) {
-                importsRef.value = imports;
+                // Assign a shallow clone to ensure Vue notices the change
+                try {
+                    // Defer assign to next tick to avoid initial empty render
+                    (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
+                        importsRef.value = Object.assign({}, nextImports);
+                    }, 0);
+                } catch(_) { importsRef.value = Object.assign({}, nextImports); }
             }
         } ).catch(function(err){ _pBuildImportList = null; throw err; });
         return _pBuildImportList;

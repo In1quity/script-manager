@@ -17,8 +17,8 @@
             return /\.js$/i.test(pn) || /\.css$/i.test(pn) || /javascript|css|sanitized-css/i.test(cm);
         } catch(_) { return true; }
     })();
-    var CORE_JS = '//mediawiki.org/w/index.php?title=User:Iniquity/scriptManager-core.js&action=raw&ctype=text/javascript';
-    var CORE_CSS = '//mediawiki.org/w/index.php?title=User:Iniquity/scriptManager-core.css&action=raw&ctype=text/css';
+    var CORE_JS = '//www.mediawiki.org/w/index.php?title=User:Iniquity/scriptManager-core.js&action=raw&ctype=text/javascript';
+    var CORE_CSS = '//www.mediawiki.org/w/index.php?title=User:Iniquity/scriptManager-core.css&action=raw&ctype=text/css';
     var USER_LANG = mw.config.get('wgUserLanguage') || 'en';
 
     // Lightweight i18n loader: fetch our JSON (user lang, then 'en'); create only when available
