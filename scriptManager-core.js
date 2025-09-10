@@ -75,8 +75,7 @@
         if (lvl < 1) return;
         try { console.error.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch(_) {}
     }
-    try { window.smLog = smLog; } catch(e) {}
-    try { window.smInfo = smInfo; window.smWarn = smWarn; window.smError = smError; } catch(_) {}
+    // No global exposure for logger
 
     // Normalize localized User namespace to canonical English for URLs
     function canonicalizeUserNamespace(title) {
@@ -798,13 +797,10 @@
 
     function showNotification(messageKeyOrText, type, param) {
         var message;
-        if (typeof messageKeyOrText === 'string' && STRINGS[messageKeyOrText]) {
-            // Use localized message with optional parameter
-            if (param !== undefined) {
-                message = STRINGS[messageKeyOrText].replace('$1', param);
-            } else {
-                message = STRINGS[messageKeyOrText];
-            }
+        if (typeof messageKeyOrText === 'string') {
+            // Localized message (with optional parameter) via SM_t
+            var localized = (typeof t === 'function' ? t(messageKeyOrText) : (typeof SM_t === 'function' ? SM_t(messageKeyOrText) : messageKeyOrText));
+            message = (param !== undefined && typeof localized === 'string') ? localized.replace('$1', param) : localized;
         } else {
             message = messageKeyOrText;
         }
@@ -854,7 +850,7 @@
                     } catch(e) {}
                 }, SM_NOTIFICATION_CLEANUP_DELAY);
             } catch(e) { 
-                smLog('showNotification error:', e); 
+                smError('showNotification error:', e); 
             }
         });
     }
@@ -1658,7 +1654,7 @@
                 }.bind( buttonElement ) );
             }
         }); };
-        try { if (typeof window.SM_waitI18n === 'function') { window.SM_waitI18n(open); } else { open(); } } catch(_) { open(); }
+        try { if (typeof SM_waitI18n === 'function') { SM_waitI18n(open); } else { open(); } } catch(_) { open(); }
         
         // Add to body
         $('body').append(container);
@@ -2104,7 +2100,8 @@
             smWarn('Missing i18n key in all languages:', key); return key;
         } catch(e){ return key; }
     }
-    try { window.SM_t = t; } catch(_) {}
+    // Local alias for templates via app.config.globalProperties.SM_t
+    var SM_t = t;
 
     function loadI18nWithFallback(lang, callback) {
       const chain = getLanguageChain(lang);
@@ -2167,11 +2164,12 @@
     // Using:
     // I18N readiness signaling for lazy openers
     var SM_I18N_DONE = false;
-    try { window.SM_waitI18n = function(cb){ try { if (SM_I18N_DONE) { cb(); } else { (window.SM__i18nCbs||(window.SM__i18nCbs=[])).push(cb); } } catch(_){} }; } catch(_) {}
+    var __SM_i18nCbs = [];
+    function SM_waitI18n(cb){ try { if (SM_I18N_DONE) { cb(); } else { __SM_i18nCbs.push(cb); } } catch(_){} }
 
     var userLang = mw.config.get('wgUserLanguage') || 'en';
     loadI18nWithFallback(userLang, function() {
-      SM_I18N_DONE = true; try { (window.SM__i18nCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
+      SM_I18N_DONE = true; try { (__SM_i18nCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
       $.when(
         $.ready,
         mw.loader.using(["mediawiki.api", "mediawiki.ForeignApi", "mediawiki.util"])
@@ -2210,7 +2208,7 @@
     });
     // Public opener for lazy init loaders
     try {
-        window.SM_openScriptManager = function(){
+        function SM_openScriptManager(){
             var doOpen = function(){
                 try {
                     var exists = !!document.getElementById('sm-panel');
@@ -2221,7 +2219,7 @@
                     }
                 } catch(e) { smLog('SM_openScriptManager error', e); }
             };
-            try { if (typeof window.SM_waitI18n === 'function') { window.SM_waitI18n(doOpen); } else { doOpen(); } } catch(_) { doOpen(); }
-        };
+            try { if (typeof SM_waitI18n === 'function') { SM_waitI18n(doOpen); } else { doOpen(); } } catch(_) { doOpen(); }
+        }
     } catch(e) {}
 } )();

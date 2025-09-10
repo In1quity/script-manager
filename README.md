@@ -1,10 +1,10 @@
-# Gadget Script Installer
+# Script Manager
 
 ## Project Structure
 
-- `Gadget-script-installer-core.js` — main script
-- `Gadget-script-installer.js` — loader
-- `Gadget-script-installer-core.css` — styles
+- `scriptManager-core.js` — main script
+- `scriptManager.js` — loader
+- `scriptManager-core.css` — styles
 - `i18n/` — all language files (JSON)
 
 ## Localization
@@ -15,7 +15,7 @@ Localization is loaded automatically based on the user's MediaWiki language (`wg
 
 Localization files are loaded directly from GitLab:
 ```
-https://gitlab.wikimedia.org/iniquity/script-installer/-/raw/main/i18n/{lang}.json
+https://gitlab.wikimedia.org/iniquity/script-manager/-/raw/main/i18n/{lang}.json
 ```
 If the file for the selected language is missing, English (`en.json`) is used as a fallback.
 
