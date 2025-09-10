@@ -1,5 +1,4 @@
 /* Adapted version of [[User:Enterprisey/script-installer|script-installer]] */
-
 ( function () {
     // An mw.Api object
     var api;
@@ -696,11 +695,11 @@
      *
      ********************************************/
     function getMessageStack() {
-        var stack = document.getElementById('script-installer-message-stack');
+        var stack = document.getElementById('sm-message-stack');
         if (!stack) {
             stack = document.createElement('div');
-            stack.id = 'script-installer-message-stack';
-            stack.className = 'script-installer-message-stack';
+            stack.id = 'sm-message-stack';
+            stack.className = 'sm-message-stack';
             document.body.appendChild(stack);
         }
         return stack;
@@ -738,7 +737,7 @@
                 
                 var stack = getMessageStack();
                 var host = document.createElement('div');
-                host.className = 'script-installer-message-host';
+                host.className = 'sm-message-host';
                 stack.appendChild(host);
                 
                 var app = createApp({
@@ -749,7 +748,7 @@
                             show: true 
                         }; 
                     },
-                    template: '<transition name="script-installer-fade"><CdxMessage v-if="show" :type="type" :fade-in="true" :allow-user-dismiss="true" :auto-dismiss="true" :display-time="'+SM_NOTIFICATION_DISPLAY_TIME+'"><div v-html="message"></div></CdxMessage></transition>'
+                    template: '<transition name="sm-fade"><CdxMessage v-if="show" :type="type" :fade-in="true" :allow-user-dismiss="true" :auto-dismiss="true" :display-time="'+SM_NOTIFICATION_DISPLAY_TIME+'"><div v-html="message"></div></CdxMessage></transition>'
                 });
                 
                 app.component('CdxMessage', CdxMessage);
@@ -776,8 +775,8 @@
      ********************************************/
     function makePanel() {
         // Create container for Vue app
-        var container = $( "<div>" ).attr( "id", "script-installer-panel" );
-        smLog('makePanel: create container #script-installer-panel');
+        var container = $( "<div>" ).attr( "id", "sm-panel" );
+        smLog('makePanel: create container #sm-panel');
         
         // Load Vue and Codex
         loadVueCodex().then(function(libs) {
@@ -1119,11 +1118,11 @@
                     :use-close-button="true"
                     @close="onPanelClose"
                 >
-                    <div class="script-installer-subtitle">
+                    <div class="sm-subtitle">
                         {{ STRINGS.panelHeader }}
                     </div>
-                    <div class="script-installer-controls">
-                        <div class="script-installer-search-wrap">
+                    <div class="sm-controls">
+                        <div class="sm-search-wrap">
                             <cdx-text-input
                                 v-model="filterText"
                                 :placeholder="STRINGS.quickFilter"
@@ -1131,13 +1130,13 @@
                             />
                         </div>
                         
-                        <div class="script-installer-skin-tabs-bar">
-                            <div class="script-installer-skin-tabs">
+                        <div class="sm-skin-tabs-bar">
+                            <div class="sm-skin-tabs">
                                 <cdx-tabs v-model:active="selectedSkin">
                                     <cdx-tab v-for="tab in skinTabs" :key="tab.name" :name="tab.name" :label="tab.label"></cdx-tab>
                                 </cdx-tabs>
                             </div>
-                            <div class="script-installer-enabled-toggle">
+                            <div class="sm-enabled-toggle">
                                 <cdx-toggle-button v-model="enabledOnly" :aria-label="STRINGS.enabledOnly">
                                     {{ STRINGS.enabledOnly }}
                                 </cdx-toggle-button>
@@ -1145,7 +1144,7 @@
                         </div>
                     </div>
                     
-                    <div class="script-installer-scroll">
+                    <div class="sm-scroll">
                         <!-- Gadgets tab -->
                         <template v-if="selectedSkin === 'gadgets'">
                             <div class="gadgets-section">
@@ -1265,11 +1264,11 @@
                         </template>
                     </div>
                     
-                    <div class="script-installer-dialog-module">
-                        <div class="script-installer-bottom-left">
+                    <div class="sm-dialog-module">
+                        <div class="sm-bottom-left">
                             <!-- Empty left side for now -->
                         </div>
-                        <div class="script-installer-dialog-actions">
+                        <div class="sm-dialog-actions">
                             <cdx-button 
                                 weight="primary"
                                 :disabled="Object.keys(filteredImports).length === 0 || selectedSkin === 'gadgets'"
@@ -1372,23 +1371,23 @@
     }
 
     function showUi() {
-        if( !document.getElementById( "script-installer-top-container" ) ) {
+        if( !document.getElementById( "sm-top-container" ) ) {
             var fixedPageName = mw.config.get( "wgPageName" ).replace( /_/g, " " );
             $( "#firstHeading" ).append( $( "<span>" )
-                .attr( "id", "script-installer-top-container" )
+                .attr( "id", "sm-top-container" )
                 .append(
                     buildCurrentPageInstallElement(),
                     " | ",
                     $( "<a>" )
                         .text( STRINGS.manageUserScripts ).click( function () {
-                            var exists = !!document.getElementById( "script-installer-panel" );
+                            var exists = !!document.getElementById( "sm-panel" );
                             smLog('showUi: Manage clicked; panel exists?', exists);
                             if( !exists ) {
                                 smLog('showUi: mount panel');
                                 $( "#mw-content-text" ).before( makePanel() );
                             } else {
                                 smLog('showUi: remove panel');
-                                $( "#script-installer-panel" ).remove();
+                                $( "#sm-panel" ).remove();
                             }
                          } ) ) );
         }
@@ -1408,17 +1407,48 @@
         } );
 
         $( "table.infobox-user-script" ).each( function () {
-            if( $( this ).find( ".script-installer-ibx" ).length === 0 ) {
+            if( $( this ).find( ".sm-ibx" ).length === 0 ) {
                 var scriptName = $( this ).find( "th:contains('Source')" ).next().text() ||
                         mw.config.get( "wgPageName" );
                 scriptName = /user:.+?\/.+?.js/i.exec( scriptName )[0];
-                $( this ).children( "tbody" ).append( $( "<tr>" ).append( $( "<td>" )
+                var td = $( this ).children( "tbody" ).append( $( "<tr>" ).append( $( "<td>" )
                         .attr( "colspan", "2" )
-                        .addClass( "script-installer-ibx" )
-                        .append( $( "<button>" )
-                            .addClass( "mw-ui-button mw-ui-progressive mw-ui-big" )
-                            .text( (getTargetsForScript(scriptName).length ? STRINGS.uninstallLinkText : STRINGS.installLinkText) )
-                            .click( makeLocalInstallClickHandler( scriptName ) ) ) ) );
+                        .addClass( "sm-ibx" ) ) )
+                    .find('td.sm-ibx');
+                var host = $( '<div class="sm-ibx-host"></div>' );
+                td.append( host );
+                var initialLabel = (getTargetsForScript(scriptName).length ? STRINGS.uninstallLinkText : STRINGS.installLinkText);
+                loadVueCodex().then(function(libs){
+                    var app = libs.createApp({
+                        data: function(){ return { label: initialLabel, busy: false, STRINGS: STRINGS }; },
+                        computed: {
+                            actionType: function(){ return this.label === this.STRINGS.installLinkText ? 'progressive' : 'destructive'; }
+                        },
+                        methods: {
+                            onClick: function(){
+                                var self=this;
+                                if (self.busy) return; self.busy=true;
+                                if (self.label === STRINGS.installLinkText) {
+                                    // install via dialog; adapt buttonElement.text to update label
+                                    var adapter = { text: function(t){ try { self.label = String(t); } catch(e){} } };
+                                    try { showInstallDialog(scriptName, adapter); } catch(e) { self.busy=false; }
+                                } else {
+                                    // uninstall all targets
+                                    self.label = STRINGS.uninstallProgressMsg;
+                                    var targets = getTargetsForScript(scriptName);
+                                    var uninstalls = uniques(targets).map(function(target){ return Import.ofLocal(scriptName, target).uninstall(); });
+                                    $.when.apply($, uninstalls).then(function(){
+                                        self.label = STRINGS.installLinkText;
+                                        reloadAfterChange();
+                                    }).always(function(){ self.busy=false; });
+                                }
+                            }
+                        },
+                        template: '<CdxButton :action="actionType" weight="primary" :disabled="busy" @click="onClick">{{ label }}</CdxButton>'
+                    });
+                    app.component('CdxButton', libs.CdxButton);
+                    app.mount(host[0]);
+                });
             }
         } );
     }
@@ -1444,7 +1474,7 @@
 
     function showInstallDialog( scriptName, buttonElement ) {
         // Create container for install dialog
-        var container = $( "<div>" ).attr( "id", "script-installer-install-dialog" );
+        var container = $( "<div>" ).attr( "id", "sm-install-dialog" );
         
         // Load Vue and Codex for install dialog
         loadVueCodex().then(function(libs) {
@@ -1555,7 +1585,7 @@
 
     function showMoveDialog(anImport) {
         // Create container for move dialog
-        var container = $( "<div>" ).attr( "id", "script-installer-move-dialog" );
+        var container = $( "<div>" ).attr( "id", "sm-move-dialog" );
         
         // Load Vue and Codex for move dialog
         loadVueCodex().then(function(libs) {
@@ -1668,7 +1698,7 @@
                     :use-close-button="true"
                     @close="handleClose"
                 >
-                    <div class="script-installer-move-content">
+                    <div class="sm-move-content">
                         <p><strong>{{ STRINGS.currentLocation }}</strong> {{ currentTarget === 'global' ? STRINGS.globalAppliesToAllWikis : currentTarget }}</p>
                         
                         <CdxField>
@@ -1681,7 +1711,7 @@
                             />
                         </CdxField>
                         
-                        <div class="script-installer-move-actions">
+                        <div class="sm-move-actions">
                             <CdxButton
                                 @click="handleMove"
                                 :disabled="isMoving"
@@ -1930,9 +1960,15 @@
       }
     }
 
-    // Prewarm Codex bundles early to speed up first open of the modal
+    // Prewarm Codex bundles early to speed up first open of the modal (optional)
     try { 
-        if (mw && mw.loader && typeof mw.loader.load === 'function') { 
+        var SHOULD_PREWARM = !!window.SM_PREWARM_CODEX;
+        // Heuristic: prewarm if page likely relevant (user JS page, has scriptInstallerLink, or is user namespace)
+        try {
+            var ns = mw.config && mw.config.get ? mw.config.get('wgNamespaceNumber') : null;
+            if (!SHOULD_PREWARM && (document.getElementsByClassName('scriptInstallerLink').length > 0 || ns === 2)) SHOULD_PREWARM = true;
+        } catch(_) {}
+        if (SHOULD_PREWARM && mw && mw.loader && typeof mw.loader.load === 'function') { 
             mw.loader.load(['vue', '@wikimedia/codex']); 
             smLog('prewarm: requested vue+codex');
         } 
@@ -1978,3 +2014,4 @@
       });
     });
 } )();
+

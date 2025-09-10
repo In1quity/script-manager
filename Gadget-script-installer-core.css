@@ -3,7 +3,7 @@
 	max-width: 65rem;
 }
 
-.script-installer-subtitle {
+.sm-subtitle {
 	margin-bottom: 1rem;
 	padding-bottom: 0.5rem;
 	border-bottom: 1px solid var(--border-color-muted, #dadde3);
@@ -12,24 +12,24 @@
 	line-height: 1.4;
 }
 
-.script-installer-controls {
+.sm-controls {
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
 	margin-bottom: 1rem;
 }
 
-.script-installer-search-wrap {
+.sm-search-wrap {
 	width: 100%;
 	margin: 0 0 10px 0;
 }
 
-.script-installer-search-wrap .cdx-text-input {
+.sm-search-wrap .cdx-text-input {
 	width: 100%;
 }
 
 /* Tabs bar with skins on the left */
-.script-installer-skin-tabs-bar {
+.sm-skin-tabs-bar {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -37,12 +37,12 @@
 	margin: 0 0 10px 0;
 }
 
-.script-installer-skin-tabs {
+.sm-skin-tabs {
 	flex: 1 1 auto;
 	min-width: 0;
 }
 
-.script-installer-scroll {
+.sm-scroll {
 	height: 55vh;
 	overflow-y: auto;
 	scrollbar-gutter: stable;
@@ -50,18 +50,18 @@
 	flex-direction: column;
 }
 
-.script-installer-dialog-module {
+.sm-dialog-module {
 	display: flex;
 }
 
-.script-installer-bottom-left {
+.sm-bottom-left {
 	display: flex;
 	justify-content: flex-start;
 	width: 100%;
 	align-items: flex-end;
 }
 
-.script-installer-dialog-actions {
+.sm-dialog-actions {
 	display: flex;
 	justify-content: flex-end;
 	gap: 8px;
@@ -151,12 +151,12 @@
 
 /* Responsive design */
 @media (max-width: 768px) {
-	.script-installer-codex-panel {
+	.sm-cdx-dialog {
 		width: 95%;
 		margin: 0 auto 15px auto;
 	}
 	
-	.script-installer-controls {
+	.sm-controls {
 		flex-direction: column;
 		gap: 0.5rem;
 	}
@@ -175,7 +175,7 @@
 }
 
 /* Error message styling */
-#script-installer-panel .error {
+#sm-panel .error {
 	padding: 1rem;
 	background-color: var(--background-color-error-subtle, #ffe9e5);
 	color: var(--color-error, #bf3c2c);
@@ -199,7 +199,7 @@
 
 /* Install dialog styling - dialog will be teleported to body */
 
-#script-installer-main-install {
+#sm-main-install {
 	font-weight: bold;
 }
 
@@ -301,7 +301,7 @@
 }
 
 /* Message stack container for notifications */
-.script-installer-message-stack {
+.sm-message-stack {
 	position: fixed;
 	top: 20px;
 	right: 20px;
@@ -312,65 +312,64 @@
 	gap: 8px;
 }
 
-.script-installer-message-host .cdx-message {
+.sm-message-host .cdx-message {
 	box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
 }
 
-.script-installer-message-host .cdx-message--block {
+.sm-message-host .cdx-message--block {
 	margin: 0;
 }
 
 /* Fade transition for notifications */
-.script-installer-fade-enter-active, .script-installer-fade-leave-active {
+.sm-fade-enter-active, .sm-fade-leave-active {
 	transition: opacity 0.3s ease;
 }
 
-.script-installer-fade-enter-from, .script-installer-fade-leave-to {
+.sm-fade-enter-from, .sm-fade-leave-to {
 	opacity: 0;
 }
 
-#script-installer-top-container {
+#sm-top-container {
 	bottom: 5px;
 	font-size: 70%;
 	margin-left: 1em;
 	user-select: none;
 }
 
-body.skin-modern #script-installer-top-container a {
+body.skin-modern #sm-top-container a {
 	color: inherit;
 	cursor: pointer;
 }
 
-body.skin-timeless #script-installer-top-container a,
-body.skin-cologneblue #script-installer-top-container a {
+body.skin-timeless #sm-top-container a,
+body.skin-cologneblue #sm-top-container a {
 	cursor: pointer
 }
 
-#script-installer-top-container img.warning {
+#sm-top-container img.warning {
 	position: relative;
 	top: -2px;
 	margin-right: 3px;
 }
 
-td.script-installer-ibx {
+td.sm-ibx {
 	text-align: center
 }
 
 /* Move dialog styles */
-#script-installer-move-dialog {
+#sm-move-dialog {
 	z-index: 1002;
 }
 
-
-.script-installer-move-content {
+.sm-move-content {
 	padding: 1rem 0;
 }
 
-.script-installer-move-content p {
+.sm-move-content p {
 	margin: 0.5rem 0;
 }
 
-.script-installer-move-actions {
+.sm-move-actions {
 	margin-top: 1.5rem;
 	display: flex;
 	justify-content: flex-end;
@@ -387,13 +386,13 @@ td.script-installer-ibx {
 	color: var(--color-destructive, #bf3c2c);
 }
 
-.script-installer-skin-tabs-bar {
+.sm-skin-tabs-bar {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	gap: 1rem;
 }
 
-.script-installer-enabled-toggle {
+.sm-enabled-toggle {
 	flex-shrink: 0;
 }
