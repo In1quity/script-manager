@@ -305,7 +305,7 @@
         var url = (this.type === 2)
             ? this.url
             : buildRawLoaderUrl(host, title);
-        var backlinkText = (this.type === 0 && this.target === 'global') ? STRINGS_EN.backlink : SM_t('backlink');
+        var backlinkText = (this.target === 'global') ? STRINGS_EN.backlink : SM_t('backlink');
 
         var suffix = (this.type === 2)
             ? ""
