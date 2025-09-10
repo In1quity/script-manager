@@ -9,6 +9,9 @@
 */
 
 ( function () {
+    /********************************************
+     * Constants & Globals
+     ********************************************/
     // An mw.Api object
     var api;
     var metaApi;
@@ -38,9 +41,7 @@
     // Goes on the end of edit summaries
     var SUMMARY_TAG = "([[mw:User:Iniquity/scriptManager.js|Script Manager]])";
 
-    /**
-     * Strings, for translation
-     */
+    // Strings, for translation
     var STRINGS = {};
     var STRINGS_EN = {};
 
@@ -53,7 +54,13 @@
     var SM_USER_NAMESPACE_NUMBER = 2;
     var SM_MEDIAWIKI_NAMESPACE_NUMBER = 8;
 
-    // Leveled logger
+    /********************************************
+     * Logger
+     ********************************************/
+    /**
+     * Resolve current log level (silent,error,warn,info,debug)
+     * @returns {number} numeric level (0..4)
+     */
     var SM_LOG_LEVEL_VAR = (function(){
         try { return (window.SM_LOG_LEVEL || (window.scriptInstallerDebug ? 'debug' : 'info') || 'info').toString().toLowerCase(); }
         catch(_) { return 'info'; }
@@ -65,21 +72,25 @@
             return map.hasOwnProperty(lvl) ? map[lvl] : 3;
         } catch(_) { return 3; }
     }
+    /** Debug log */
     function smLog(){
         var lvl = getLogLevel();
         if (lvl < 4) return; // debug only
         try { console.debug.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch(_) {}
     }
+    /** Info log */
     function smInfo(){
         var lvl = getLogLevel();
         if (lvl < 3) return;
         try { console.info.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch(_) {}
     }
+    /** Warning log */
     function smWarn(){
         var lvl = getLogLevel();
         if (lvl < 2) return;
         try { console.warn.apply(console, [SM_DEBUG_PREFIX].concat([].slice.call(arguments))); } catch(_) {}
     }
+    /** Error log */
     function smError(){
         var lvl = getLogLevel();
         if (lvl < 1) return;
@@ -87,6 +98,9 @@
     }
     // No global exposure for logger
 
+    /********************************************
+     * Utilities
+     ********************************************/
     // Normalize localized User namespace to canonical English for URLs
     function canonicalizeUserNamespace(title) {
         try {
@@ -192,7 +206,11 @@
         });
     }
 
-    // Apply gadget labels to globals and Vue component
+    /**
+     * Update in-memory gadget section labels and notify mounted Vue component
+     * @param {Object<string,string>} sectionLabels map of section->label
+     * @param {string} gadgetsLabel display label for Gadgets tab
+     */
     function applyGadgetLabels(sectionLabels, gadgetsLabel){
         gadgetSectionLabelsVar = sectionLabels || {};
         gadgetsLabelVar = gadgetsLabel || 'Gadgets';
@@ -210,7 +228,11 @@
         } catch(e) { smLog('applyGadgetLabels failed', e); }
     }
 
-    // Derive all targets where given script is installed from current imports
+    /**
+     * Derive all targets where given script is installed from current imports
+     * @param {string} name script page name
+     * @returns {string[]} targets
+     */
     function getTargetsForScript(name){
         try {
             var current = (importsRef && importsRef.value) ? importsRef.value : imports;
@@ -224,25 +246,21 @@
         } catch(e) { smLog('getTargetsForScript failed', e); return []; }
     }
 
+    /********************************************
+     * Import model & parser
+     ********************************************/
     /**
      * Constructs an Import. An Import is a line in a JS file that imports a
-     * user script. Properties:
+     * user script.
      *
-     *  - "page" is a page name, such as "User:Foo/Bar.js".
-     *  - "wiki" is a wiki from which the script is loaded, such as
-     *    "en.wikipedia". If null, the script is local, on the user's
-     *    wiki.
-     *  - "url" is a URL that can be passed into mw.loader.load.
-     *  - "target" is the title of the user subpage where the script is,
-     *    without the .js ending: for example, "common".
-     *  - "disabled" is whether this import is commented out.
-     *  - "type" is 0 if local, 1 if remotely loaded, and 2 if URL.
-     *
-     * EXACTLY one of "page" or "url" are null for every Import. This
-     * constructor should not be used directly; use the factory
-     * functions (Import.ofLocal, Import.ofUrl, Import.fromJs) instead.
+     * - page: page name (e.g., "User:Foo/Bar.js")
+     * - wiki: wiki host prefix (e.g., "en.wikipedia") for cross-wiki
+     * - url: absolute URL for loader.load
+     * - target: user subpage without extension (e.g., "common")
+     * - disabled: whether line is commented with //
+     * - type: 0 local, 1 cross-wiki, 2 url
      */
-    function Import( page, wiki, url, target, disabled ) {
+    function createImport( page, wiki, url, target, disabled ) {
         this.page = page;
         this.wiki = wiki;
         this.url = url;
@@ -251,38 +269,44 @@
         this.type = this.url ? 2 : ( this.wiki ? 1 : 0 );
     }
 
-    Import.ofLocal = function ( page, target, disabled ) {
+    createImport.ofLocal = function ( page, target, disabled ) {
         if( disabled === undefined ) disabled = false;
-        return new Import( page, null, null, target, disabled );
+        return new createImport( page, null, null, target, disabled );
     }
 
     /** URL to Import. Assumes wgScriptPath is "/w" */
-    Import.ofUrl = function ( url, target, disabled ) {
+    createImport.ofUrl = function ( url, target, disabled ) {
         if( disabled === undefined ) disabled = false;
         var URL_RGX = /^(?:https?:)?\/\/(.+?)\.org\/w\/index\.php\?.*?title=(.+?(?:&|$))/;
         var match;
         if( match = URL_RGX.exec( url ) ) {
             var title = decodeURIComponent( match[2].replace( /&$/, "" ) ),
                 wiki = decodeURIComponent( match[1] );
-            return new Import( title, wiki, null, target, disabled );
+            return new createImport( title, wiki, null, target, disabled );
         }
-        return new Import( null, null, url, target, disabled );
+        return new createImport( null, null, url, target, disabled );
     }
 
-    Import.fromJs = function ( line, target ) {
+    /**
+     * Parse a single line into Import if matches importScript or mw.loader.load
+     * @param {string} line source line
+     * @param {string} target target skin
+     * @returns {Import|undefined}
+     */
+    createImport.fromJs = function ( line, target ) {
         var IMPORT_RGX = /^\s*(\/\/)?\s*importScript\s*\(\s*(['\"])\s*(.+?)\s*\2\s*\)\s*;?/;
         var match;
         if( match = IMPORT_RGX.exec( line ) ) {
-            return Import.ofLocal( unescapeForJsString( match[3] ), target, !!match[1] );
+            return createImport.ofLocal( unescapeForJsString( match[3] ), target, !!match[1] );
         }
 
         var LOADER_RGX = /^\s*(\/\/)?\s*mw\s*\.\s*loader\s*\.\s*load\s*\(\s*(['\"])\s*(.+?)\s*\2\s*(?:,\s*(['\"])\s*(?:text\/css|application\/css|text\/javascript|application\/javascript)\s*\4\s*)?\)\s*;?/;
         if( match = LOADER_RGX.exec( line ) ) {
-            return Import.ofUrl( unescapeForJsString( match[3] ), target, !!match[1] );
+            return createImport.ofUrl( unescapeForJsString( match[3] ), target, !!match[1] );
         }
     }
 
-    Import.prototype.getDescription = function ( useWikitext ) {
+    createImport.prototype.getDescription = function ( useWikitext ) {
         switch( this.type ) {
             case 0: return useWikitext ? ( "[[" + this.page + "]]" ) : this.page;
             case 1: return SM_t('remoteUrlDesc').replace( "$1", this.page ).replace( "$2", this.wiki );
@@ -290,11 +314,11 @@
         }
     }
 
-    // Removed getHumanUrl in favor of component-level helper getImportHumanUrl
-
-    // Removed unused getHumanUrl()
-
-    Import.prototype.toJs = function () {
+    /**
+     * Serialize Import into canonical mw.loader.load statement
+     * @returns {string}
+     */
+    createImport.prototype.toJs = function () {
         var dis = this.disabled ? "//" : "";
         var host = (function(self){
             if (self.type === 1) return self.wiki + ".org";
@@ -327,7 +351,7 @@
     /**
      * Installs the import.
      */
-    Import.prototype.install = function (options) {
+    createImport.prototype.install = function (options) {
         options = options || {};
         var targetApi = getApiForTarget( this.target );
         var req = targetApi.postWithEditToken( {
@@ -350,7 +374,7 @@
      * Get all line numbers from the target page that mention
      * the specified script.
      */
-    Import.prototype.getLineNums = function ( targetWikitext ) {
+    createImport.prototype.getLineNums = function ( targetWikitext ) {
         function quoted( s ) {
             return new RegExp( "(['\"])" + escapeForRegex( s ) + "\\1" );
         }
@@ -381,7 +405,7 @@
      * Uninstalls the given import. That is, delete all lines from the
      * target page that import the specified script.
      */
-    Import.prototype.uninstall = function (options) {
+    createImport.prototype.uninstall = function (options) {
         options = options || {};
         var that = this;
         var chain = getWikitext( getFullTarget( this.target ) ).then( function ( wikitext ) {
@@ -410,7 +434,7 @@
      * Sets whether the given import is disabled, based on the provided
      * boolean value.
      */
-    Import.prototype.setDisabled = function ( disabled ) {
+    createImport.prototype.setDisabled = function ( disabled ) {
         var that = this;
         this.disabled = disabled;
         return getWikitext( getFullTarget( this.target ) ).then( function ( wikitext ) {
@@ -449,7 +473,7 @@
         });
     }
 
-    Import.prototype.toggleDisabled = function () {
+    createImport.prototype.toggleDisabled = function () {
         this.disabled = !this.disabled;
         return this.setDisabled( this.disabled );
     }
@@ -457,13 +481,13 @@
     /**
      * Move this import to another file.
      */
-    Import.prototype.move = function ( newTarget ) {
+    createImport.prototype.move = function ( newTarget ) {
         if( this.target === newTarget ) return;
-        smLog('Import.move - moving from', this.target, 'to', newTarget);
+        smLog('createImport.move - moving from', this.target, 'to', newTarget);
         var that = this;
-        var old = new Import( this.page, this.wiki, this.url, this.target, this.disabled );
+        var old = new createImport( this.page, this.wiki, this.url, this.target, this.disabled );
         this.target = newTarget;
-        smLog('Import.move - calling install then uninstall');
+        smLog('createImport.move - calling install then uninstall');
         // 1) Try to install to the new place
         // 2) Only after successful install, uninstall from the old place
         return this.install({silent:true}).then(function(){
@@ -549,6 +573,10 @@
     }
 
     var _pBuildImportList = null;
+    /**
+     * Build imports index per target by parsing user JS pages
+     * @returns {JQueryPromise<void>|Promise<void>}
+     */
     function buildImportList() {
         if (_pBuildImportList) return _pBuildImportList;
         _pBuildImportList = getAllTargetWikitexts().then( function ( wikitexts ) {
@@ -556,10 +584,10 @@
                 var targetImports = [];
                 if( wikitexts[ targetName ] ) {
                     var lines = wikitexts[ targetName ].split( "\n" );
-                    var currImport;
+                    var currentImport;
                     for( var i = 0; i < lines.length; i++ ) {
-                        if( currImport = Import.fromJs( lines[i], targetName ) ) {
-                            targetImports.push( currImport );
+                        if( currentImport = createImport.fromJs( lines[i], targetName ) ) {
+                            targetImports.push( currentImport );
                         }
                     }
                 }
@@ -575,6 +603,10 @@
     }
 
     var _pLoadGadgets = null;
+    /**
+     * Load gadgets metadata
+     * @returns {JQueryPromise<object>|Promise<object>}
+     */
     function loadGadgets() {
         if (_pLoadGadgets) return _pLoadGadgets;
         _pLoadGadgets = api.get({
@@ -734,6 +766,10 @@
     }
 
     var _pLoadUserGadgetSettings = null;
+    /**
+     * Load user gadget options
+     * @returns {JQueryPromise<object>|Promise<object>}
+     */
     function loadUserGadgetSettings() {
         if (_pLoadUserGadgetSettings) return _pLoadUserGadgetSettings;
         _pLoadUserGadgetSettings = api.get({
@@ -775,19 +811,19 @@
         });
     }
 
-
-    /*
-     * "Normalizes" (standardizes the format of) lines in the given
-     * config page.
+    /**
+     * Normalize target page: rewrite imports to canonical mw.loader.load form
+     * @param {string} target skin key ('common','vector', 'global', ...)
+     * @returns {JQueryPromise<void>} resolves when edit completes
      */
     function normalize( target ) {
         return getWikitext( getFullTarget( target ) ).then( function ( wikitext ) {
             var lines = wikitext.split( "\n" ),
                 newLines = Array( lines.length ),
-                currImport;
+                currentImport;
             for( var i = 0; i < lines.length; i++ ) {
-                if( currImport = Import.fromJs( lines[i], target ) ) {
-                    newLines[i] = currImport.toJs();
+                if( currentImport = createImport.fromJs( lines[i], target ) ) {
+                    newLines[i] = currentImport.toJs();
                 } else {
                     newLines[i] = lines[i];
                 }
@@ -955,7 +991,7 @@
                         watch(dialogOpen, function(v){
                             smLog('Panel: dialogOpen changed ->', v, 'reloadOnClose=', reloadOnClose.value);
                             if (v === false) {
-                                if (reloadOnClose.value) { reloadOnClose.value = false; setTimeout(function(){ reloadAfterChange(); }, 0); }
+                                if (reloadOnClose.value) { reloadOnClose.value = false; (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){ reloadAfterChange(); }, 0); }
                                 // immediate unmount/remove just like maintenance-core
                                 try { safeUnmount(app, rootEl); } catch(e) { smLog('Panel: safeUnmount error', e); }
                             }
@@ -1439,7 +1475,6 @@
         }
     }
 
-
     function buildCurrentPageInstallElement() {
         var addingInstallLink = false; // will we be adding a legitimate install link?
         var installElement = $( "<span>" ); // only used if addingInstallLink is set to true
@@ -1577,8 +1612,8 @@
                 } catch(e) { smLog('mw-indicators injection failed', e); return false; }
             }
             // Try now; then via hook; then via observer as fallback
-            var ok = injectInstallIndicator();
-            if (!ok) { setTimeout(injectInstallIndicator, 100); }
+            var indicatorInjected = injectInstallIndicator();
+            if (!indicatorInjected) { setTimeout(injectInstallIndicator, 100); }
             try { if (mw && mw.hook && mw.hook('wikipage.content')) mw.hook('wikipage.content').add(function(){ setTimeout(injectInstallIndicator, 0); }); } catch(_) {}
         }
     }
@@ -1595,23 +1630,23 @@
                     },
                     methods: {
                         onClick: function(){
-                            var self=this;
-                            smLog('install button click', { busy: !!self.busy, label: self.label, scriptName: scriptName });
-                            if (self.busy) return; self.busy=true; smLog('install button set busy=true');
-                            if (self.label === SM_t('installLinkText')) {
+                            var vm = this;
+                            smLog('install button click', { busy: !!vm.busy, label: vm.label, scriptName: scriptName });
+                            if (vm.busy) return; vm.busy=true; smLog('install button set busy=true');
+                            if (vm.label === SM_t('installLinkText')) {
                                 var adapter = {
-                                    text: function(t){ try { self.label = String(t); smLog('adapter.text set label', t); } catch(e){} },
-                                    resetBusy: function(){ try { self.busy = false; smLog('adapter.resetBusy executed'); } catch(e){} }
+                                    text: function(t){ try { vm.label = String(t); smLog('adapter.text set label', t); } catch(e){} },
+                                    resetBusy: function(){ try { vm.busy = false; smLog('adapter.resetBusy executed'); } catch(e){} }
                                 };
-                                try { smLog('opening install dialog for', scriptName); showInstallDialog(scriptName, adapter); } catch(e) { self.busy=false; smLog('showInstallDialog error', e); }
+                                try { smLog('opening install dialog for', scriptName); showInstallDialog(scriptName, adapter); } catch(e) { vm.busy=false; smLog('showInstallDialog error', e); }
                             } else {
-                                self.label = SM_t('uninstallProgressMsg'); smLog('uninstall start', { scriptName: scriptName });
+                                vm.label = SM_t('uninstallProgressMsg'); smLog('uninstall start', { scriptName: scriptName });
                                 var targets = getTargetsForScript(scriptName);
-                                var uninstalls = uniques(targets).map(function(target){ return Import.ofLocal(scriptName, target).uninstall(); });
+                                var uninstalls = uniques(targets).map(function(target){ return createImport.ofLocal(scriptName, target).uninstall(); });
                                 $.when.apply($, uninstalls).then(function(){
-                                    self.label = SM_t('installLinkText'); smLog('uninstall done; reloading');
+                                    vm.label = SM_t('installLinkText'); smLog('uninstall done; reloading');
                                     reloadAfterChange();
-                                }).always(function(){ self.busy=false; });
+                                }).always(function(){ vm.busy=false; });
                             }
                         }
                     },
@@ -1662,7 +1697,7 @@
                 $( this ).text( SM_t('uninstallProgressMsg') )
                 var targets = getTargetsForScript(scriptName);
                 var uninstalls = uniques( targets )
-                        .map( function ( target ) { return Import.ofLocal( scriptName, target ).uninstall(); } )
+                        .map( function ( target ) { return createImport.ofLocal( scriptName, target ).uninstall(); } )
                 $.when.apply( $, uninstalls ).then( function () {
                     $( this ).text( SM_t('installLinkText') );
                     reloadAfterChange();
@@ -1678,17 +1713,17 @@
         // Load Vue and Codex for install dialog
         var open = function(){
             // Fail-safe: if dialog node disappears, make sure to reset busy on the opener
-            var mo = null;
+            var observer = null;
             try {
-                mo = new MutationObserver(function(){
+                observer = new MutationObserver(function(){
                     try {
                         if (!document.getElementById('sm-install-dialog')) {
                             if (buttonElement && typeof buttonElement.resetBusy === 'function') { buttonElement.resetBusy(); smLog('observer: resetBusy after dialog removal'); }
-                            if (mo) mo.disconnect();
+                            if (observer) observer.disconnect();
                         }
                     } catch(_) {}
                 });
-                mo.observe(document.body, { childList: true, subtree: true });
+                observer.observe(document.body, { childList: true, subtree: true });
             } catch(_) {}
 
             loadVueCodex().then(function(libs) {
@@ -1705,7 +1740,7 @@
                     SM_t('securityWarningSection').replace( '$1', scriptName ) ) );
             if( okay ) {
                 buttonElement.text( SM_t('installProgressMsg') )
-                Import.ofLocal( scriptName, window.SM_DEFAULT_SKIN ).install().done( function () {
+                createImport.ofLocal( scriptName, window.SM_DEFAULT_SKIN ).install().done( function () {
                     buttonElement.text( SM_t('uninstallLinkText') );
                     reloadAfterChange();
                 }.bind( buttonElement ) );
@@ -1735,7 +1770,7 @@
                     isInstalling.value = true;
                     buttonElement.text(SM_t('installProgressMsg'));
                     
-                    Import.ofLocal(scriptName, selectedSkin.value).install().done(function() {
+                    createImport.ofLocal(scriptName, selectedSkin.value).install().done(function() {
                         buttonElement.text(SM_t('uninstallLinkText'));
                         dialogOpen.value = false;
                         try { safeUnmount(app, container[0]); } catch(e) {}
@@ -2074,10 +2109,20 @@
                 target + ".js";
     }
 
+    /**
+     * Select API instance by target skin (global uses ForeignApi)
+     * @param {string} target
+     * @returns {any} mw.Api or mw.ForeignApi
+     */
     function getApiForTarget( target ) {
         return target === 'global' ? metaApi : api;
     }
 
+    /**
+     * Select API instance by title (global.js uses ForeignApi)
+     * @param {string} title
+     * @returns {any} mw.Api or mw.ForeignApi
+     */
     function getApiForTitle( title ) {
         return title.indexOf( "/global.js" ) !== -1 ? metaApi : api;
     }
@@ -2099,7 +2144,6 @@
         });
     }
 
-    // scriptInstallerAutoReload removed: always reload explicitly via reloadAfterChange()
 
     // Initialize default target: prefer new var, fallback to legacy, default to "common"
     if (!window.SM_DEFAULT_SKIN || typeof window.SM_DEFAULT_SKIN !== 'string') {
@@ -2109,13 +2153,13 @@
             window.SM_DEFAULT_SKIN = "common"; // by default, install things to the user's common.js
         }
     }
-    // Keep legacy alias in sync for any external consumers
+    // Keep legacy alias in sync
     try { window.scriptInstallerInstallTarget = window.SM_DEFAULT_SKIN; } catch(_) {}
 
     // SUMMARY_TAG: internal constant
     // SUMMARY_TAG already initialized above
 
-    var jsPage = (function(){
+    var isJsRelatedPage = (function(){
         try {
             var pn = mw.config.get( "wgPageName" ) || '';
             var cm = mw.config.get( "wgPageContentModel" ) || '';
@@ -2258,14 +2302,14 @@
           });
         }).then(function(data) {
           attachInstallLinks();
-          if (jsPage) showUi();
-          // auto-open via cookie removed
+          if (isJsRelatedPage) showUi();
+          // No auto-open via cookie
         });
       });
     });
     // Public opener for lazy init loaders
     try {
-        function SM_openScriptManager(){
+        window.SM_openScriptManager = function(){
             var doOpen = function(){
                 try {
                     var exists = !!document.getElementById('sm-panel');
@@ -2276,7 +2320,7 @@
                     }
                 } catch(e) { smLog('SM_openScriptManager error', e); }
             };
-            try { if (typeof SM_waitI18n === 'function') { SM_waitI18n(doOpen); } else { doOpen(); } } catch(_) { doOpen(); }
-        }
+            try { if (typeof window.SM_waitI18n === 'function') { window.SM_waitI18n(doOpen); } else { doOpen(); } } catch(_) { doOpen(); }
+        };
     } catch(e) {}
 } )();
