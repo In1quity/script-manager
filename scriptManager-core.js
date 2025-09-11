@@ -261,6 +261,91 @@
      * Import model & parser
      ********************************************/
     /**
+     * Get interwiki prefix for a Wikimedia host fragment captured from URL
+     * @param {string} wiki e.g. "en.wikipedia", "commons.wikimedia", "wikidata", "mediawiki"
+     * @returns {string|null}
+     */
+    function getProjectPrefix(wiki) {
+        try {
+            if (!wiki || typeof wiki !== 'string') return null;
+            var s = wiki.toLowerCase().replace(/^www\./, '');
+            // Language projects (wikipedia and sister projects on their own domains)
+            var m = s.match(/^([a-z-]{2,10})\.(wikipedia|wiktionary|wikibooks|wikiquote|wikisource|wikinews|wikiversity|wikivoyage)$/);
+            if (m) {
+                var lang = m[1];
+                var proj = m[2];
+                if (proj === 'wikipedia') return 'w:' + lang;
+                var map = { wiktionary:'wikt', wikibooks:'b', wikiquote:'q', wikisource:'s', wikinews:'n', wikiversity:'v', wikivoyage:'voyage' };
+                return (map[proj] || proj) + ':' + lang;
+            }
+            // *.wikimedia.org family (commons.wikimedia.org, meta.wikimedia.org, species.wikimedia.org)
+            var wm = s.match(/^([a-z-]{2,20})\.wikimedia$/);
+            if (wm) {
+                var project = wm[1];
+                if (project === 'commons' || project === 'meta' || project === 'species') return project;
+            }
+            // Single-domain projects
+            if (s === 'wikidata') return 'd';
+            if (s === 'mediawiki') return 'mw';
+            return null;
+        } catch(_) { return null; }
+    }
+
+    /**
+     * Get wiki fragment (e.g., "en.wikipedia", "commons.wikimedia") from current server
+     * @returns {string|null}
+     */
+    function getCurrentWikiFragment(){
+        try {
+            var server = (mw && mw.config && mw.config.get ? (mw.config.get('wgServerName') || '') : '');
+            if (!server) return null;
+            return server.toLowerCase().replace(/\.org$/,'').replace(/^www\./,'');
+        } catch(_) { return null; }
+    }
+
+    /**
+     * Get target wiki fragment for a given installation target
+     * @param {string} target e.g., 'global' or skin name
+     * @returns {string|null}
+     */
+    function getTargetWikiFragment(target){
+        try {
+            if (target === 'global') return 'meta.wikimedia';
+            return getCurrentWikiFragment();
+        } catch(_) { return null; }
+    }
+
+    /**
+     * Build page title for summaries with proper interwiki prefix rules
+     * @param {object} imp createImport instance
+     * @returns {string}
+     */
+    function buildSummaryLinkTitle(imp){
+        try {
+            var page = imp.page;
+            if (!page) return '';
+            // Cross-wiki: prefix unless same as target wiki
+            if (imp.type === 1 && imp.wiki) {
+                var currentFrag = getTargetWikiFragment(imp.target);
+                var sourceFrag = String(imp.wiki).toLowerCase();
+                var same = !!currentFrag && (currentFrag.indexOf(sourceFrag) === 0 || sourceFrag.indexOf(currentFrag) === 0);
+                if (!same) {
+                    var pref = getProjectPrefix(imp.wiki);
+                    if (pref) return pref + ':' + page;
+                }
+                return page;
+            }
+            // Global target for local source: prefix with current project
+            if (imp.target === 'global' && imp.type !== 1) {
+                var curFrag = getCurrentWikiFragment();
+                var curPref = getProjectPrefix(curFrag);
+                if (curPref) return curPref + ':' + page;
+            }
+            return page;
+        } catch(_) { return imp && imp.page ? imp.page : ''; }
+    }
+
+    /**
      * Constructs an Import. An Import is a line in a JS file that imports a
      * user script.
      *
@@ -319,8 +404,20 @@
 
     createImport.prototype.getDescription = function ( useWikitext ) {
         switch( this.type ) {
-            case 0: return useWikitext ? ( "[[" + this.page + "]]" ) : this.page;
-            case 1: return SM_t('remoteUrlDesc').replace( "$1", this.page ).replace( "$2", this.wiki );
+            case 0: {
+                if (useWikitext) {
+                    var title0 = buildSummaryLinkTitle(this);
+                    return "[[" + title0 + "]]";
+                }
+                return this.page;
+            }
+            case 1: {
+                if (useWikitext) {
+                    var title1 = buildSummaryLinkTitle(this);
+                    return "[[" + title1 + "]]";
+                }
+                return SM_t('remoteUrlDesc').replace( "$1", this.page ).replace( "$2", this.wiki );
+            }
             case 2: return this.url;
         }
     }
@@ -332,8 +429,8 @@
     createImport.prototype.toJs = function () {
         var dis = this.disabled ? "//" : "";
         var host = (function(self){
-            if (self.type === 1) return self.wiki + ".org";
-            if (self.target === 'global') return 'meta.wikimedia.org';
+            if (self.type === 1) return self.wiki + ".org"; // cross-wiki explicit
+            // For local scripts (type 0) always load from current wiki, even if installing to global
             return mw.config.get('wgServerName');
         })(this);
         var title = (this.type === 2 ? null : this.page);
@@ -342,9 +439,10 @@
             : buildRawLoaderUrl(host, title);
         var backlinkText = (this.target === 'global') ? STRINGS_EN.backlink : SM_t('backlink');
 
+        var backlinkPage = buildSummaryLinkTitle(this);
         var suffix = (this.type === 2)
             ? ""
-            : (" // " + backlinkText + " [[" + escapeForJsComment( this.page ) + "]]");
+            : (" // " + backlinkText + " [[" + escapeForJsComment( backlinkPage ) + "]]");
 
         var isCss = false;
         if (this.type === 2) {
@@ -847,9 +945,11 @@
                     newLines[i] = lines[i];
                 }
             }
-            var summaryText = (target === 'global' && STRINGS_EN && STRINGS_EN.normalizeSummary)
-                ? STRINGS_EN.normalizeSummary
-                : SM_t('normalizeSummary');
+            var summaryText = (function(){
+                // Reuse the same summary selection rules and always append SUMMARY_TAG
+                var base = getSummaryForTarget(target, 'normalizeSummary', '');
+                return base;
+            })();
             return getApiForTarget( target ).postWithEditToken( {
                 action: "edit",
                 title: getFullTarget( target ),
