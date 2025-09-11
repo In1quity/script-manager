@@ -106,11 +106,13 @@
                 } else {
                     try { link.textContent = label; link.setAttribute('title', title); } catch(_) {}
                 }
-                // Move to top of the toolbox
+                // Move to second position in the toolbox
                 var li = (link.closest && link.closest('li')) ? link.closest('li') : link.parentNode;
                 var ul = li && li.parentNode;
                 if (ul && li && ul.firstElementChild !== li) {
-                    ul.insertBefore(li, ul.firstElementChild);
+                    var firstChild = ul.firstElementChild;
+                    var secondChild = firstChild && firstChild.nextElementSibling;
+                    ul.insertBefore(li, secondChild || null);
                 }
             }
             // Create only after localized messages are available (avoid label jumping)
