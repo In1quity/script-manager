@@ -36,6 +36,9 @@
     var gadgetSectionOrderVar = [];
     var gadgetSectionLabelsVar = {};
     var gadgetsLabelVar = 'Gadgets';
+    // Keep direct refs to Vue state for external reactive updates
+    var gadgetSectionLabelsRef = null;
+    var gadgetsLabelRef = null;
     var scriptInstallerVueComponent = null;
 
     // Goes on the end of edit summaries
@@ -215,28 +218,21 @@
     function applyGadgetLabels(sectionLabels, gadgetsLabel){
         gadgetSectionLabelsVar = sectionLabels || {};
         gadgetsLabelVar = gadgetsLabel || 'Gadgets';
+        smInfo('applyGadgetLabels: input sections =', Object.keys(gadgetSectionLabelsVar||{}), 'gadgetsLabel =', gadgetsLabelVar);
         try {
+            // Update via stored refs if available
+            if (gadgetSectionLabelsRef && typeof gadgetSectionLabelsRef === 'object' && 'value' in gadgetSectionLabelsRef) {
+                gadgetSectionLabelsRef.value = Object.assign({}, gadgetSectionLabelsVar);
+            }
+            if (gadgetsLabelRef && typeof gadgetsLabelRef === 'object' && 'value' in gadgetsLabelRef) {
+                gadgetsLabelRef.value = gadgetsLabelVar;
+            }
             var comp = scriptInstallerVueComponent;
             if (comp) {
-                if (comp.gadgetSectionLabels && typeof comp.gadgetSectionLabels === 'object' && 'value' in comp.gadgetSectionLabels) {
-                    comp.gadgetSectionLabels.value = gadgetSectionLabelsVar;
-                }
-                if (comp.gadgetsLabel && typeof comp.gadgetsLabel === 'object' && 'value' in comp.gadgetsLabel) {
-                    comp.gadgetsLabel.value = gadgetsLabelVar;
-                }
-                if (typeof comp.$forceUpdate === 'function') comp.$forceUpdate();
+                smInfo('applyGadgetLabels: applied via refs (have=', !!(gadgetSectionLabelsRef&&gadgetsLabelRef), ')');
+                try { (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){ if (typeof comp.$forceUpdate === 'function') comp.$forceUpdate(); }, 0); } catch(_) {}
             }
         } catch(e) { smLog('applyGadgetLabels failed', e); }
-    }
-
-    // Notify UI that gadgets data has changed so computed props recompute on first render
-    function bumpGadgetsVersion(){
-        try {
-            var comp = scriptInstallerVueComponent;
-            if (comp && comp.gadgetsDataVersion && typeof comp.gadgetsDataVersion === 'object' && 'value' in comp.gadgetsDataVersion) {
-                comp.gadgetsDataVersion.value++;
-            }
-        } catch(e) { smLog('bumpGadgetsVersion failed', e); }
     }
 
     /**
@@ -316,6 +312,50 @@
     }
 
     /**
+     * Convert absolute Wikimedia URL to interwiki link
+     * @param {string} url
+     * @returns {string|null}
+     */
+    function urlToInterwiki(url){
+        try {
+            var a = document.createElement('a'); a.href = url;
+            var host = (a.hostname||'').toLowerCase();
+            var path = (a.pathname||'').replace(/^\/+/, '');
+            var title = decodeURIComponent(path.replace(/^wiki\//, '').replace(/_/g, ' '));
+            var frag = host.replace(/^www\./,'').replace(/\.org$/,'');
+            var pr = getProjectPrefix(frag);
+            if (pr) return pr + ':' + title;
+        } catch(_) {}
+        return null;
+    }
+
+    /**
+     * Try to resolve Documentation interwiki link for an import
+     * @param {object} imp createImport instance
+     * @returns {Promise<string|null>}
+     */
+    function resolveDocumentationInterwiki(imp){
+        try {
+            // Only attempt for local or cross-wiki script pages
+            if (imp.type === 2) return Promise.resolve(null);
+            var host = (imp.type === 1 && imp.wiki) ? (imp.wiki + '.org') : mw.config.get('wgServerName');
+            var title = imp.page;
+            if (!host || !title) return Promise.resolve(null);
+            var rawUrl = '//' + host + '/w/index.php?title=' + encodeURIComponent(title) + '&action=raw&ctype=text/javascript';
+            return fetch(rawUrl).then(function(r){ return r.ok ? r.text() : Promise.reject(); }).then(function(text){
+                // Look for leading comment Documentation: URL
+                var head = text.slice(0, 2000); // scan first ~2KB
+                var m = /Documentation:\s*(\S+)/.exec(head);
+                if (m && m[1]) {
+                    var iw = urlToInterwiki(m[1]);
+                    return iw || null;
+                }
+                return null;
+            }).catch(function(){ return null; });
+        } catch(_) { return Promise.resolve(null); }
+    }
+
+    /**
      * Build page title for summaries with proper interwiki prefix rules
      * @param {object} imp createImport instance
      * @returns {string}
@@ -324,6 +364,10 @@
         try {
             var page = imp.page;
             if (!page) return '';
+            // Prefer documentation override if available on the instance
+            if (imp.docInterwiki && typeof imp.docInterwiki === 'string') {
+                return imp.docInterwiki;
+            }
             // Cross-wiki: prefix unless same as target wiki
             if (imp.type === 1 && imp.wiki) {
                 var currentFrag = getTargetWikiFragment(imp.target);
@@ -463,20 +507,25 @@
     createImport.prototype.install = function (options) {
         options = options || {};
         var targetApi = getApiForTarget( this.target );
-        var req = targetApi.postWithEditToken( {
-            action: "edit",
-            title: getFullTarget( this.target ),
-            summary: getSummaryForTarget( this.target, 'installSummary', this.getDescription( /* useWikitext */ true ) ),
-            appendtext: "\n" + this.toJs()
-        } );
-        if (options.silent) return req;
-        return req.then(function() {
-            showNotification('notificationInstallSuccess', 'success', this.getDescription());
-        }.bind(this)).catch(function(error) {
-            smError('Install failed:', error);
-            showNotification('notificationInstallError', 'error', this.getDescription());
-            throw error;
-        }.bind(this));
+        var self = this;
+        // Try to resolve Documentation iw for better summary link
+        return resolveDocumentationInterwiki(this).then(function(iw){
+            if (iw) { try { self.docInterwiki = iw; } catch(_) {} }
+            var req = targetApi.postWithEditToken( {
+                action: "edit",
+                title: getFullTarget( self.target ),
+                summary: getSummaryForTarget( self.target, 'installSummary', self.getDescription( /* useWikitext */ true ) ),
+                appendtext: "\n" + self.toJs()
+            } );
+            if (options.silent) return req;
+            return req.then(function() {
+                showNotification('notificationInstallSuccess', 'success', self.getDescription());
+            }).catch(function(error) {
+                smError('Install failed:', error);
+                showNotification('notificationInstallError', 'error', self.getDescription());
+                throw error;
+            });
+        });
     }
 
     /**
@@ -517,7 +566,9 @@
     createImport.prototype.uninstall = function (options) {
         options = options || {};
         var that = this;
-        var chain = getWikitext( getFullTarget( this.target ) ).then( function ( wikitext ) {
+        var chain = resolveDocumentationInterwiki(this).then(function(iw){ if (iw) { try { that.docInterwiki = iw; } catch(_) {} } }).then(function(){
+            return getWikitext( getFullTarget( that.target ) );
+        }).then( function ( wikitext ) {
             var lineNums = that.getLineNums( wikitext ),
                 newWikitext = wikitext.split( "\n" ).filter( function ( _, idx ) {
                     return lineNums.indexOf( idx ) < 0;
@@ -546,7 +597,9 @@
     createImport.prototype.setDisabled = function ( disabled ) {
         var that = this;
         this.disabled = disabled;
-        return getWikitext( getFullTarget( this.target ) ).then( function ( wikitext ) {
+        return resolveDocumentationInterwiki(this).then(function(iw){ if (iw) { try { that.docInterwiki = iw; } catch(_) {} } }).then(function(){
+            return getWikitext( getFullTarget( that.target ) );
+        }).then( function ( wikitext ) {
             var lineNums = that.getLineNums( wikitext ),
                 newWikitextLines = wikitext.split( "\n" );
 
@@ -597,10 +650,11 @@
         var old = new createImport( this.page, this.wiki, this.url, this.target, this.disabled );
         this.target = newTarget;
         smLog('createImport.move - calling install then uninstall');
-        // 1) Try to install to the new place
-        // 2) Only after successful install, uninstall from the old place
-        return this.install({silent:true}).then(function(){
-            return old.uninstall({silent:true});
+        var self = this;
+        return resolveDocumentationInterwiki(this).then(function(iw){ if (iw) { try { self.docInterwiki = iw; old.docInterwiki = iw; } catch(_) {} } }).then(function(){
+            return self.install({silent:true}).then(function(){
+                return old.uninstall({silent:true});
+            });
         }).then(function(){
             showNotification('notificationMoveSuccess', 'success', that.getDescription());
         }).catch(function(error){
@@ -614,7 +668,7 @@
         var localTitles = localSkins.map( getFullTarget ).join( "|" );
         var globalTitle = getFullTarget( 'global' );
         
-        var localPromise = api.get({
+        var localPromise = getApiForTitle(localTitles).get({
                 action: "query",
                 prop: "revisions",
                 rvprop: "content",
@@ -622,7 +676,7 @@
             titles: localTitles
         });
         
-        var globalPromise = metaApi.get({
+        var globalPromise = getApiForTitle(globalTitle).get({
             action: "query",
             prop: "revisions",
             rvprop: "content",
@@ -631,32 +685,24 @@
         });
         
         return $.when(localPromise, globalPromise).then( function ( localData, globalData ) {
-            
             var result = {};
-            prefixLength = mw.config.get( "wgUserName" ).length + USER_NAMESPACE_NAME.length + 1;
-            
-            // Process local skins - mw.ForeignApi returns data in different format
+            var extractFromPagesToTargets = function(pagesObj){
+                var out = {};
+                if (!pagesObj) return out;
+                Object.values(pagesObj).forEach(function(page){
+                    var nameWithoutExtension = new mw.Title( page.title ).getNameText();
+                    var targetName = nameWithoutExtension.substring( nameWithoutExtension.indexOf( "/" ) + 1 );
+                    out[targetName] = page.revisions ? page.revisions[0].slots.main["*"] : null;
+                });
+                return out;
+            };
+
             var localPages = localData && localData.query && localData.query.pages ? localData.query.pages : 
                            (localData && localData[0] && localData[0].query && localData[0].query.pages ? localData[0].query.pages : null);
-            if( localPages ) {
-                Object.values( localPages ).forEach( function ( moreData ) {
-                    var nameWithoutExtension = new mw.Title( moreData.title ).getNameText();
-                    var targetName = nameWithoutExtension.substring( nameWithoutExtension.indexOf( "/" ) + 1 );
-                    result[targetName] = moreData.revisions ? moreData.revisions[0].slots.main["*"] : null;
-                } );
-            }
-            
-            // Process global skin - mw.ForeignApi returns data in different format
             var globalPages = globalData && globalData.query && globalData.query.pages ? globalData.query.pages : 
                             (globalData && globalData[0] && globalData[0].query && globalData[0].query.pages ? globalData[0].query.pages : null);
-            if( globalPages ) {
-                Object.values( globalPages ).forEach( function ( moreData ) {
-                    var nameWithoutExtension = new mw.Title( moreData.title ).getNameText();
-                    var targetName = nameWithoutExtension.substring( nameWithoutExtension.indexOf( "/" ) + 1 );
-                    result[targetName] = moreData.revisions ? moreData.revisions[0].slots.main["*"] : null;
-                } );
-            }
-            
+            Object.assign(result, extractFromPagesToTargets(localPages));
+            Object.assign(result, extractFromPagesToTargets(globalPages));
             return result;
         } ).fail( function( error ) {
             // Fallback: try to load only local skins
@@ -668,7 +714,6 @@
                 titles: SKINS.filter(function(skin) { return skin !== 'global'; }).map( getFullTarget ).join( "|" )
             }).then( function ( data ) {
                 var result = {};
-                    prefixLength = mw.config.get( "wgUserName" ).length + USER_NAMESPACE_NAME.length + 1;
                 if( data && data.query && data.query.pages ) {
                 Object.values( data.query.pages ).forEach( function ( moreData ) {
                     var nameWithoutExtension = new mw.Title( moreData.title ).getNameText();
@@ -681,14 +726,72 @@
         } );
     }
 
+    function extractWikitextFromResponse(resp) {
+        var data = resp && resp.query ? resp : (resp && resp[0] && resp[0].query ? resp[0] : null);
+        if (!data || !data.query || !data.query.pages) return null;
+        var page = Object.values(data.query.pages)[0];
+        return page && page.revisions ? page.revisions[0].slots.main["*"] : null;
+    }
+
+    function getWikitextForTarget(target) {
+        var title = getFullTarget(target);
+        return getWikitext(title).then(function(text){ return text || null; });
+    }
+
     var _pBuildImportList = null;
     /**
      * Build imports index per target by parsing user JS pages
      * @returns {JQueryPromise<void>|Promise<void>}
      */
-    function buildImportList() {
+    var importsLoadedTargets = {};
+    function _withBuildImportListCleanup(p){
+        try {
+            if (p && typeof p.always === 'function') {
+                p.always(function(){ _pBuildImportList = null; });
+            } else if (p && typeof p.finally === 'function') {
+                p.finally(function(){ _pBuildImportList = null; });
+            } else if (p && typeof p.then === 'function') {
+                p.then(function(){ _pBuildImportList = null; }, function(){ _pBuildImportList = null; });
+            } else {
+                _pBuildImportList = null;
+            }
+        } catch(_) { _pBuildImportList = null; }
+        return p;
+    }
+
+    function buildImportList(targets) {
         if (_pBuildImportList) return _pBuildImportList;
-        _pBuildImportList = getAllTargetWikitexts().then( function ( wikitexts ) {
+        if (Array.isArray(targets) && targets.length > 0) {
+            // Load subset of targets
+            var tasks = targets.map(function(t){ return getWikitextForTarget(t).then(function(text){ return { target: t, text: text }; }); });
+            _pBuildImportList = _withBuildImportListCleanup(Promise.all(tasks).then(function(results){
+                results.forEach(function(entry){
+                    var targetName = entry.target;
+                    var targetImports = [];
+                    if (entry.text) {
+                        var lines = entry.text.split('\n');
+                        var currentImport;
+                        for (var i = 0; i < lines.length; i++) {
+                            if (currentImport = createImport.fromJs(lines[i], targetName)) {
+                                targetImports.push(currentImport);
+                            }
+                        }
+                    }
+                    imports[targetName] = targetImports;
+                    importsLoadedTargets[targetName] = true;
+                });
+                if (importsRef) {
+                    try {
+                        (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
+                            importsRef.value = Object.assign({}, imports);
+                        }, 0);
+                    } catch(_) { importsRef.value = Object.assign({}, imports); }
+                }
+            }).catch(function(err){ throw err; }));
+            return _pBuildImportList;
+        }
+        // Default: load all
+        _pBuildImportList = _withBuildImportListCleanup(getAllTargetWikitexts().then( function ( wikitexts ) {
             var nextImports = {};
             Object.keys( wikitexts ).forEach( function ( targetName ) {
                 var targetImports = [];
@@ -702,21 +805,30 @@
                     }
                 }
                 nextImports[ targetName ] = targetImports;
+                importsLoadedTargets[targetName] = true;
             } );
 
-            // Replace global imports with a fresh object to trigger reactivity
             imports = nextImports;
             if (importsRef) {
-                // Assign a shallow clone to ensure Vue notices the change
                 try {
-                    // Defer assign to next tick to avoid initial empty render
                     (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
                         importsRef.value = Object.assign({}, nextImports);
                     }, 0);
                 } catch(_) { importsRef.value = Object.assign({}, nextImports); }
             }
-        } ).catch(function(err){ _pBuildImportList = null; throw err; });
+        } ).catch(function(err){ throw err; }));
         return _pBuildImportList;
+    }
+
+    function ensureImportsForTarget(target){
+        if (importsLoadedTargets[target]) return Promise.resolve();
+        return buildImportList([target]);
+    }
+    function ensureAllImports(){
+        // If any target not yet loaded, fetch all remaining
+        var missing = SKINS.filter(function(s){ return !importsLoadedTargets[s]; });
+        if (missing.length === 0) return Promise.resolve();
+        return buildImportList(missing);
     }
 
     var _pLoadGadgets = null;
@@ -726,6 +838,8 @@
      */
     function loadGadgets() {
         if (_pLoadGadgets) return _pLoadGadgets;
+        smInfo('loadGadgets: start');
+        var t0 = (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
         _pLoadGadgets = api.get({
             action: 'query',
             list: 'gadgets',
@@ -758,7 +872,7 @@
                         isDefault: isDefault
                     };
                 });
-                
+                smInfo('loadGadgets: parsed count =', Object.keys(gadgetsData).length);
                 return gadgetsData;
             } else {
                 gadgetsData = {};
@@ -768,7 +882,7 @@
             smError('Failed to load gadgets:', error);
             gadgetsData = {};
             return gadgetsData;
-        }).always(function(){ _pLoadGadgets = null; });
+        }).always(function(){ var t1=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now(); smInfo('loadGadgets: done in', Math.round(t1-t0),'ms'); _pLoadGadgets = null; });
         return _pLoadGadgets;
     }
 
@@ -808,24 +922,24 @@
     }
 
     function loadGadgetsLabel() {
-        smInfo('Loading gadgets label from system messages');
+        smInfo('loadGadgetsLabel: request prefs-gadgets');
         return api.get({
             action: 'query',
             meta: 'allmessages',
             ammessages: 'prefs-gadgets',
             format: 'json'
         }).then(function(msgData) {
-            smLog('System message response:', msgData);
+            smLog('loadGadgetsLabel: response', msgData);
             if (msgData.query && msgData.query.allmessages && msgData.query.allmessages[0] && msgData.query.allmessages[0]['*']) {
                 var label = msgData.query.allmessages[0]['*'];
-                smInfo('Loaded gadgets label from system message:', label);
+                smInfo('loadGadgetsLabel: label =', label);
                 return label;
             } else {
-                smWarn('No system message found, using fallback');
+                smWarn('loadGadgetsLabel: not found, fallback');
                 return 'Gadgets'; // Fallback
             }
         }).catch(function() {
-            smWarn('Error loading system message, using fallback');
+            smWarn('loadGadgetsLabel: error, fallback');
             return 'Gadgets'; // Fallback
         });
     }
@@ -836,50 +950,43 @@
         Object.values(gadgetsData).forEach(function(gadget) {
             sections.add(gadget.section);
         });
-        
-        // Create promises for all section label requests
-        var sectionPromises = [];
-        sections.forEach(function(section) {
-            if (section !== 'other') {
-                sectionPromises.push(
-                    api.get({
-                        action: 'query',
-                        titles: 'MediaWiki:Gadget-section-' + section,
-                        prop: 'extracts',
-                        exintro: true,
-                        explaintext: true,
-                        format: 'json'
-                    }).then(function(data) {
-                        var page = Object.values(data.query.pages)[0];
-                        if (page && page.extract) {
-                            return {
-                                section: section,
-                                label: page.extract.trim()
-                            };
-                        } else {
-                            return {
-                                section: section,
-                                label: section.charAt(0).toUpperCase() + section.slice(1)
-                            };
-                        }
-                    }).catch(function() {
-                        return {
-                            section: section,
-                            label: section.charAt(0).toUpperCase() + section.slice(1)
-                        };
-                    })
-                );
-            }
-        });
-        
-        // Return promise that resolves when all labels are loaded
-        return Promise.all(sectionPromises).then(function(labels) {
-            var sectionLabels = {};
-            labels.forEach(function(item) {
-                sectionLabels[item.section] = item.label;
-            });
-            return sectionLabels;
-        });
+        smInfo('loadSectionLabels: sections =', Array.from(sections));
+        // Filter out placeholder section
+        var names = Array.from(sections).filter(function(s){ return s && s !== 'other'; }).map(function(s){ return 'gadget-section-' + s; });
+        if (!names.length) return Promise.resolve({});
+
+        // Fetch all labels in one request via allmessages
+        smInfo('loadSectionLabels: allmessages request keys =', names.join('|'));
+        var t0 = (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+        return api.get({
+            action: 'query',
+            meta: 'allmessages',
+            ammessages: names.join('|'),
+            format: 'json'
+        }).then(function(msgData){
+            var map = {};
+            try {
+                var arr = (msgData && msgData.query && msgData.query.allmessages) ? msgData.query.allmessages : [];
+                arr.forEach(function(m){
+                    var key = m && m.name ? m.name : '';
+                    var value = m && typeof m['*'] === 'string' && m['*'].trim() ? m['*'].trim() : '';
+                    if (!key) return;
+                    // key format: gadget-section-<section>
+                    var section = key.replace(/^gadget-section-/, '');
+                    map[section] = value || (section.charAt(0).toUpperCase() + section.slice(1));
+                });
+            } catch(_) {}
+            // Ensure all sections have a label
+            Array.from(sections).forEach(function(s){ if (s && s !== 'other' && !map[s]) { map[s] = s.charAt(0).toUpperCase() + s.slice(1); } });
+            smInfo('loadSectionLabels: result keys =', Object.keys(map));
+            return map;
+        }).catch(function(e){
+            smWarn('loadSectionLabels: error', e);
+            // Fallback: capitalized keys
+            var fallback = {};
+            Array.from(sections).forEach(function(s){ if (s && s !== 'other') { fallback[s] = s.charAt(0).toUpperCase() + s.slice(1); } });
+            return fallback;
+        }).always(function(){ var t1=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now(); smInfo('loadSectionLabels: done in', Math.round(t1-t0),'ms'); });
     }
 
     var _pLoadUserGadgetSettings = null;
@@ -935,27 +1042,40 @@
      */
     function normalize( target ) {
         return getWikitext( getFullTarget( target ) ).then( function ( wikitext ) {
-            var lines = wikitext.split( "\n" ),
-                newLines = Array( lines.length ),
-                currentImport;
-            for( var i = 0; i < lines.length; i++ ) {
-                if( currentImport = createImport.fromJs( lines[i], target ) ) {
-                    newLines[i] = currentImport.toJs();
+            var lines = wikitext.split( "\n" );
+            var newLines = Array( lines.length );
+            var importsToResolve = [];
+            var importAtIndex = [];
+            for (var i = 0; i < lines.length; i++) {
+                var imp = createImport.fromJs( lines[i], target );
+                if (imp) {
+                    importsToResolve.push( imp );
+                    importAtIndex.push( i );
                 } else {
                     newLines[i] = lines[i];
                 }
             }
-            var summaryText = (function(){
-                // Reuse the same summary selection rules and always append SUMMARY_TAG
-                var base = getSummaryForTarget(target, 'normalizeSummary', '');
-                return base;
-            })();
-            return getApiForTarget( target ).postWithEditToken( {
-                action: "edit",
-                title: getFullTarget( target ),
-                summary: summaryText,
-                text: newLines.join( "\n" )
-            } );
+            // Resolve Documentation overrides for all detected imports (best-effort)
+            var resolves = importsToResolve.map(function(imp){
+                return resolveDocumentationInterwiki(imp).then(function(iw){ if (iw) { try { imp.docInterwiki = iw; } catch(_){} } });
+            });
+            return Promise.allSettled(resolves).then(function(){
+                // Rebuild normalized lines using possibly enhanced backlink titles
+                for (var j = 0; j < importsToResolve.length; j++) {
+                    var idx = importAtIndex[j];
+                    newLines[idx] = importsToResolve[j].toJs();
+                }
+                var summaryText = (function(){
+                    var base = getSummaryForTarget(target, 'normalizeSummary', '');
+                    return base;
+                })();
+                return getApiForTarget( target ).postWithEditToken( {
+                    action: "edit",
+                    title: getFullTarget( target ),
+                    summary: summaryText,
+                    text: newLines.join( "\n" )
+                } );
+            });
         } ).then(function() {
             showNotification('notificationNormalizeSuccess', 'success');
         }).catch(function(error) {
@@ -1098,13 +1218,13 @@
                 var selectedSkin = ref('common');
                 var loadingStates = ref({});
                 var removedScripts = ref([]);
-                var gadgetSectionLabels = ref(gadgetSectionLabelsVar || {});
+                var gadgetSectionLabels = ref(Object.assign({}, gadgetSectionLabelsVar || {}));
                 var gadgetsLabel = ref(gadgetsLabelVar || 'Gadgets');
+                try { gadgetSectionLabelsRef = gadgetSectionLabels; gadgetsLabelRef = gadgetsLabel; } catch(_) {}
                 var enabledOnly = ref(false);
                 var reloadOnClose = ref(false);
                 var isNormalizing = ref(false);
                 var normalizeCompleted = ref(false);
-                var gadgetsDataVersion = ref(0);
 
                 try {
                     if (watch) {
@@ -1135,8 +1255,21 @@
                         return { name: skin, label: skin };
                     }));
                 });
+                try { selectedSkin.value = window.SM_DEFAULT_SKIN || 'common'; } catch(_) {}
                 
+                var isSelectedTargetLoaded = computed(function(){
+                    try {
+                        if (!importsRef || !importsRef.value) return false;
+                        var tab = selectedSkin.value;
+                        if (tab === 'gadgets') return !!SM_GADGETS_READY;
+                        if (tab === 'all') return Object.keys(importsRef.value || {}).length > 0;
+                        return Object.prototype.hasOwnProperty.call(importsRef.value, tab);
+                    } catch(_) { return false; }
+                });
+
                 var filteredImports = computed(function() {
+                    // establish reactive deps on labels so updates retrigger rerender
+                    try { void gadgetSectionLabels.value; void gadgetsLabel.value; } catch(_) {}
                     var result = {};
                     
                     // Handle gadgets tab separately
@@ -1238,6 +1371,32 @@
                 var setLoading = function(key, value) {
                     loadingStates.value[key] = value;
                 };
+
+                // Lazy load per tab
+                if (watch) {
+                    watch(selectedSkin, function(newTab){
+                        if (!newTab) return;
+                        if (newTab === 'gadgets') {
+                            // Load gadgets metadata and labels on demand
+                            if (!SM_GADGETS_READY && !SM_GADGETS_LOADING) {
+                                SM_GADGETS_LOADING = true;
+                                loadGadgets().then(function(){ return Promise.all([ loadSectionLabels(), loadGadgetsLabel() ]); })
+                                  .then(function(results){
+                                    applyGadgetLabels(results[0], results[1]);
+                                    SM_GADGETS_READY = true;
+                                  }).catch(function(){ SM_GADGETS_READY = true; });
+                            }
+                            // Also load user gadget settings on demand
+                            if (!_pLoadUserGadgetSettings) { loadUserGadgetSettings(); }
+                        } else if (newTab === 'all') {
+                            // Ensure all imports are loaded
+                            ensureAllImports();
+                        } else {
+                            // Ensure imports for specific target
+                            ensureImportsForTarget(newTab);
+                        }
+                    }, { immediate: true });
+                }
                 
                 var handleNormalize = function(targetName) {
                     var key = 'normalize-' + targetName;
@@ -1387,6 +1546,7 @@
                     filterText,
                     selectedSkin,
                     skinTabs,
+                    isSelectedTargetLoaded,
                     filteredImports,
                     loadingStates,
                     removedScripts,
@@ -1395,7 +1555,6 @@
                     enabledOnly,
                     isNormalizing,
                     normalizeCompleted,
-                    gadgetsDataVersion,
                     handleNormalize,
                     handleUninstall,
                     handleToggleDisabled,
@@ -1444,6 +1603,10 @@
                     </div>
                     
                     <div class="sm-scroll">
+                        <div v-if="!isSelectedTargetLoaded" class="sm-tpl-loading">
+                          <div class="cdx-progress-indicator"><div class="cdx-progress-indicator__indicator"><progress class="cdx-progress-indicator__indicator__progress" aria-label="Loading"></progress></div></div>
+                        </div>
+                        <template v-else>
                         <!-- Gadgets tab -->
                         <template v-if="selectedSkin === 'gadgets'">
                             <div class="gadgets-section">
@@ -1552,6 +1715,7 @@
                             </div>
                         </div>
                         </template>
+                        </template>
                     </div>
                     
                     <div class="sm-dialog-module">
@@ -1578,6 +1742,20 @@
             var mountedApp = app.mount(rootEl);
             // keep internal reference for reactive updates from async loaders
             scriptInstallerVueComponent = mountedApp;
+            // Ensure labels/section titles are visible on first render (non-js/css pages)
+            try {
+                (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
+                    try {
+                        var comp = scriptInstallerVueComponent;
+                        if (comp && comp.gadgetSectionLabels && typeof comp.gadgetSectionLabels === 'object' && 'value' in comp.gadgetSectionLabels) {
+                            comp.gadgetSectionLabels.value = gadgetSectionLabelsVar || {};
+                        }
+                        if (comp && comp.gadgetsLabel && typeof comp.gadgetsLabel === 'object' && 'value' in comp.gadgetsLabel) {
+                            comp.gadgetsLabel.value = gadgetsLabelVar || 'Gadgets';
+                        }
+                    } catch(_) {}
+                }, 0);
+            } catch(_) {}
             smLog('createVuePanel: mounted');
         } catch (error) {
             smError('Error mounting Vue app:', error);
@@ -2132,12 +2310,9 @@
                 rvslots: "main",
                 rvlimit: 1,
                 titles: title
-        }).then( function ( data ) {
-            var pageId = Object.keys( data.query.pages )[0];
-            if( data.query.pages[pageId].revisions ) {
-                return data.query.pages[pageId].revisions[0].slots.main["*"];
-            }
-            return "";
+        }).then( function ( resp ) {
+            var text = extractWikitextFromResponse(resp);
+            return text == null ? "" : text;
         } );
     }
 
@@ -2408,6 +2583,19 @@
     var __SM_i18nCbs = [];
     function SM_waitI18n(cb){ try { if (SM_I18N_DONE) { cb(); } else { __SM_i18nCbs.push(cb); } } catch(_){} }
 
+    // API readiness (mw.Api and mw.ForeignApi initialized)
+    var SM_API_READY = false;
+    var __SM_apiCbs = [];
+    function SM_waitApiReady(cb){ try { if (SM_API_READY) { cb(); } else { __SM_apiCbs.push(cb); } } catch(_){} }
+
+    // Fine-grained readiness flags
+    var SM_IMPORTS_READY = false;
+    var __SM_importCbs = [];
+    function SM_waitImportsReady(cb){ try { if (SM_IMPORTS_READY) { cb(); } else { __SM_importCbs.push(cb); } } catch(_){} }
+
+    var SM_GADGETS_READY = false;
+    var SM_GADGETS_LOADING = false;
+
     var userLang = mw.config.get('wgUserLanguage') || 'en';
     loadI18nWithFallback(userLang, function() {
       SM_I18N_DONE = true; try { (__SM_i18nCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
@@ -2417,38 +2605,35 @@
       ).then(function () {
         api = new mw.Api();
         metaApi = new mw.ForeignApi( 'https://meta.wikimedia.org/w/api.php' );
+        try { SM_API_READY = true; (__SM_apiCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
         
-        // Load both scripts and gadgets
-        $.when(
-          buildImportList(),
-          loadGadgets(),
-          loadUserGadgetSettings()
-        ).then(function (imports, gadgets, userSettings) {
-          // Load section order, labels and gadgets label after gadgets are loaded
-          return Promise.all([
-            loadSectionOrder(),
-            loadSectionLabels(),
-            loadGadgetsLabel()
-          ]).then(function(results) {
-            var sectionOrder = results[0];
-            var sectionLabels = results[1];
-            var gadgetsLabel = results[2];
-            
-            // Store data internally and update Vue component reactively
-            gadgetSectionOrderVar = sectionOrder;
-            applyGadgetLabels(sectionLabels, gadgetsLabel);
-            // Trigger UI recompute for initial render when opened outside js/css
-            try { bumpGadgetsVersion(); } catch(_) {}
-            
-            return { imports: imports, gadgets: gadgets, userSettings: userSettings, sectionOrder: sectionOrder, sectionLabels: sectionLabels, gadgetsLabel: gadgetsLabel };
-          });
-        }).then(function(data) {
+        // Load imports only for default target first to open UI faster
+        var initialTarget = window.SM_DEFAULT_SKIN || 'common';
+        buildImportList([initialTarget]).then(function(){
+          try { SM_IMPORTS_READY = true; (__SM_importCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
+        });
+
+        // Start background gadgets/labels/user settings as soon as API ready
+        SM_waitApiReady(function(){
+            if (!SM_GADGETS_READY && !SM_GADGETS_LOADING) {
+                SM_GADGETS_LOADING = true;
+                loadGadgets().then(function(){ return Promise.all([ loadSectionLabels(), loadGadgetsLabel() ]); })
+                  .then(function(results){ applyGadgetLabels(results[0], results[1]); SM_GADGETS_READY = true; })
+                  .catch(function(){ SM_GADGETS_READY = true; })
+                  .finally ? null : (function(){ /* ensure Vue tick after labels */ try { if (scriptInstallerVueComponent && typeof scriptInstallerVueComponent.$forceUpdate==='function') scriptInstallerVueComponent.$forceUpdate(); } catch(_){} })();
+                if (!_pLoadUserGadgetSettings) { loadUserGadgetSettings(); }
+            }
+        });
+
+        }).then(function() {
           attachInstallLinks();
-          if (isJsRelatedPage) showUi();
+          // Open immediately after imports ready (not waiting gadgets/labels)
+          if (isJsRelatedPage) {
+            SM_waitImportsReady(function(){ showUi(); });
+          }
           // No auto-open via cookie
         });
       });
-    });
     // Public opener (non-global): listen to hook/event and open
     try {
         function SM_openScriptManager(){
@@ -2457,12 +2642,28 @@
                     var exists = !!document.getElementById('sm-panel');
                     if (!exists) {
                         $("#mw-content-text").before( makePanel() );
+                        // Kick off background loads after panel mounts (ensure API ready first)
+                        try {
+                            // Load remaining imports in background
+                            SM_waitApiReady(function(){ ensureAllImports(); });
+                            // Start gadgets & labels & user settings
+                            SM_waitApiReady(function(){
+                                if (!SM_GADGETS_READY && !SM_GADGETS_LOADING) {
+                                    SM_GADGETS_LOADING = true;
+                                    loadGadgets().then(function(){ return Promise.all([ loadSectionLabels(), loadGadgetsLabel() ]); })
+                                      .then(function(results){ applyGadgetLabels(results[0], results[1]); SM_GADGETS_READY = true; })
+                                      .catch(function(){ SM_GADGETS_READY = true; });
+                                    if (!_pLoadUserGadgetSettings) { loadUserGadgetSettings(); }
+                                }
+                            });
+                        } catch(_) {}
                     } else {
                         $("#sm-panel").remove();
                     }
                 } catch(e) { smLog('SM_openScriptManager error', e); }
             };
-            try { if (typeof SM_waitI18n === 'function') { SM_waitI18n(doOpen); } else { doOpen(); } } catch(_) { doOpen(); }
+            // Open immediately; background loaders and i18n will update UI when ready
+            try { doOpen(); } catch(_) { /* no-op */ }
         }
         try { if (mw && mw.hook) mw.hook('scriptManager.open').add(function(){ SM_openScriptManager(); }); } catch(_) {}
         try { document.addEventListener('sm:open', function(){ try { SM_openScriptManager(); } catch(_){} }); } catch(_) {}
