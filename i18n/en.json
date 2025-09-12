@@ -70,5 +70,6 @@
   "scriptManagerLink": "Script Manager",
   "scriptManagerLinkTitle": "Open Script Manager",
   "cancel": "Cancel",
-  "installDialogTitle": "Install $1"
+  "installDialogTitle": "Install $1",
+  "capturedScriptsHeading": "Captured scripts"
 }

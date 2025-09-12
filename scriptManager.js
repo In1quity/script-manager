@@ -36,7 +36,8 @@
                     try {
                         var label = json && (json.scriptManagerLink || json.scriptManagerTitle || json.manageUserScripts);
                         var title = json && (json.scriptManagerLinkTitle || label);
-                        if (label) { if (callback) callback({ label: label, title: title }); return; }
+                        var cap = json && json.capturedScriptsHeading;
+                        if (label) { if (callback) callback({ label: label, title: title, capturedScriptsHeading: cap }); return; }
                     } catch(_) {}
                     tryNext();
                 }).catch(function(){ tryNext(); });
@@ -82,6 +83,165 @@
             var s = document.createElement('script'); s.src = CORE_JS; s.async = true; s.onload = done; document.head.appendChild(s);
         }
     }
+
+    // --- Capture via hook: collect mw.loader.load/importScript calls and expose in sidebar ---
+    (function(){
+        var ORIG = {
+            mwLoad: null,
+            getScript: null,
+            importScript: null,
+            importStylesheet: null,
+            importStylesheetURI: null
+        };
+        function capLog(){ try { console.log.apply(console, ['[SM-cap]'].concat([].slice.call(arguments))); } catch(_) {} }
+        function labelFromUrl(url){
+            try {
+                var u = String(url||'');
+                var qi = u.indexOf('?');
+                if (qi !== -1) {
+                    var q = u.slice(qi+1);
+                    var m = /(?:^|[?&])title=([^&#]+)/i.exec('?'+q);
+                    if (m && m[1]) { try { return decodeURIComponent(m[1].replace(/\+/g,' ')); } catch(_) { return m[1]; } }
+                }
+                var base = u.split('#')[0].split('?')[0];
+                var parts = base.split('/');
+                return parts[parts.length-1] || u;
+            } catch(_){ return url; }
+        }
+        function isCss(spec, type){
+            try { if (type === 'text/css') return true; } catch(_) {}
+            try { var s = String(spec||''); if (/ctype=text\/css/i.test(s)) return true; if (/\.css(\?|$)/i.test(s)) return true; } catch(_) {}
+            return false;
+        }
+        function execCaptured(item){
+            try {
+                if (!item) { capLog('exec: no item'); return; }
+                if (item.callType === 'mw.loader.load') {
+                    capLog('exec: mw.loader.load', item.args);
+                    (ORIG.mwLoad || (mw && mw.loader && mw.loader.load)).apply(mw.loader, item.args || []);
+                    return;
+                }
+                if (item.callType === 'mw.loader.getScript') {
+                    capLog('exec: mw.loader.getScript', item.args);
+                    (ORIG.getScript || (mw && mw.loader && mw.loader.getScript) || function(){ return Promise.resolve(); }).apply(mw.loader, item.args || []);
+                    return;
+                }
+                if (item.callType === 'importScript') {
+                    capLog('exec: importScript', item.args && item.args[0]);
+                    (ORIG.importScript || window.importScript)(item.args && item.args[0]);
+                    return;
+                }
+                if (item.callType === 'importStylesheet') { capLog('exec: importStylesheet', item.args && item.args[0]); (ORIG.importStylesheet || window.importStylesheet)(item.args && item.args[0]); return; }
+                if (item.callType === 'importStylesheetURI') { capLog('exec: importStylesheetURI', item.args && item.args[0]); (ORIG.importStylesheetURI || window.importStylesheetURI)(item.args && item.args[0]); return; }
+            } catch(_) {}
+        }
+        function renderCaptured(items){
+            try {
+                var tb = document.getElementById('p-tb');
+                if (!tb) { capLog('render: #p-tb not found'); return; }
+                // Remove previous capture subsection if any
+                try {
+                    var oldHeading = document.getElementById('smcap-heading'); if (oldHeading) oldHeading.remove();
+                    var oldContent = document.getElementById('smcap-content'); if (oldContent) oldContent.remove();
+                    var oldLis = tb.querySelectorAll('li[id^="n-smcap-"]'); for (var i=0;i<oldLis.length;i++){ oldLis[i].remove(); }
+                } catch(_) {}
+                if (!items || !items.length) { capLog('render: empty list'); return; }
+
+                // Build heading inside the same portlet
+                var heading = document.createElement('div');
+                heading.id = 'smcap-heading';
+                heading.className = 'vector-menu-heading';
+                heading.textContent = 'Captured scripts';
+                try { loadSidebarMessages(function(msgs){ try { if (msgs && msgs.capturedScriptsHeading) heading.textContent = msgs.capturedScriptsHeading; } catch(_) {} }); } catch(_) {}
+                tb.appendChild(heading);
+
+                // Build content list inside the same portlet
+                var contentDiv = document.createElement('div');
+                contentDiv.id = 'smcap-content';
+                contentDiv.className = 'vector-menu-content';
+                var ul = document.createElement('ul');
+                ul.className = 'vector-menu-content-list';
+                capLog('render: items =', items.length);
+                items.forEach(function(it, idx){
+                    var li = document.createElement('li');
+                    li.id = 'n-smcap-' + idx;
+                    li.className = 'mw-list-item mw-list-item-js';
+                    var a = document.createElement('a');
+                    a.href = '#';
+                    a.title = it.key || '';
+                    var span = document.createElement('span');
+                    span.textContent = it.label || it.key || ('item '+(idx+1));
+                    a.appendChild(span);
+                    a.addEventListener('click', function(ev){ ev.preventDefault(); capLog('click:', it); execCaptured(it); });
+                    li.appendChild(a);
+                    ul.appendChild(li);
+                });
+                contentDiv.appendChild(ul);
+                tb.appendChild(contentDiv);
+            } catch(_) {}
+        }
+        function dedupe(list){
+            var seen = {}; var out = [];
+            for (var i=0;i<list.length;i++){
+                var it = list[i]; var k = (it.callType||'')+'\u0001'+(it.key||'')+'\u0001'+(it.isCss?1:0);
+                if (seen[k]) continue; seen[k]=true; out.push(it);
+            }
+            return out;
+        }
+        function captureLoads(runFn){
+            var captured = [];
+            // save originals once
+            try {
+                if (!ORIG.mwLoad && mw && mw.loader) ORIG.mwLoad = mw.loader.load;
+                if (!ORIG.getScript && mw && mw.loader) ORIG.getScript = mw.loader.getScript;
+            } catch(_) {}
+            try { if (!ORIG.importScript && typeof window.importScript === 'function') ORIG.importScript = window.importScript; } catch(_) {}
+            try { if (!ORIG.importStylesheet && typeof window.importStylesheet === 'function') ORIG.importStylesheet = window.importStylesheet; } catch(_) {}
+            try { if (!ORIG.importStylesheetURI && typeof window.importStylesheetURI === 'function') ORIG.importStylesheetURI = window.importStylesheetURI; } catch(_) {}
+            function patchedLoad(spec, type){
+                capLog('capture: mw.loader.load', spec, type);
+                if (typeof spec === 'string'){
+                    var css = isCss(spec, type);
+                    captured.push({ callType:'mw.loader.load', args: [spec].concat(css?['text/css']:[]), isCss: css, key: spec, label: labelFromUrl(spec) });
+                    return; // don't execute
+                }
+                if (Array.isArray(spec)){
+                    captured.push({ callType:'mw.loader.load', args: [spec], isCss: false, key: spec.join(','), label: spec.join(', ') });
+                    return;
+                }
+            }
+            function patchedGetScript(url){ capLog('capture: mw.loader.getScript', url); try { var u = String(url||''); captured.push({ callType:'mw.loader.getScript', args:[u], isCss:false, key:u, label: labelFromUrl(u) }); } catch(_) {} return Promise.resolve(); }
+            function patchedImportScript(title){ capLog('capture: importScript', title); try { var t=String(title||''); captured.push({ callType:'importScript', args:[t], isCss:false, key:t, label:t }); } catch(_) {} }
+            function patchedImportStylesheet(title){ capLog('capture: importStylesheet', title); try { var t=String(title||''); captured.push({ callType:'importStylesheet', args:[t], isCss:true, key:t, label:t }); } catch(_) {} }
+            function patchedImportStylesheetURI(u){ capLog('capture: importStylesheetURI', u); try { var s=String(u||''); captured.push({ callType:'importStylesheetURI', args:[s], isCss:true, key:s, label: labelFromUrl(s) }); } catch(_) {} }
+            // patch
+            try { if (mw && mw.loader) { mw.loader.load = patchedLoad; if (typeof mw.loader.getScript === 'function') mw.loader.getScript = patchedGetScript; } } catch(_) {}
+            try { if (typeof window.importScript === 'function') window.importScript = patchedImportScript; } catch(_) {}
+            try { if (typeof window.importStylesheet === 'function') window.importStylesheet = patchedImportStylesheet; } catch(_) {}
+            try { if (typeof window.importStylesheetURI === 'function') window.importStylesheetURI = patchedImportStylesheetURI; } catch(_) {}
+            try { if (typeof runFn === 'function') runFn(); } catch(_) {}
+            // restore
+            try { if (ORIG.mwLoad) mw.loader.load = ORIG.mwLoad; } catch(_) {}
+            try { if (ORIG.getScript) mw.loader.getScript = ORIG.getScript; } catch(_) {}
+            try { if (ORIG.importScript) window.importScript = ORIG.importScript; } catch(_) {}
+            try { if (ORIG.importStylesheet) window.importStylesheet = ORIG.importStylesheet; } catch(_) {}
+            try { if (ORIG.importStylesheetURI) window.importStylesheetURI = ORIG.importStylesheetURI; } catch(_) {}
+            // render
+            var items = dedupe(captured);
+            try { window.__SM_LAST_CAPTURED = items; capLog('capture: done, items=', items.length); } catch(_) {}
+            renderCaptured(items);
+        }
+        function setupCaptureHooks(){
+            function norm(payload){
+                if (typeof payload === 'function') return { fn: payload };
+                if (payload && typeof payload === 'object' && typeof payload.fn === 'function') return { fn: payload.fn };
+                return null;
+            }
+            try { if (mw && mw.hook && typeof mw.hook === 'function') { mw.hook('scriptManager.capture').add(function(payload){ var p = norm(payload); if (p) captureLoads(p.fn); }); } } catch(_) {}
+            try { document.addEventListener('sm:capture', function(ev){ try { var d = ev && ev.detail; var p = norm(d); if (p) captureLoads(p.fn); } catch(_) {} }); } catch(_) {}
+        }
+        setupCaptureHooks();
+    })();
 
     function addSidebarLink(){
         try {

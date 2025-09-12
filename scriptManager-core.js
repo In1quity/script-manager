@@ -18,6 +18,8 @@
 
     // Keep "common" at beginning
     var SKINS = [ "common", "global", "monobook", "minerva", "vector", "vector-2022", "timeless" ];
+    // Module-scoped default target (mirrors window.SM_DEFAULT_SKIN)
+    var SM_DEFAULT_SKIN = 'common';
 
     // The master import list, keyed by target. (A "target" is a user JS subpage
     // where the script is imported, like "common" or "vector".) Set in buildImportList
@@ -739,6 +741,22 @@
     }
 
     var _pBuildImportList = null;
+    // Helper: run factory once API is ready; if already ready, run immediately
+    function whenApiReadyThen(factory){
+        try {
+            if (typeof SM_API_READY !== 'undefined' && typeof SM_waitApiReady === 'function' && !SM_API_READY) {
+                return new Promise(function(resolve, reject){
+                    try {
+                        SM_waitApiReady(function(){
+                            try { factory().then ? factory().then(resolve).catch(reject) : resolve(factory()); }
+                            catch(e){ reject(e); }
+                        });
+                    } catch(e) { reject(e); }
+                });
+            }
+        } catch(_) {}
+        try { return factory(); } catch(e){ return Promise.reject(e); }
+    }
     /**
      * Build imports index per target by parsing user JS pages
      * @returns {JQueryPromise<void>|Promise<void>}
@@ -761,62 +779,65 @@
 
     function buildImportList(targets) {
         if (_pBuildImportList) return _pBuildImportList;
-        if (Array.isArray(targets) && targets.length > 0) {
-            // Load subset of targets
-            var tasks = targets.map(function(t){ return getWikitextForTarget(t).then(function(text){ return { target: t, text: text }; }); });
-            _pBuildImportList = _withBuildImportListCleanup(Promise.all(tasks).then(function(results){
-                results.forEach(function(entry){
-                    var targetName = entry.target;
-                    var targetImports = [];
-                    if (entry.text) {
-                        var lines = entry.text.split('\n');
-                        var currentImport;
-                        for (var i = 0; i < lines.length; i++) {
-                            if (currentImport = createImport.fromJs(lines[i], targetName)) {
-                                targetImports.push(currentImport);
+        _pBuildImportList = _withBuildImportListCleanup(
+            whenApiReadyThen(function(){
+                if (Array.isArray(targets) && targets.length > 0) {
+                    // Load subset of targets
+                    var tasks = targets.map(function(t){ return getWikitextForTarget(t).then(function(text){ return { target: t, text: text }; }); });
+                    return Promise.all(tasks).then(function(results){
+                        results.forEach(function(entry){
+                            var targetName = entry.target;
+                            var targetImports = [];
+                            if (entry.text) {
+                                var lines = entry.text.split('\n');
+                                var currentImport;
+                                for (var i = 0; i < lines.length; i++) {
+                                    if (currentImport = createImport.fromJs(lines[i], targetName)) {
+                                        targetImports.push(currentImport);
+                                    }
+                                }
+                            }
+                            imports[targetName] = targetImports;
+                            importsLoadedTargets[targetName] = true;
+                        });
+                        if (importsRef) {
+                            try {
+                                (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
+                                    importsRef.value = Object.assign({}, imports);
+                                }, 0);
+                            } catch(_) { importsRef.value = Object.assign({}, imports); }
+                        }
+                    });
+                }
+                // Default: load all
+                return getAllTargetWikitexts().then(function ( wikitexts ) {
+                    var nextImports = {};
+                    Object.keys( wikitexts ).forEach( function ( targetName ) {
+                        var targetImports = [];
+                        if( wikitexts[ targetName ] ) {
+                            var lines = wikitexts[ targetName ].split( "\n" );
+                            var currentImport;
+                            for( var i = 0; i < lines.length; i++ ) {
+                                if( currentImport = createImport.fromJs( lines[i], targetName ) ) {
+                                    targetImports.push( currentImport );
+                                }
                             }
                         }
-                    }
-                    imports[targetName] = targetImports;
-                    importsLoadedTargets[targetName] = true;
-                });
-                if (importsRef) {
-                    try {
-                        (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
-                            importsRef.value = Object.assign({}, imports);
-                        }, 0);
-                    } catch(_) { importsRef.value = Object.assign({}, imports); }
-                }
-            }).catch(function(err){ throw err; }));
-            return _pBuildImportList;
-        }
-        // Default: load all
-        _pBuildImportList = _withBuildImportListCleanup(getAllTargetWikitexts().then( function ( wikitexts ) {
-            var nextImports = {};
-            Object.keys( wikitexts ).forEach( function ( targetName ) {
-                var targetImports = [];
-                if( wikitexts[ targetName ] ) {
-                    var lines = wikitexts[ targetName ].split( "\n" );
-                    var currentImport;
-                    for( var i = 0; i < lines.length; i++ ) {
-                        if( currentImport = createImport.fromJs( lines[i], targetName ) ) {
-                            targetImports.push( currentImport );
-                        }
-                    }
-                }
-                nextImports[ targetName ] = targetImports;
-                importsLoadedTargets[targetName] = true;
-            } );
+                        nextImports[ targetName ] = targetImports;
+                        importsLoadedTargets[targetName] = true;
+                    } );
 
-            imports = nextImports;
-            if (importsRef) {
-                try {
-                    (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
-                        importsRef.value = Object.assign({}, nextImports);
-                    }, 0);
-                } catch(_) { importsRef.value = Object.assign({}, nextImports); }
-            }
-        } ).catch(function(err){ throw err; }));
+                    imports = nextImports;
+                    if (importsRef) {
+                        try {
+                            (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
+                                importsRef.value = Object.assign({}, nextImports);
+                            }, 0);
+                        } catch(_) { importsRef.value = Object.assign({}, nextImports); }
+                    }
+                });
+            })
+        );
         return _pBuildImportList;
     }
 
@@ -1255,7 +1276,7 @@
                         return { name: skin, label: skin };
                     }));
                 });
-                try { selectedSkin.value = window.SM_DEFAULT_SKIN || 'common'; } catch(_) {}
+                try { selectedSkin.value = SM_DEFAULT_SKIN; } catch(_) {}
                 
                 var isSelectedTargetLoaded = computed(function(){
                     try {
@@ -1449,16 +1470,39 @@
                 };
                 
                 var handleToggleDisabled = function(anImport) {
+                    try {
+                        // Normalize to ensure we have a proper createImport instance
+                        if (!(anImport instanceof createImport) || typeof anImport.toggleDisabled !== 'function') {
+                            var page = anImport && (anImport.page || anImport.name || anImport.title) || '';
+                            var target = (anImport && anImport.target) || SM_DEFAULT_SKIN;
+                            var disabled = !!(anImport && anImport.disabled);
+                            var wiki = anImport && anImport.wiki;
+                            var url = anImport && anImport.url;
+                            anImport = url ? createImport.ofUrl(url, target, disabled) : (wiki ? new createImport(page, wiki, null, target, disabled) : createImport.ofLocal(page, target, disabled));
+                        }
+                    } catch(_) {}
                     var key = 'toggle-' + anImport.getDescription();
                     setLoading(key, true);
-                    anImport.toggleDisabled().done(function() {
-                        reloadOnClose.value = true;
-                    }).fail(function(error) {
-                        smError('Failed to toggle disabled state:', error);
-                        showNotification('notificationGeneralError', 'error');
-                    }).always(function() {
+                    try {
+                        var p = anImport.toggleDisabled();
+                        if (p && typeof p.then === 'function') {
+                            // Native/thenable promise path
+                            var onFinally = function(){ try { setLoading(key, false); } catch(_) {} };
+                            p.then(function(){ reloadOnClose.value = true; })
+                             .catch(function(error){ smError('Failed to toggle disabled state:', error); showNotification('notificationGeneralError', 'error'); })
+                             .finally ? p.finally(onFinally) : (p.then(onFinally, onFinally));
+                        } else if (p && typeof p.done === 'function') {
+                            // jQuery deferred path
+                            p.done(function(){ reloadOnClose.value = true; })
+                             .fail(function(error){ smError('Failed to toggle disabled state:', error); showNotification('notificationGeneralError', 'error'); })
+                             .always(function(){ setLoading(key, false); });
+                        } else {
+                            setLoading(key, false);
+                        }
+                    } catch(e) {
+                        smError('toggleDisabled threw', e);
                         setLoading(key, false);
-                    });
+                    }
                 };
                 
                 var handleMove = function(anImport) {
@@ -2029,7 +2073,7 @@
                     SM_t('securityWarningSection').replace( '$1', scriptName ) ) );
             if( okay ) {
                 buttonElement.text( SM_t('installProgressMsg') )
-                createImport.ofLocal( scriptName, window.SM_DEFAULT_SKIN ).install().done( function () {
+                createImport.ofLocal( scriptName, SM_DEFAULT_SKIN ).install().done( function () {
                     buttonElement.text( SM_t('uninstallLinkText') );
                     reloadAfterChange();
                 }.bind( buttonElement ) );
@@ -2462,6 +2506,8 @@
     }
     // Keep legacy alias in sync
     try { window.scriptInstallerInstallTarget = window.SM_DEFAULT_SKIN; } catch(_) {}
+    // Sync module variable with global alias
+    try { SM_DEFAULT_SKIN = window.SM_DEFAULT_SKIN || 'common'; } catch(_) {}
 
     // SUMMARY_TAG: internal constant
     // SUMMARY_TAG already initialized above
@@ -2595,8 +2641,24 @@
 
     var SM_GADGETS_READY = false;
     var SM_GADGETS_LOADING = false;
+    // Ensure Gadgets tab label is available before first render
+    var SM_GADGETS_LABEL_READY = false;
+    var __SM_gadgetsLabelCbs = [];
+    function SM_waitGadgetsLabelReady(cb){ try { if (SM_GADGETS_LABEL_READY) { cb(); } else { __SM_gadgetsLabelCbs.push(cb); } } catch(_){} }
 
     var userLang = mw.config.get('wgUserLanguage') || 'en';
+
+    // Helper: start gadgets metadata and section labels loading once
+    function SM_startGadgetsAndLabels(){
+        if (!SM_GADGETS_READY && !SM_GADGETS_LOADING) {
+            SM_GADGETS_LOADING = true;
+            loadGadgets().then(function(){ return loadSectionLabels(); })
+              .then(function(sectionLabels){ applyGadgetLabels(sectionLabels, gadgetsLabelVar); SM_GADGETS_READY = true; })
+              .catch(function(){ SM_GADGETS_READY = true; })
+              .finally ? null : (function(){ try { if (scriptInstallerVueComponent && typeof scriptInstallerVueComponent.$forceUpdate==='function') scriptInstallerVueComponent.$forceUpdate(); } catch(_){} })();
+            if (!_pLoadUserGadgetSettings) { loadUserGadgetSettings(); }
+        }
+    }
     loadI18nWithFallback(userLang, function() {
       SM_I18N_DONE = true; try { (__SM_i18nCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
       $.when(
@@ -2608,29 +2670,40 @@
         try { SM_API_READY = true; (__SM_apiCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
         
         // Load imports only for default target first to open UI faster
-        var initialTarget = window.SM_DEFAULT_SKIN || 'common';
+        var initialTarget = SM_DEFAULT_SKIN;
         buildImportList([initialTarget]).then(function(){
           try { SM_IMPORTS_READY = true; (__SM_importCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
         });
 
         // Start background gadgets/labels/user settings as soon as API ready
+        SM_waitApiReady(function(){ SM_startGadgetsAndLabels(); });
+
+        // Prefetch only the gadgets tab label early, so tab title is localized before mount
         SM_waitApiReady(function(){
-            if (!SM_GADGETS_READY && !SM_GADGETS_LOADING) {
-                SM_GADGETS_LOADING = true;
-                loadGadgets().then(function(){ return Promise.all([ loadSectionLabels(), loadGadgetsLabel() ]); })
-                  .then(function(results){ applyGadgetLabels(results[0], results[1]); SM_GADGETS_READY = true; })
-                  .catch(function(){ SM_GADGETS_READY = true; })
-                  .finally ? null : (function(){ /* ensure Vue tick after labels */ try { if (scriptInstallerVueComponent && typeof scriptInstallerVueComponent.$forceUpdate==='function') scriptInstallerVueComponent.$forceUpdate(); } catch(_){} })();
-                if (!_pLoadUserGadgetSettings) { loadUserGadgetSettings(); }
-            }
+            try {
+                if (!SM_GADGETS_LABEL_READY) {
+                    loadGadgetsLabel().then(function(label){
+                        try { gadgetsLabelVar = label || gadgetsLabelVar; } catch(_) {}
+                        SM_GADGETS_LABEL_READY = true;
+                        try { (__SM_gadgetsLabelCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
+                    }).catch(function(){
+                        SM_GADGETS_LABEL_READY = true;
+                        try { (__SM_gadgetsLabelCbs||[]).splice(0).forEach(function(cb){ try{ cb(); }catch(_){} }); } catch(_) {}
+                    });
+                }
+            } catch(_) {}
         });
 
         }).then(function() {
           attachInstallLinks();
-          // Open immediately after imports ready (not waiting gadgets/labels)
-          if (isJsRelatedPage) {
-            SM_waitImportsReady(function(){ showUi(); });
-          }
+          // Open only after i18n, gadgets label, and imports are ready to avoid label flicker
+          SM_waitI18n(function(){
+            SM_waitGadgetsLabelReady(function(){
+              if (isJsRelatedPage) {
+                SM_waitImportsReady(function(){ showUi(); });
+              }
+            });
+          });
           // No auto-open via cookie
         });
       });
@@ -2641,28 +2714,23 @@
                 try {
                     var exists = !!document.getElementById('sm-panel');
                     if (!exists) {
-                        $("#mw-content-text").before( makePanel() );
-                        // Kick off background loads after panel mounts (ensure API ready first)
-                        try {
-                            // Load remaining imports in background
-                            SM_waitApiReady(function(){ ensureAllImports(); });
-                            // Start gadgets & labels & user settings
-                            SM_waitApiReady(function(){
-                                if (!SM_GADGETS_READY && !SM_GADGETS_LOADING) {
-                                    SM_GADGETS_LOADING = true;
-                                    loadGadgets().then(function(){ return Promise.all([ loadSectionLabels(), loadGadgetsLabel() ]); })
-                                      .then(function(results){ applyGadgetLabels(results[0], results[1]); SM_GADGETS_READY = true; })
-                                      .catch(function(){ SM_GADGETS_READY = true; });
-                                    if (!_pLoadUserGadgetSettings) { loadUserGadgetSettings(); }
-                                }
-                            });
-                        } catch(_) {}
+                        // Wait for i18n and gadgets label to avoid flicker when opening from sidebar on non-script pages
+                        SM_waitI18n(function(){ SM_waitGadgetsLabelReady(function(){
+                            $("#mw-content-text").before( makePanel() );
+                            // Kick off background loads after panel mounts (ensure API ready first)
+                            try {
+                                // Load remaining imports in background
+                                SM_waitApiReady(function(){ ensureAllImports(); });
+                                // Start gadgets & labels & user settings
+                                SM_waitApiReady(function(){ SM_startGadgetsAndLabels(); });
+                            } catch(_) {}
+                        }); });
                     } else {
                         $("#sm-panel").remove();
                     }
                 } catch(e) { smLog('SM_openScriptManager error', e); }
             };
-            // Open immediately; background loaders and i18n will update UI when ready
+            // Open after i18n gate
             try { doOpen(); } catch(_) { /* no-op */ }
         }
         try { if (mw && mw.hook) mw.hook('scriptManager.open').add(function(){ SM_openScriptManager(); }); } catch(_) {}

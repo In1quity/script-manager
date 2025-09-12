@@ -72,5 +72,6 @@
   "scriptManagerLink": "Менеджер скриптов",
   "scriptManagerLinkTitle": "Открыть менеджер скриптов",
   "cancel": "Отмена",
-  "installDialogTitle": "Установка $1"
+  "installDialogTitle": "Установка $1",
+  "capturedScriptsHeading": "Перехваченные скрипты"
 } 
