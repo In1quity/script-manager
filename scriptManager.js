@@ -34,9 +34,9 @@
                 var url = 'https://gitlab-content.toolforge.org/iniquity/script-manager/-/raw/main/i18n/' + encodeURIComponent(lang) + '.json?mime=application/json';
                 fetch(url).then(function(r){ if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(json){
                     try {
-                        var label = json && (json["script-manager-link"] || json["scriptManagerTitle"] || json["manage-user-scripts"]);
-                        var title = json && (json["script-manager-link-title"] || label);
-                        var cap = json && json["captured-scripts-heading"];
+                        var label = json && (json["sidebar-link"] || json["scriptManagerTitle"] || json["tooltip-manage-user-scripts"]);
+                        var title = json && (json["sidebar-link-title"] || label);
+                        var cap = json && json["sidebar-captured-heading"];
                         if (label) { if (callback) callback({ label: label, title: title, capturedScriptsHeading: cap }); return; }
                     } catch(_) {}
                     tryNext();

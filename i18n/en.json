@@ -84,11 +84,11 @@
     "security-warning": "Warning!$1\n\nAll user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump. Install this script?",
     "security-warning-section": " About to install $1.",
 
-    "backlink": "Backlink:",
-    "remote-url-desc": "$1, loaded from $2",
-    "manage-user-scripts": "Manage user scripts",
+    "label-backlink": "Backlink:",
+    "label-remote-url": "$1, loaded from $2",
+    "tooltip-manage-user-scripts": "Manage user scripts",
 
-    "script-manager-link": "Script Manager",
-    "script-manager-link-title": "Open Script Manager",
-    "captured-scripts-heading": "Captured scripts"
+    "sidebar-link": "Script Manager",
+    "sidebar-link-title": "Open Script Manager",
+    "sidebar-captured-heading": "Captured scripts"
 }
