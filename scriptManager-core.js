@@ -136,7 +136,7 @@
 
     // Compute initial label (Install/Uninstall) for a script name
     function getInitialInstallLabel(scriptName){
-        try { return (getTargetsForScript(scriptName).length ? SM_t('uninstallLinkText') : SM_t('installLinkText')); } catch(_) { return SM_t('installLinkText'); }
+        try { return (getTargetsForScript(scriptName).length ? SM_t('action-uninstall') : SM_t('action-install')); } catch(_) { return SM_t('action-install'); }
     }
 
     function buildRawLoaderUrl(host, title) {
@@ -530,19 +530,19 @@
         // Try to resolve Documentation iw for better summary link
         return resolveDocumentationInterwiki(this).then(function(iw){
             if (iw) { try { self.docInterwiki = iw; } catch(_) {} }
-            var req = targetApi.postWithEditToken( {
-                action: "edit",
+        var req = targetApi.postWithEditToken( {
+            action: "edit",
                 title: getFullTarget( self.target ),
                 summary: getSummaryForTarget( self.target, 'installSummary', self.getDescription( /* useWikitext */ true ) ),
                 appendtext: "\n" + self.toJs()
-            } );
-            if (options.silent) return req;
-            return req.then(function() {
+        } );
+        if (options.silent) return req;
+        return req.then(function() {
                 showNotification('notificationInstallSuccess', 'success', self.getDescription());
             }).catch(function(error) {
-                smError('Install failed:', error);
+            smError('Install failed:', error);
                 showNotification('notificationInstallError', 'error', self.getDescription());
-                throw error;
+            throw error;
             });
         });
     }
@@ -635,11 +635,11 @@
                 if (!options.silent) { showNotification('notificationUninstallSuccess', 'success', that.getDescription()); }
                 if (dfd) dfd.resolve();
             }).catch(function(error){
-                smError('Uninstall failed:', error);
+            smError('Uninstall failed:', error);
                 if (!options.silent) { showNotification('notificationUninstallError', 'error', that.getDescription()); }
                 if (dfd) dfd.reject(error);
                 else throw error;
-            });
+        });
         };
         var p = consume();
         return dfd ? dfd.promise() : p;
@@ -708,7 +708,7 @@
         var self = this;
         return resolveDocumentationInterwiki(this).then(function(iw){ if (iw) { try { self.docInterwiki = iw; old.docInterwiki = iw; } catch(_) {} } }).then(function(){
             return self.install({silent:true}).then(function(){
-                return old.uninstall({silent:true});
+            return old.uninstall({silent:true});
             });
         }).then(function(){
             showNotification('notificationMoveSuccess', 'success', that.getDescription());
@@ -864,30 +864,30 @@
                 }
                 // Default: load all
                 return getAllTargetWikitexts().then(function ( wikitexts ) {
-                    var nextImports = {};
-                    Object.keys( wikitexts ).forEach( function ( targetName ) {
-                        var targetImports = [];
-                        if( wikitexts[ targetName ] ) {
-                            var lines = wikitexts[ targetName ].split( "\n" );
-                            var currentImport;
-                            for( var i = 0; i < lines.length; i++ ) {
-                                if( currentImport = createImport.fromJs( lines[i], targetName ) ) {
-                                    targetImports.push( currentImport );
-                                }
-                            }
+            var nextImports = {};
+            Object.keys( wikitexts ).forEach( function ( targetName ) {
+                var targetImports = [];
+                if( wikitexts[ targetName ] ) {
+                    var lines = wikitexts[ targetName ].split( "\n" );
+                    var currentImport;
+                    for( var i = 0; i < lines.length; i++ ) {
+                        if( currentImport = createImport.fromJs( lines[i], targetName ) ) {
+                            targetImports.push( currentImport );
                         }
-                        nextImports[ targetName ] = targetImports;
-                        importsLoadedTargets[targetName] = true;
-                    } );
-
-                    imports = nextImports;
-                    if (importsRef) {
-                        try {
-                            (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
-                                importsRef.value = Object.assign({}, nextImports);
-                            }, 0);
-                        } catch(_) { importsRef.value = Object.assign({}, nextImports); }
                     }
+                }
+                nextImports[ targetName ] = targetImports;
+                        importsLoadedTargets[targetName] = true;
+            } );
+
+            imports = nextImports;
+            if (importsRef) {
+                try {
+                    (typeof requestAnimationFrame==='function'?requestAnimationFrame:setTimeout)(function(){
+                        importsRef.value = Object.assign({}, nextImports);
+                    }, 0);
+                } catch(_) { importsRef.value = Object.assign({}, nextImports); }
+            }
                 });
             })
         );
@@ -941,7 +941,7 @@
                     
                     gadgetsData[gadget.id] = {
                         name: gadget.id,
-                        description: gadget.desc || SM_t('noDescriptionAvailable'),
+                        description: gadget.desc || SM_t('gadgets-no-description'),
                         section: section,
                         isDefault: isDefault
                     };
@@ -1033,10 +1033,10 @@
         smLog('loadSectionLabels: allmessages request keys =', names.join('|'));
         var t0 = (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
         return api.get({
-            action: 'query',
+                        action: 'query',
             meta: 'allmessages',
             ammessages: names.join('|'),
-            format: 'json'
+                        format: 'json'
         }).then(function(msgData){
             var map = {};
             try {
@@ -1143,12 +1143,12 @@
                     var base = getSummaryForTarget(target, 'normalizeSummary', '');
                     return base;
                 })();
-                return getApiForTarget( target ).postWithEditToken( {
-                    action: "edit",
-                    title: getFullTarget( target ),
-                    summary: summaryText,
-                    text: newLines.join( "\n" )
-                } );
+            return getApiForTarget( target ).postWithEditToken( {
+                action: "edit",
+                title: getFullTarget( target ),
+                summary: summaryText,
+                text: newLines.join( "\n" )
+            } );
             });
         } ).then(function() {
             showNotification('notificationNormalizeSuccess', 'success');
@@ -1348,7 +1348,7 @@
                         return Object.prototype.hasOwnProperty.call(importsRef.value, tab);
                     } catch(_) { return false; }
                 });
-
+                
                 var filteredImports = computed(function() {
                     // establish reactive deps on labels so updates retrigger rerender
                     try { void gadgetSectionLabels.value; void gadgetsLabel.value; } catch(_) {}
@@ -1505,27 +1505,27 @@
                         var pRestore = toPromise(anImport.install());
                         pRestore
                             .then(function(){
-                                var index = removedScripts.value.indexOf(scriptName);
+                            var index = removedScripts.value.indexOf(scriptName);
                                 if (index > -1) removedScripts.value.splice(index, 1);
-                                reloadOnClose.value = true;
+                            reloadOnClose.value = true;
                             })
                             .catch(function(error){
-                                smError('Failed to restore:', error);
-                                showNotification('notificationRestoreError', 'error', anImport.getDescription());
-                            });
+                            smError('Failed to restore:', error);
+                            showNotification('notificationRestoreError', 'error', anImport.getDescription());
+                        });
                         if (pRestore && typeof pRestore.finally === 'function') { pRestore.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
                     } else {
                         // Remove script
                         var pUn = toPromise(anImport.uninstall());
                         pUn
                             .then(function(){
-                                removedScripts.value.push(scriptName);
-                                reloadOnClose.value = true;
+                            removedScripts.value.push(scriptName);
+                            reloadOnClose.value = true;
                             })
                             .catch(function(error){
-                                smError('Failed to uninstall:', error);
-                                showNotification('notificationUninstallError', 'error', anImport.getDescription());
-                            });
+                            smError('Failed to uninstall:', error);
+                            showNotification('notificationUninstallError', 'error', anImport.getDescription());
+                        });
                         if (pUn && typeof pUn.finally === 'function') { pUn.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
                     }
                 };
@@ -1668,16 +1668,16 @@
                 <cdx-dialog
                     class="sm-cdx-dialog"
                     v-model:open="dialogOpen"
-                    :title="SM_t('scriptManagerTitle')"
+                    :title="SM_t('panel-title')"
                     :use-close-button="true"
                     @close="onPanelClose"
                 >
-                    <div class="sm-subtitle" v-text="SM_t('panelHeader')"></div>
+                    <div class="sm-subtitle" v-text="SM_t('panel-header')"></div>
                     <div class="sm-controls">
                         <div class="sm-search-wrap">
                             <cdx-text-input
                                 v-model="filterText"
-                                :placeholder="SM_t('quickFilter')"
+                                :placeholder="SM_t('panel-quick-filter')"
                                 clearable
                             />
                         </div>
@@ -1689,8 +1689,8 @@
                                 </cdx-tabs>
                             </div>
                             <div class="sm-enabled-toggle">
-                                <cdx-toggle-button v-model="enabledOnly" :aria-label="SM_t('enabledOnly')">
-                                    <span v-text="SM_t('enabledOnly')"></span>
+                                <cdx-toggle-button v-model="enabledOnly" :aria-label="SM_t('panel-enabled-only')">
+                                    <span v-text="SM_t('panel-enabled-only')"></span>
                                 </cdx-toggle-button>
                             </div>
                         </div>
@@ -1705,12 +1705,12 @@
                         <template v-if="selectedSkin === 'gadgets'">
                             <div class="gadgets-section">
                                 <div v-if="Object.keys(filteredImports).length === 0" class="no-gadgets">
-                                    <p v-text="SM_t('noGadgetsAvailable')"></p>
-                                    <p v-text="SM_t('thisMightBeBecause')"></p>
+                                    <p v-text="SM_t('gadgets-not-available')"></p>
+                                    <p v-text="SM_t('gadgets-this-might-be-because')"></p>
                                     <ul>
-                                        <li v-text="SM_t('gadgetsNotInstalled')"></li>
-                                        <li v-text="SM_t('noGadgetsConfigured')"></li>
-                                        <li v-text="SM_t('apiAccessRestricted')"></li>
+                                        <li v-text="SM_t('gadgets-not-installed')"></li>
+                                        <li v-text="SM_t('gadgets-not-configured')"></li>
+                                        <li v-text="SM_t('gadgets-api-restricted')"></li>
                                     </ul>
                                 </div>
                                 <div v-else class="gadgets-list">
@@ -1737,7 +1737,7 @@
                                                         :disabled="loadingStates['gadget-' + gadgetName]"
                                                         @click="handleGadgetToggle(gadgetName, !isGadgetEnabled(gadgetName))"
                                                     >
-                                                        <span v-text="loadingStates['gadget-' + gadgetName] ? '...' : (isGadgetEnabled(gadgetName) ? SM_t('disableLinkText') : SM_t('enableLinkText'))"></span>
+                                                        <span v-text="loadingStates['gadget-' + gadgetName] ? '...' : (isGadgetEnabled(gadgetName) ? SM_t('action-disable') : SM_t('action-enable'))"></span>
                                                     </cdx-button>
                                                 </div>
                                             </cdx-card>
@@ -1783,7 +1783,7 @@
                                             :disabled="loadingStates['toggle-' + anImport.getDescription()]"
                                             @click="handleToggleDisabled(anImport)"
                                         >
-                                            <span v-text="loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? SM_t('enableLinkText') : SM_t('disableLinkText'))"></span>
+                                            <span v-text="loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
                                         </cdx-button>
                                         
                                         <cdx-button 
@@ -1792,7 +1792,7 @@
                                             :disabled="loadingStates['move-' + anImport.getDescription()]"
                                             @click="handleMove(anImport)"
                                         >
-                                            <span v-text="loadingStates['move-' + anImport.getDescription()] ? '...' : SM_t('moveLinkText')"></span>
+                                            <span v-text="loadingStates['move-' + anImport.getDescription()] ? '...' : SM_t('action-move')"></span>
                                         </cdx-button>
 
                                         <cdx-button 
@@ -1802,7 +1802,7 @@
                                             :disabled="loadingStates['uninstall-' + anImport.getDescription()]"
                                             @click="handleUninstall(anImport)"
                                         >
-                                            <span v-text="loadingStates['uninstall-' + anImport.getDescription()] ? '...' : (removedScripts.includes(anImport.getDescription()) ? SM_t('restoreLinkText') : SM_t('uninstallLinkText'))"></span>
+                                            <span v-text="loadingStates['uninstall-' + anImport.getDescription()] ? '...' : (removedScripts.includes(anImport.getDescription()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
                                         </cdx-button>
                                     </div>
                                 </cdx-card>
@@ -1822,7 +1822,7 @@
                                 :disabled="Object.keys(filteredImports).length === 0 || selectedSkin === 'gadgets' || isNormalizing || normalizeCompleted"
                                 @click="handleNormalizeAll"
                             >
-                                <span v-text="isNormalizing ? SM_t('normalizing') : (normalizeCompleted ? SM_t('normalized') : SM_t('normalize'))"></span>
+                                <span v-text="isNormalizing ? SM_t('normalizing') : (normalizeCompleted ? SM_t('normalized') : SM_t('action-normalize'))"></span>
                             </cdx-button>
                         </div>
                     </div>
@@ -1876,20 +1876,20 @@
                     var baseSkinName = nameWithoutNs.replace(/\.(?:js|css)$/i, '');
                     var skinIndex = SKINS.indexOf( baseSkinName );
                     if( skinIndex >= 0 ) {
-                        return $( "<abbr>" ).text( SM_t('cannotInstall') )
-                                .attr( "title", SM_t('cannotInstallSkin') );
+                return $( "<abbr>" ).text( SM_t('error-cannot-install') )
+                        .attr( "title", SM_t('error-cannot-install-skin') );
                     }
                 }
                 addingInstallLink = true;
             } else {
-                return $( "<abbr>" ).text( SM_t('cannotInstall') + " (" + SM_t('notJavaScript') + ")" )
-                        .attr( "title", SM_t('cannotInstallContentModel').replace( "$1", contentModel ) );
+                return $( "<abbr>" ).text( SM_t('error-cannot-install') + " (" + SM_t('error-not-javascript') + ")" )
+                        .attr( "title", SM_t('error-cannot-install-content-model').replace( "$1", contentModel ) );
             }
         }
 
         // Namespace 8 is MediaWiki
         if( namespaceNumber === SM_MEDIAWIKI_NAMESPACE_NUMBER ) {
-            return $( "<a>" ).text( SM_t('installViaPreferences') )
+            return $( "<a>" ).text( SM_t('error-install-via-preferences') )
                     .attr( "href", mw.util.getUrl( "Special:Preferences" ) + "#mw-prefsection-gadgets" );
         }
 
@@ -1900,8 +1900,8 @@
             installElement.append( " ",
                 $( "<abbr>" ).append(
                     $( "<img>" ).attr( "src", "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Achtung-yellow.svg/20px-Achtung-yellow.svg.png" ).addClass( "warning" ),
-                    SM_t('insecure') )
-                .attr( "title", SM_t('tempWarning') ) );
+                    SM_t('error-insecure') )
+                .attr( "title", SM_t('error-temp-warning') ) );
             addingInstallLink = true;
         }
 
@@ -1910,7 +1910,7 @@
             var installedTargets = getTargetsForScript(fixedPageName);
             installElement.prepend( $( "<a>" )
                     .attr( "id", "script-installer-main-install" )
-                    .text( installedTargets.length ? SM_t('uninstallLinkText') : SM_t('installLinkText') )
+                    .text( installedTargets.length ? SM_t('action-uninstall') : SM_t('action-install') )
                     .click( makeLocalInstallClickHandler( fixedPageName ) ) );
 
             // If the script is installed but disabled, allow the user to enable it
@@ -1920,9 +1920,9 @@
                 installElement.append( " | ",
                     $( "<a>" )
                         .attr( "id", "script-installer-main-enable" )
-                        .text( SM_t('enableLinkText') )
+                        .text( SM_t('action-enable') )
                         .click( function () {
-                            $( this ).text( SM_t('enableProgressMsg') );
+                            $( this ).text( SM_t('action-enable-progress') );
                             importObj.setDisabled( false ).done( function () {
                                 reloadAfterChange();
                             } );
@@ -1931,8 +1931,8 @@
             return installElement;
         }
 
-        return $( "<abbr>" ).text( SM_t('cannotInstall') + " " + SM_t('insecure') )
-                .attr( "title", SM_t('badPageError') );
+        return $( "<abbr>" ).text( SM_t('error-cannot-install') + " " + SM_t('error-insecure') )
+                .attr( "title", SM_t('error-bad-page') );
     }
 
     function showUi() {
@@ -2010,24 +2010,24 @@
                 var app = libs.createApp({
                     data: function(){ return { label: initialLabel, busy: false }; },
                     computed: {
-                        actionType: function(){ return this.label === SM_t('installLinkText') ? 'progressive' : 'destructive'; }
+                        actionType: function(){ return this.label === SM_t('action-install') ? 'progressive' : 'destructive'; }
                     },
                     methods: {
                         onClick: function(){
                             var vm = this;
                             smInfo('install button click', { busy: !!vm.busy, label: vm.label, scriptName: scriptName });
                             if (vm.busy) return; vm.busy=true; smInfo('install button set busy=true');
-                            if (vm.label === SM_t('installLinkText')) {
+                            if (vm.label === SM_t('action-install')) {
                                 var adapter = {
                                     text: function(t){ try { vm.label = String(t); smLog('adapter.text set label', t); } catch(e){} },
                                     resetBusy: function(){ try { vm.busy = false; smLog('adapter.resetBusy executed'); } catch(e){} }
                                 };
                                 try { smInfo('opening install dialog for', scriptName); showInstallDialog(scriptName, adapter); } catch(e) { vm.busy=false; smError('showInstallDialog error', e); }
                             } else {
-                                vm.label = SM_t('uninstallProgressMsg'); smInfo('uninstall start (from infobox button)', { scriptName: scriptName, targets: getTargetsForScript(scriptName) });
+                                vm.label = SM_t('action-uninstall-progress'); smInfo('uninstall start (from infobox button)', { scriptName: scriptName, targets: getTargetsForScript(scriptName) });
                                 var targets = getTargetsForScript(scriptName);
                                 var uninstalls = uniques(targets).map(function(target){ return toPromise(createImport.ofLocal(scriptName, target).uninstall()); });
-                                Promise.all(uninstalls).then(function(){ smInfo('uninstall via button success', { scriptName: scriptName, targets: targets }); vm.label = SM_t('installLinkText'); return refreshImportsView(); })
+                                Promise.all(uninstalls).then(function(){ smInfo('uninstall via button success', { scriptName: scriptName, targets: targets }); vm.label = SM_t('action-install'); return refreshImportsView(); })
                                     .catch(function(e){ smError('uninstall via button failed', e); })
                                     .finally ? Promise.all(uninstalls).finally(function(){ vm.busy=false; }) : (function(){ vm.busy=false; })();
                             }
@@ -2067,7 +2067,7 @@
             if( $( this ).find( "a" ).length === 0 ) {
                 var installedTargets = getTargetsForScript(scriptName);
                 $( this ).append( " | ", $( "<a>" )
-                        .text( installedTargets.length ? SM_t('uninstallLinkText') : SM_t('installLinkText') )
+                        .text( installedTargets.length ? SM_t('action-uninstall') : SM_t('action-install') )
                         .click( makeLocalInstallClickHandler( scriptName ) ) );
             }
         } );
@@ -2123,16 +2123,16 @@
     function makeLocalInstallClickHandler( scriptName ) {
         return function () {
             var $this = $( this );
-            if( $this.text() === SM_t('installLinkText') ) {
+            if( $this.text() === SM_t('action-install') ) {
                 // Show install dialog instead of confirm
                 showInstallDialog( scriptName, $this );
             } else {
-                $( this ).text( SM_t('uninstallProgressMsg') )
+                $( this ).text( SM_t('action-uninstall-progress') )
                 var targets = getTargetsForScript(scriptName);
                 var uninstalls = uniques( targets )
                         .map( function ( target ) { return createImport.ofLocal( scriptName, target ).uninstall(); } )
                 $.when.apply( $, uninstalls ).then( function () {
-                    $( this ).text( SM_t('installLinkText') );
+                    $( this ).text( SM_t('action-install') );
                     reloadAfterChange();
                 }.bind( this ) );
             }
@@ -2169,19 +2169,19 @@
             smError('Failed to load Vue/Codex for install dialog:', error);
             // Fallback to old confirm dialog
             var okay = window.confirm(
-                SM_t('bigSecurityWarning').replace( '$1',
-                    SM_t('securityWarningSection').replace( '$1', scriptName ) ) );
+                SM_t('security-warning').replace( '$1',
+                    SM_t('security-warning-section').replace( '$1', scriptName ) ) );
             if( okay ) {
-                buttonElement.text( SM_t('installProgressMsg') )
+                buttonElement.text( SM_t('action-install-progress') )
                 var p0 = createImport.ofLocal( scriptName, SM_DEFAULT_SKIN ).install();
                 if (p0 && typeof p0.then === 'function') {
-                    p0.then(function(){ buttonElement.text( SM_t('uninstallLinkText') ); reloadAfterChange(); })
-                      .catch(function(){ buttonElement.text( SM_t('installLinkText') ); });
+                    p0.then(function(){ buttonElement.text( SM_t('action-uninstall') ); reloadAfterChange(); })
+                      .catch(function(){ buttonElement.text( SM_t('action-install') ); });
                 } else if (p0 && typeof p0.done === 'function') {
-                    p0.done( function () { buttonElement.text( SM_t('uninstallLinkText') ); reloadAfterChange(); } )
-                      .fail(function(){ buttonElement.text( SM_t('installLinkText') ); });
+                    p0.done( function () { buttonElement.text( SM_t('action-uninstall') ); reloadAfterChange(); } )
+                      .fail(function(){ buttonElement.text( SM_t('action-install') ); });
                 } else {
-                    buttonElement.text( SM_t('installLinkText') );
+                    buttonElement.text( SM_t('action-install') );
                 }
             }
         }); };
@@ -2207,31 +2207,31 @@
                 
                 var handleInstall = function() {
                     isInstalling.value = true;
-                    buttonElement.text(SM_t('installProgressMsg'));
+                    buttonElement.text(SM_t('action-install-progress'));
                     var p = createImport.ofLocal(scriptName, selectedSkin.value).install();
                     if (p && typeof p.then === 'function') {
                         var onFinally = function(){ isInstalling.value = false; };
                         p.then(function(){
-                            buttonElement.text(SM_t('uninstallLinkText'));
-                            dialogOpen.value = false;
-                            try { safeUnmount(app, container[0]); } catch(e) {}
-                            reloadAfterChange();
+                            buttonElement.text(SM_t('action-uninstall'));
+                        dialogOpen.value = false;
+                        try { safeUnmount(app, container[0]); } catch(e) {}
+                        reloadAfterChange();
                         }).catch(function(error){
-                            smLog('Failed to install script:', error);
-                            showNotification('notificationInstallError', 'error', scriptName);
-                            buttonElement.text(SM_t('installLinkText'));
+                        smLog('Failed to install script:', error);
+                        showNotification('notificationInstallError', 'error', scriptName);
+                            buttonElement.text(SM_t('action-install'));
                         });
                         if (typeof p.finally === 'function') { p.finally(onFinally); } else { p.then(onFinally, onFinally); }
                     } else if (p && typeof p.done === 'function') {
                         p.done(function(){
-                            buttonElement.text(SM_t('uninstallLinkText'));
+                            buttonElement.text(SM_t('action-uninstall'));
                             dialogOpen.value = false;
                             try { safeUnmount(app, container[0]); } catch(e) {}
                             reloadAfterChange();
                         }).fail(function(error){
                             smLog('Failed to install script:', error);
                             showNotification('notificationInstallError', 'error', scriptName);
-                            buttonElement.text(SM_t('installLinkText'));
+                            buttonElement.text(SM_t('action-install'));
                         }).always(function(){ isInstalling.value = false; });
                     } else {
                         isInstalling.value = false;
@@ -2264,23 +2264,23 @@
             template: `
                 <cdx-dialog
                     v-model:open="dialogOpen"
-                    :title="SM_t('installDialogTitle').replace ? SM_t('installDialogTitle').replace('$1', scriptName) : ('Install ' + scriptName)"
+                    :title="SM_t('dialog-install-title').replace ? SM_t('dialog-install-title').replace('$1', scriptName) : ('Install ' + scriptName)"
                     :use-close-button="true"
-                    :default-action="{ label: SM_t('cancel') }"
-                    :primary-action="{ label: isInstalling ? SM_t('installProgressMsg') : SM_t('installLinkText'), actionType: 'progressive', disabled: isInstalling }"
+                    :default-action="{ label: SM_t('action-cancel') }"
+                    :primary-action="{ label: isInstalling ? SM_t('action-install-progress') : SM_t('action-install'), actionType: 'progressive', disabled: isInstalling }"
                     @default="handleCancel"
                     @close="handleCancel"
                     @update:open="handleOpenUpdate"
                     @primary="handleInstall"
                 >
-                    <p v-text="SM_t('bigSecurityWarning').replace('$1', SM_t('securityWarningSection').replace('$1', scriptName))"></p>
+                    <p v-text="SM_t('security-warning').replace('$1', SM_t('security-warning-section').replace('$1', scriptName))"></p>
                     
                     <cdx-field>
-                        <template #label><span v-text="SM_t('moveToSkin')"></span></template>
+                        <template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>
                         <cdx-select
                             v-model:selected="selectedSkin"
                             :menu-items="skinOptions"
-                            :default-label="SM_t('selectTargetSkin')"
+                            :default-label="SM_t('dialog-move-select-target')"
                         />
                     </cdx-field>
                 </cdx-dialog>
@@ -2405,20 +2405,20 @@
             template: `
                 <CdxDialog
                     v-model:open="dialogOpen"
-                    :title="SM_t('moveDialogTitle').replace('$1', scriptName)"
+                    :title="SM_t('dialog-move-title').replace('$1', scriptName)"
                     :use-close-button="true"
                     @close="handleClose"
                 >
                     <div class="sm-move-content">
-                        <p><strong><span v-text="SM_t('currentLocation')"></span></strong> <span v-text="currentTarget === 'global' ? SM_t('globalAppliesToAllWikis') : currentTarget"></span></p>
+                        <p><strong><span v-text="SM_t('dialog-move-current-location')"></span></strong> <span v-text="currentTarget === 'global' ? SM_t('globalAppliesToAllWikis') : currentTarget"></span></p>
                          
                          <CdxField>
-                            <template #label><span v-text="SM_t('moveToSkin')"></span></template>
+                            <template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>
                             <CdxSelect
                                 v-model:selected="selectedTarget"
                                 :menu-items="targetOptions"
                                 :disabled="isMoving"
-                                :default-label="SM_t('selectTargetSkin')"
+                                :default-label="SM_t('dialog-move-select-target')"
                             />
                         </CdxField>
                         
@@ -2428,7 +2428,7 @@
                                 :disabled="isMoving"
                                 action="progressive"
                             >
-                                <span v-text="isMoving ? SM_t('movingProgress') : SM_t('moveScriptButton')"></span>
+                                <span v-text="isMoving ? SM_t('dialog-move-progress') : SM_t('dialog-move-button')"></span>
                             </CdxButton>
                         </div>
                     </div>
@@ -2818,8 +2818,8 @@
             });
           });
           // No auto-open via cookie
-        });
       });
+    });
     // Public opener (non-global): listen to hook/event and open
     try {
         function SM_openScriptManager(){
@@ -2829,7 +2829,7 @@
                     if (!exists) {
                         // Wait for i18n and gadgets label to avoid flicker when opening from sidebar on non-script pages
                         SM_waitI18n(function(){ SM_waitGadgetsLabelReady(function(){
-                            $("#mw-content-text").before( makePanel() );
+                        $("#mw-content-text").before( makePanel() );
                             // Kick off background loads after panel mounts (ensure API ready first)
                             try {
                                 // Load remaining imports in background
