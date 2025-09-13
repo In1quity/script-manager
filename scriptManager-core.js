@@ -2317,7 +2317,7 @@
             smError('Failed to load Vue/Codex for move dialog:', error);
             // Fallback to old prompt dialog
             var dest = null;
-            var PROMPT = SM_t('movePrompt') + " " + SKINS.join(", ");
+            var PROMPT = SM_t('dialog-move-prompt') + " " + SKINS.join(", ");
             do {
                 dest = (window.prompt(PROMPT) || "").toLowerCase();
             } while (dest && SKINS.indexOf(dest) < 0);

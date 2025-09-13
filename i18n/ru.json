@@ -16,7 +16,7 @@
     "uninstallSummary": "Удаление $1",
     "disableSummary": "Выключение $1",
     "enableSummary": "Включение $1",
-    "movePrompt": "Куда установить? Выберите один из вариантов:",
+    "dialog-move-prompt": "Куда установить? Выберите один из вариантов:",
 
     "action-install": "Установить",
     "action-install-progress": "Установка...",
@@ -87,9 +87,5 @@
 
     "backlink": "Ссылка на скрипт:",
     "remote-url-desc": "$1, загружается из $2",
-    "manage-user-scripts": "Управление скриптами",
-    "scriptManagerLink": "Менеджер скриптов",
-    "scriptManagerLinkTitle": "Открыть менеджер скриптов",
-    "capturedScriptsHeading": "Перехваченные скрипты",
-    "selectSkin": "Выберите скин"
+    "manage-user-scripts": "Управление скриптами"
 } 

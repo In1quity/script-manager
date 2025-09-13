@@ -16,7 +16,7 @@
     "uninstallSummary": "Uninstalling $1",
     "disableSummary": "Disabling $1",
     "enableSummary": "Enabling $1",
-    "movePrompt": "Destination? Enter one of:",
+    "dialog-move-prompt": "Destination? Enter one of:",
 
     "action-install": "Install",
     "action-install-progress": "Installing...",
@@ -87,9 +87,5 @@
 
     "backlink": "Backlink:",
     "remote-url-desc": "$1, loaded from $2",
-    "manage-user-scripts": "Manage user scripts",
-    "scriptManagerLink": "Script Manager",
-    "scriptManagerLinkTitle": "Open Script Manager",
-    "capturedScriptsHeading": "Captured scripts",
-    "selectSkin": "Select skin"
+    "manage-user-scripts": "Manage user scripts"
 }
