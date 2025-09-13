@@ -479,7 +479,7 @@
                     var title1 = buildSummaryLinkTitle(this);
                     return "[[" + title1 + "]]";
                 }
-                return SM_t('remoteUrlDesc').replace( "$1", this.page ).replace( "$2", this.wiki );
+                return SM_t('remote-url-desc').replace( "$1", this.page ).replace( "$2", this.wiki );
             }
             case 2: return this.url;
         }
@@ -1330,7 +1330,7 @@
                 var skinTabs = computed(function() {
                     return [
                         { name: 'gadgets', label: gadgetsLabel.value },
-                        { name: 'all', label: SM_t('allSkins') },
+                        { name: 'all', label: SM_t('skin-all') },
                         { name: 'global', label: 'global' },
                         { name: 'common', label: 'common' }             
                     ].concat(SKINS.filter(function(skin) { return skin !== 'common' && skin !== 'global'; }).map(function(skin) {
@@ -1752,10 +1752,10 @@
                             <div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
                             <h3>
                                 <template v-if="targetName === 'common'">
-                                    <a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skinCommon')"></a>
+                                    <a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skin-common')"></a>
                                 </template>
                                 <template v-else-if="targetName === 'global'">
-                                    <a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('globalAppliesToAllWikis')"></a>
+                                    <a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skin-global')"></a>
                                 </template>
                                 <template v-else>
                                     <a :href="getSkinUrl(targetName)" target="_blank" v-text="targetName"></a>
@@ -1945,7 +1945,7 @@
                     (function(){
                         var $btn = $( "<a>" )
                             .attr( "id", "sm-manage-button" )
-                            .attr( "title", SM_t('manageUserScripts') )
+                            .attr( "title", SM_t('manage-user-scripts') )
                             .addClass( "sm-manage-button" )
                             .append(
                                 $( '<span class="sm-gear-icon"></span>' ),
@@ -2201,7 +2201,7 @@
                 
                 // Create skin options
                 var skinOptions = SKINS.map(function(skin) {
-                    var label = skin === 'common' ? (typeof t === 'function' ? t('skinCommon') : SM_t('skinCommon')) : skin;
+                    var label = skin === 'common' ? (typeof t === 'function' ? t('skin-common') : SM_t('skin-common')) : skin;
                     return { label: label, value: skin };
                 });
                 
@@ -2354,7 +2354,7 @@
                     return skin !== anImport.target;
                 }).map(function(skin) {
                     return {
-                        label: skin === 'global' ? SM_t('globalAppliesToAllWikis') : skin,
+                        label: skin === 'global' ? SM_t('skin-global') : skin,
                         value: skin
                     };
                 });
@@ -2410,7 +2410,7 @@
                     @close="handleClose"
                 >
                     <div class="sm-move-content">
-                        <p><strong><span v-text="SM_t('dialog-move-current-location')"></span></strong> <span v-text="currentTarget === 'global' ? SM_t('globalAppliesToAllWikis') : currentTarget"></span></p>
+                        <p><strong><span v-text="SM_t('dialog-move-current-location')"></span></strong> <span v-text="currentTarget === 'global' ? SM_t('skin-global') : currentTarget"></span></p>
                          
                          <CdxField>
                             <template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>

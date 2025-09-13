@@ -8,10 +8,9 @@
     "script-name": "Script Manager",
     "script-name-short": "SM",
 
-    "skinCommon": "common (applies to all skins)",
-    "globalAppliesToAllWikis": "Global (applies to all wikis)",
-    "commonAppliesToAllSkins": "Common (applies to all skins)",
-    "allSkins": "All skins",
+    "skin-common": "common (applies to all skins)",
+    "skin-global": "Global (applies to all wikis)",
+    "skin-all": "All skins",
 
     "installSummary": "Installing $1",
     "uninstallSummary": "Uninstalling $1",
@@ -87,8 +86,8 @@
     "normalizeSummary": "Normalizing script installs",
 
     "backlink": "Backlink:",
-    "remoteUrlDesc": "$1, loaded from $2",
-    "manageUserScripts": "Manage user scripts",
+    "remote-url-desc": "$1, loaded from $2",
+    "manage-user-scripts": "Manage user scripts",
     "scriptManagerLink": "Script Manager",
     "scriptManagerLinkTitle": "Open Script Manager",
     "capturedScriptsHeading": "Captured scripts",

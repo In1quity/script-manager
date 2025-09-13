@@ -8,10 +8,9 @@
     "script-name": "Менеджер скриптов",
     "script-name-short": "МС",
 
-    "skinCommon": "(common) применяется ко всем темам оформления",
-    "globalAppliesToAllWikis": "Global (применяется ко всем вики)",
-    "commonAppliesToAllSkins": "Common (применяется ко всем скинам)",
-    "allSkins": "Все скины",
+    "skin-common": "(common) применяется ко всем темам оформления",
+    "skin-global": "Global (применяется ко всем вики)",
+    "skin-all": "Все скины",
 
     "installSummary": "Установка $1",
     "uninstallSummary": "Удаление $1",
@@ -87,8 +86,8 @@
     "normalizeSummary": "Нормализация установленных скриптов",
 
     "backlink": "Ссылка на скрипт:",
-    "remoteUrlDesc": "$1, загружается из $2",
-    "manageUserScripts": "Управление скриптами",
+    "remote-url-desc": "$1, загружается из $2",
+    "manage-user-scripts": "Управление скриптами",
     "scriptManagerLink": "Менеджер скриптов",
     "scriptManagerLinkTitle": "Открыть менеджер скриптов",
     "capturedScriptsHeading": "Перехваченные скрипты",
