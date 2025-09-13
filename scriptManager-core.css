@@ -1,413 +1,501 @@
-/* Codex-based script installer dialog styles */
-.sm-cdx-dialog.cdx-dialog {
-	max-width: 65rem;
+/* ==========================================================================
+   Script Manager Core Styles
+   ========================================================================== */
+
+/* CSS Custom Properties (Design Tokens)
+   ========================================================================== */
+:root {
+  /* Colors */
+  --sm-color-primary: var(--color-progressive, #36c);
+  --sm-color-success: var(--color-success, #00af89);
+  --sm-color-warning: var(--color-warning, #ffcc33);
+  --sm-color-error: var(--color-destructive, #bf3c2c);
+  --sm-color-subtle: var(--color-subtle, #54595d);
+  --sm-color-base: var(--color-base, #000);
+  
+  /* Backgrounds */
+  --sm-bg-base: var(--background-color-base, #fff);
+  --sm-bg-interactive: var(--background-color-interactive, #f8f9fa);
+  --sm-bg-error-subtle: var(--background-color-destructive-subtle, #ffe9e5);
+  --sm-bg-progressive-subtle: var(--background-color-progressive-subtle, #f1f4fd);
+  
+  /* Borders */
+  --sm-border-base: var(--border-color-base, #a2a9b1);
+  --sm-border-subtle: var(--border-color-subtle, #eaecf0);
+  --sm-border-muted: var(--border-color-muted, #dadde3);
+  --sm-border-progressive: var(--border-color-progressive, #36c);
+  --sm-border-error: var(--border-color-destructive, #f54739);
+  
+  /* Spacing */
+  --sm-spacing-xs: 0.25rem;
+  --sm-spacing-sm: 0.5rem;
+  --sm-spacing-md: 1rem;
+  --sm-spacing-lg: 1.5rem;
+  --sm-spacing-xl: 2rem;
+  
+  /* Typography */
+  --sm-font-size-sm: 0.875rem;
+  --sm-font-size-base: 1rem;
+  --sm-font-size-lg: 1.1rem;
+  --sm-line-height-base: 1.4;
+  --sm-line-height-tight: 1.2;
+  
+  /* Transitions */
+  --sm-transition-fast: 0.2s ease;
+  --sm-transition-normal: 0.3s ease;
+  
+  /* Z-index layers */
+  --sm-z-dropdown: 1000;
+  --sm-z-sticky: 1001;
+  --sm-z-modal: 1002;
+  --sm-z-notification: 10001;
 }
 
+/* Base Reset & Typography
+   ========================================================================== */
+.sm-contentSub {
+  margin: 0;
+}
+
+/* Layout Components
+   ========================================================================== */
+
+/* Dialog Container */
+.sm-cdx-dialog.cdx-dialog {
+  max-width: 65rem;
+}
+
+@media (max-width: 768px) {
+  .sm-cdx-dialog {
+    width: 95%;
+    margin: 0 auto 15px auto;
+  }
+}
+
+/* Content Sections */
 .sm-subtitle {
-	margin-bottom: 1rem;
-	padding-bottom: 0.5rem;
-	border-bottom: 1px solid var(--border-color-muted, #dadde3);
-	color: var(--color-subtle, #54595d);
-	font-size: 0.875rem;
-	line-height: 1.4;
+  margin-bottom: var(--sm-spacing-md);
+  padding-bottom: var(--sm-spacing-sm);
+  border-bottom: 1px solid var(--sm-border-muted);
+  color: var(--sm-color-subtle);
+  font-size: var(--sm-font-size-sm);
+  line-height: var(--sm-line-height-base);
 }
 
 .sm-controls {
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
-	margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm-spacing-md);
+  margin-bottom: var(--sm-spacing-md);
 }
 
+@media (max-width: 768px) {
+  .sm-controls {
+    gap: var(--sm-spacing-sm);
+  }
+}
+
+/* Search & Filter Controls */
 .sm-search-wrap {
-	width: 100%;
-	margin: 0 0 10px 0;
+  width: 100%;
+  margin: 0 0 10px 0;
 }
 
 .sm-search-wrap .cdx-text-input {
-	width: 100%;
+  width: 100%;
 }
 
-/* Tabs bar with skins on the left */
+/* Tabs & Navigation */
 .sm-skin-tabs-bar {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-	margin: 0 0 10px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sm-spacing-md);
+  margin: 0 0 10px 0;
 }
 
 .sm-skin-tabs {
-	flex: 1 1 auto;
-	min-width: 0;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
+/* Scrollable Content */
 .sm-scroll {
-	height: 55vh;
-	overflow-y: auto;
-	scrollbar-gutter: stable;
-	display: flex;
-	flex-direction: column;
+  height: 55vh;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  display: flex;
+  flex-direction: column;
 }
 
-.sm-dialog-module {
-	display: flex;
+/* Dialog Actions */
+.sm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  position: sticky;
+  bottom: 0;
+  background: var(--sm-bg-base);
+  z-index: var(--sm-z-sticky);
+  width: 100%;
 }
 
 .sm-bottom-left {
-	display: flex;
-	justify-content: flex-start;
-	width: 100%;
-	align-items: flex-end;
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  align-items: flex-end;
 }
 
-.sm-dialog-actions {
-	display: flex;
-	justify-content: flex-end;
-	gap: 8px;
-	margin-top: 10px;
-	padding-top: 8px;
-	position: sticky;
-	bottom: 0;
-	background: var(--background-color-base, #fff);
-	z-index: 3;
-	width: 100%;
-}
+/* Component Styles
+   ========================================================================== */
 
+/* Script Target Sections */
 .script-target-section {
-	margin-bottom: 1.5rem;
+  margin-bottom: var(--sm-spacing-lg);
 }
 
 .script-target-section h3 {
-	margin: 0 0 0.5rem 0;
-	font-size: 1.1em;
-	font-weight: bold;
-	color: var(--color-base, #000);
+  margin: 0 0 var(--sm-spacing-sm) 0;
+  font-size: var(--sm-font-size-lg);
+  font-weight: bold;
+  color: var(--sm-color-base);
 }
 
+/* Script Lists */
 .script-list {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm-spacing-sm);
 }
 
 .script-item {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 0.75rem;
-	background-color: var(--background-color-base, #fff);
-	border: 1px solid var(--border-color-base, #a2a9b1);
-	border-radius: 4px;
-	transition: background-color 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: var(--sm-bg-base);
+  border: 1px solid var(--sm-border-base);
+  border-radius: 4px;
+  transition: background-color var(--sm-transition-fast);
 }
 
 .script-item:hover {
-	background-color: var(--background-color-interactive, #f8f9fa);
+  background-color: var(--sm-bg-interactive);
 }
 
 .script-item.disabled {
-	opacity: 0.6;
+  opacity: 0.6;
 }
 
 .script-item.disabled .script-link {
-	text-decoration: line-through;
-	font-style: italic;
+  text-decoration: line-through;
+  font-style: italic;
 }
 
+.script-item-removed {
+  background-color: var(--sm-bg-error-subtle);
+  border-color: var(--sm-border-error);
+  opacity: 0.7;
+}
+
+.script-item-removed .script-link {
+  color: var(--sm-color-error);
+}
+
+@media (max-width: 768px) {
+  .script-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sm-spacing-sm);
+  }
+}
+
+/* Script Information */
 .script-info {
-	flex: 1;
+  flex: 1;
 }
 
 .script-link {
-	color: var(--color-link, #0645ad);
-	text-decoration: none;
-	font-weight: 500;
+  color: var(--sm-color-primary);
+  text-decoration: none;
+  font-weight: 500;
 }
 
 .script-link:hover {
-	text-decoration: underline;
+  text-decoration: underline;
 }
 
+/* Script Actions */
 .script-actions {
-	display: flex;
-	gap: 0.5rem;
-	flex-shrink: 0;
+  display: flex;
+  gap: var(--sm-spacing-sm);
+  flex-shrink: 0;
 }
 
 .script-actions .cdx-button {
-	min-width: auto;
+  min-width: auto;
 }
 
 .script-actions .cdx-button:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.normalize-wrapper {
-	margin-left: 0.5rem;
-	font-weight: normal;
-}
-
-/* Responsive design */
 @media (max-width: 768px) {
-	.sm-cdx-dialog {
-		width: 95%;
-		margin: 0 auto 15px auto;
-	}
-	
-	.sm-controls {
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-	
-	.script-item {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0.5rem;
-	}
-	
-	.script-actions {
-		width: 100%;
-		justify-content: flex-start;
-		flex-wrap: wrap;
-	}
+  .script-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
-/* Error message styling */
-#sm-panel .error {
-	padding: 1rem;
-	background-color: var(--background-color-error-subtle, #ffe9e5);
-	color: var(--color-error, #bf3c2c);
-	border: 1px solid var(--border-color-error, #f54739);
-	border-radius: 4px;
-	text-align: center;
+/* Normalize Controls */
+.normalize-wrapper {
+  margin-left: var(--sm-spacing-sm);
+  font-weight: normal;
 }
 
-/* Debug info styling */
-.debug-info {
-	padding: 0.5rem;
-	background-color: var(--background-color-progressive-subtle, #f1f4fd);
-	color: var(--color-progressive, #36c);
-	border: 1px solid var(--border-color-progressive, #6485d1);
-	border-radius: 4px;
-	margin: 0.5rem 0;
-	font-family: monospace;
-	font-size: 0.8em;
-	white-space: pre-wrap;
-}
+/* Gadgets Components
+   ========================================================================== */
 
-/* Install dialog styling - dialog will be teleported to body */
-
-#sm-main-install {
-	font-weight: bold;
-}
-
-/* Gadgets styling */
 .gadgets-section {
-	margin-bottom: 1rem;
+  margin-bottom: var(--sm-spacing-md);
 }
 
 .gadgets-list {
-	display: flex;
-	flex-direction: column;
-	gap: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
 .gadget-section {
-	margin-bottom: 1.5rem;
+  margin-bottom: var(--sm-spacing-lg);
 }
 
 .gadget-section:last-child {
-	margin-bottom: 0;
+  margin-bottom: 0;
 }
 
 .gadget-section-title {
-	font-size: 1rem;
-	font-weight: 600;
-	color: var(--color-base, #202122);
-	margin: 0 0 0.75rem 0;
-	padding-bottom: 0.5rem;
-	border-bottom: 1px solid var(--border-color-subtle, #eaecf0);
+  font-size: var(--sm-font-size-base);
+  font-weight: 600;
+  color: var(--sm-color-base);
+  margin: 0 0 0.75rem 0;
+  padding-bottom: var(--sm-spacing-sm);
+  border-bottom: 1px solid var(--sm-border-subtle);
 }
 
 .gadget-section-content {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sm-spacing-sm);
 }
 
 .gadget-item {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 1rem;
-	border: 1px solid var(--border-color-base, #a2a9b1);
-	border-radius: 4px;
-	background-color: var(--background-color-base, #ffffff);
-	transition: background-color 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sm-spacing-md);
+  border: 1px solid var(--sm-border-base);
+  border-radius: 4px;
+  background-color: var(--sm-bg-base);
+  transition: background-color var(--sm-transition-fast);
 }
 
 .gadget-item:hover {
-	background-color: var(--background-color-interactive, #f8f9fa);
+  background-color: var(--sm-bg-interactive);
 }
 
 .gadget-item.enabled {
-	border-color: var(--border-color-progressive, #36c);
-	background-color: var(--background-color-progressive-subtle, #f1f4fd);
+  border-color: var(--sm-border-progressive);
+  background-color: var(--sm-bg-progressive-subtle);
 }
 
 .gadget-info {
-	flex: 1;
+  flex: 1;
 }
 
 .gadget-name {
-	font-weight: 600;
-	font-size: 1rem;
-	color: var(--color-base, #000000);
-	margin-bottom: 0.25rem;
+  font-weight: 600;
+  font-size: var(--sm-font-size-base);
+  color: var(--sm-color-base);
+  margin-bottom: var(--sm-spacing-xs);
 }
 
 .gadget-description {
-	color: var(--color-subtle, #54595d);
-	font-size: 0.875rem;
-	margin-bottom: 0.5rem;
+  color: var(--sm-color-subtle);
+  font-size: var(--sm-font-size-sm);
+  margin-bottom: var(--sm-spacing-sm);
 }
 
 .gadget-actions {
-	display: flex;
-	gap: 0.5rem;
-	flex-shrink: 0;
+  display: flex;
+  gap: var(--sm-spacing-sm);
+  flex-shrink: 0;
 }
 
 .gadget-actions .cdx-button {
-	min-width: auto;
+  min-width: auto;
 }
 
 .no-gadgets {
-	padding: 2rem;
-	text-align: center;
-	color: var(--color-subtle, #54595d);
+  padding: var(--sm-spacing-xl);
+  text-align: center;
+  color: var(--sm-color-subtle);
 }
 
 .no-gadgets ul {
-	text-align: left;
-	margin: 1rem 0;
-	padding-left: 2rem;
+  text-align: left;
+  margin: var(--sm-spacing-md) 0;
+  padding-left: var(--sm-spacing-xl);
 }
 
 .no-gadgets li {
-	margin: 0.5rem 0;
+  margin: var(--sm-spacing-sm) 0;
 }
 
-/* Message stack container for notifications */
+/* Dialog Components
+   ========================================================================== */
+
+/* Move Dialog */
+#sm-move-dialog {
+  z-index: var(--sm-z-modal);
+}
+
+.sm-move-content {
+  padding: var(--sm-spacing-md) 0;
+}
+
+.sm-move-content p {
+  margin: var(--sm-spacing-sm) 0;
+}
+
+.sm-move-actions {
+  margin-top: var(--sm-spacing-lg);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Notification System
+   ========================================================================== */
+
 .sm-message-stack {
-	position: fixed;
-	top: 20px;
-	right: 20px;
-	z-index: 10001;
-	width: 420px;
-	display: flex;
-	flex-direction: column;
-	gap: 8px;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: var(--sm-z-notification);
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .sm-message-host .cdx-message {
-	box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
 }
 
 .sm-message-host .cdx-message--block {
-	margin: 0;
+  margin: 0;
 }
 
-/* Fade transition for notifications */
+/* Transitions */
 .sm-fade-enter-active, .sm-fade-leave-active {
-	transition: opacity 0.3s ease;
+  transition: opacity var(--sm-transition-normal);
 }
 
 .sm-fade-enter-from, .sm-fade-leave-to {
-	opacity: 0;
+  opacity: 0;
 }
 
+/* Top Container & Management
+   ========================================================================== */
+
 #sm-top-container {
-	font-size: 70%;
-	user-select: none;
+  font-size: 70%;
+  user-select: none;
 }
 
 body.skin-modern #sm-top-container a {
-	color: inherit;
-	cursor: pointer;
+  color: inherit;
+  cursor: pointer;
 }
 
 body.skin-timeless #sm-top-container a,
 body.skin-cologneblue #sm-top-container a {
-	cursor: pointer
+  cursor: pointer;
 }
 
-/* Remove default margin to keep gear + indicator tight */
-.sm-contentSub {
-	margin: 0;
+/* Manage Button */
+.sm-manage-button {
+  margin: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sm-gear-icon svg { 
+  width: 16px; 
+  height: 16px; 
+  display: inline-block; 
+}
+
+.sm-manage-button:hover { 
+  opacity: .85; 
+}
+
+/* Infobox Integration */
+td.sm-ibx {
+  text-align: center;
 }
 
 #sm-top-container img.warning {
-	position: relative;
-	top: -2px;
-	margin-right: 3px;
+  position: relative;
+  top: -2px;
+  margin-right: 3px;
 }
 
-/* Manage button: gear + caret */
-.sm-manage-button {
-	margin: 0 8px;
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	color: inherit;
-	text-decoration: none;
-}
-.sm-gear-icon svg { width: 16px; height: 16px; display: inline-block; }
-.sm-manage-button:hover { opacity: .85; }
-
-td.sm-ibx {
-	text-align: center
+/* Install Dialog Specific */
+#sm-main-install {
+  font-weight: bold;
 }
 
-/* Move dialog styles */
-#sm-move-dialog {
-	z-index: 1002;
+/* Utility Classes
+   ========================================================================== */
+
+/* Error States */
+#sm-panel .error {
+  padding: var(--sm-spacing-md);
+  background-color: var(--sm-bg-error-subtle);
+  color: var(--sm-color-error);
+  border: 1px solid var(--sm-border-error);
+  border-radius: 4px;
+  text-align: center;
 }
 
-.sm-move-content {
-	padding: 1rem 0;
+/* Debug Information */
+.debug-info {
+  padding: var(--sm-spacing-sm);
+  background-color: var(--sm-bg-progressive-subtle);
+  color: var(--sm-color-primary);
+  border: 1px solid var(--sm-border-progressive);
+  border-radius: 4px;
+  margin: var(--sm-spacing-sm) 0;
+  font-family: monospace;
+  font-size: 0.8em;
+  white-space: pre-wrap;
 }
 
-.sm-move-content p {
-	margin: 0.5rem 0;
-}
-
-.sm-move-actions {
-	margin-top: 1.5rem;
-	display: flex;
-	justify-content: flex-end;
-}
-
-/* Removed script styles */
-.script-item-removed {
-	background-color: var(--background-color-destructive-subtle, #ffe9e5);
-	border-color: var(--border-color-destructive, #f54739);
-	opacity: 0.7;
-}
-
-.script-item-removed .script-link {
-	color: var(--color-destructive, #bf3c2c);
-}
-
-.sm-skin-tabs-bar {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: 1rem;
-}
-
+/* Enabled Toggle */
 .sm-enabled-toggle {
-	flex-shrink: 0;
+  flex-shrink: 0;
+}
+
+/* Dialog Module Layout */
+.sm-dialog-module {
+  display: flex;
 }
