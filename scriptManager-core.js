@@ -1668,7 +1668,7 @@
                 <cdx-dialog
                     class="sm-cdx-dialog"
                     v-model:open="dialogOpen"
-                    :title="SM_t('panel-title')"
+                    :title="SM_t('script-name')"
                     :use-close-button="true"
                     @close="onPanelClose"
                 >
