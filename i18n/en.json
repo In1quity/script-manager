@@ -87,5 +87,8 @@
 
     "backlink": "Backlink:",
     "remote-url-desc": "$1, loaded from $2",
-    "manage-user-scripts": "Manage user scripts"
+    "manage-user-scripts": "Manage user scripts",
+    "scriptManagerLink": "Script Manager",
+    "scriptManagerLinkTitle": "Open Script Manager",
+    "capturedScriptsHeading": "Captured scripts"
 }

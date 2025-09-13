@@ -87,5 +87,8 @@
 
     "backlink": "Ссылка на скрипт:",
     "remote-url-desc": "$1, загружается из $2",
-    "manage-user-scripts": "Управление скриптами"
+    "manage-user-scripts": "Управление скриптами",
+    "scriptManagerLink": "Менеджер скриптов",
+    "scriptManagerLinkTitle": "Открыть менеджер скриптов",
+    "capturedScriptsHeading": "Перехваченные скрипты"
 } 
