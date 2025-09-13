@@ -32,6 +32,8 @@
     "action-restore": "Restore",
     "action-cancel": "Cancel",
     "action-normalize": "Normalize",
+    "action-normalize-progress": "Normalizing...",
+    "action-normalize-completed": "Normalized",
 
     "dialog-install-title": "Install $1",
     "dialog-move-title": "Move script: $1",
@@ -82,9 +84,6 @@
     "security-warning": "Warning!$1\n\nAll user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump. Install this script?",
     "security-warning-section": " About to install $1.",
 
-    "normalize": "Normalize",
-    "normalizing": "Normalizing...",
-    "normalized": "Normalized",
     "normalizeSummary": "Normalizing script installs",
 
     "backlink": "Backlink:",

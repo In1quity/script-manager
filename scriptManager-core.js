@@ -1822,7 +1822,7 @@
                                 :disabled="Object.keys(filteredImports).length === 0 || selectedSkin === 'gadgets' || isNormalizing || normalizeCompleted"
                                 @click="handleNormalizeAll"
                             >
-                                <span v-text="isNormalizing ? SM_t('normalizing') : (normalizeCompleted ? SM_t('normalized') : SM_t('action-normalize'))"></span>
+                                <span v-text="isNormalizing ? SM_t('action-normalize-progress') : (normalizeCompleted ? SM_t('action-normalize-completed') : SM_t('action-normalize'))"></span>
                             </cdx-button>
                         </div>
                     </div>
