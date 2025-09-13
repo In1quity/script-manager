@@ -88,7 +88,7 @@
     "remote-url-desc": "$1, loaded from $2",
     "manage-user-scripts": "Manage user scripts",
 
-    "scriptManagerLink": "Script Manager",
-    "scriptManagerLinkTitle": "Open Script Manager",
-    "capturedScriptsHeading": "Captured scripts"
+    "script-manager-link": "Script Manager",
+    "script-manager-link-title": "Open Script Manager",
+    "captured-scripts-heading": "Captured scripts"
 }

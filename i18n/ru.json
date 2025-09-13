@@ -88,7 +88,7 @@
     "remote-url-desc": "$1, загружается из $2",
     "manage-user-scripts": "Управление скриптами",
 
-    "scriptManagerLink": "Менеджер скриптов",
-    "scriptManagerLinkTitle": "Открыть менеджер скриптов",
-    "capturedScriptsHeading": "Перехваченные скрипты"
+    "script-manager-link": "Менеджер скриптов",
+    "script-manager-link-title": "Открыть менеджер скриптов",
+    "captured-scripts-heading": "Перехваченные скрипты"
 }
