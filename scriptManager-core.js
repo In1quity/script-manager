@@ -122,6 +122,23 @@
         } catch(e) { smLog('canonicalizeUserNamespace failed', e); return title; }
     }
 
+    // Normalize jQuery Deferred or native Promise into a native Promise
+    function toPromise(maybeThenable){
+        try {
+            if (!maybeThenable) return Promise.resolve();
+            if (typeof maybeThenable.then === 'function') return maybeThenable;
+            if (typeof maybeThenable.done === 'function') {
+                return new Promise(function(resolve,reject){ try { maybeThenable.done(resolve).fail(reject); } catch(e){ reject(e); } });
+            }
+        } catch(_) {}
+        return Promise.resolve();
+    }
+
+    // Compute initial label (Install/Uninstall) for a script name
+    function getInitialInstallLabel(scriptName){
+        try { return (getTargetsForScript(scriptName).length ? SM_t('uninstallLinkText') : SM_t('installLinkText')); } catch(_) { return SM_t('installLinkText'); }
+    }
+
     function buildRawLoaderUrl(host, title) {
         var normalized = canonicalizeUserNamespace(title);
         var isCss = /\.css$/i.test(String(normalized||''));
@@ -568,28 +585,64 @@
     createImport.prototype.uninstall = function (options) {
         options = options || {};
         var that = this;
+        smInfo('uninstall: start', { page: that.page, target: that.target, type: that.type, wiki: that.wiki, url: that.url });
         var chain = resolveDocumentationInterwiki(this).then(function(iw){ if (iw) { try { that.docInterwiki = iw; } catch(_) {} } }).then(function(){
             return getWikitext( getFullTarget( that.target ) );
         }).then( function ( wikitext ) {
-            var lineNums = that.getLineNums( wikitext ),
-                newWikitext = wikitext.split( "\n" ).filter( function ( _, idx ) {
-                    return lineNums.indexOf( idx ) < 0;
-                } ).join( "\n" );
+            try { smInfo('uninstall: fetched wikitext bytes=', (wikitext||'').length, 'target=', getFullTarget(that.target)); } catch(_) {}
+            // Parse lines semantically to find matching imports
+            var srcLines = String(wikitext||'').split("\n");
+            var lineNums = [];
+            try {
+                for (var i = 0; i < srcLines.length; i++) {
+                    var parsed = createImport.fromJs(srcLines[i], that.target);
+                    if (!parsed) continue;
+                    var pPage = (parsed.page||'').toLowerCase();
+                    var tPage = (that.page||'').toLowerCase();
+                    if (pPage && tPage && pPage === tPage) { lineNums.push(i); continue; }
+                    if (parsed.url && that.url && parsed.url === that.url) { lineNums.push(i); }
+                }
+            } catch(e) {
+                try { lineNums = that.getLineNums(wikitext) || []; } catch(_) { lineNums = []; }
+            }
+            var newWikitext = srcLines.filter(function(_, idx){ return lineNums.indexOf(idx) < 0; }).join("\n");
+            smInfo('uninstall: lineNums to remove =', lineNums);
             return getApiForTarget( that.target ).postWithEditToken( {
                 action: "edit",
                 title: getFullTarget( that.target ),
                 summary: getSummaryForTarget( that.target, 'uninstallSummary', that.getDescription( /* useWikitext */ true ) ),
                 text: newWikitext
-            } );
+            } ).then(function(resp){
+                // Verify removal actually happened
+                try {
+                    return getWikitext( getFullTarget( that.target ) ).then(function(after){
+                        var remaining = that.getLineNums(after);
+                        smInfo('uninstall: verify remaining lineNums =', remaining, 'target=', getFullTarget(that.target));
+                        if (remaining && remaining.length) {
+                            var err = new Error('Uninstall verification failed: lines remain');
+                            err.code = 'UNINSTALL_VERIFY_FAILED';
+                            throw err;
+                        }
+                        return resp;
+                    });
+                } catch(e) { return resp; }
+            });
         } );
-        if (options.silent) return chain;
-        return chain.then(function() {
-            showNotification('notificationUninstallSuccess', 'success', that.getDescription());
-        }).catch(function(error) {
-            smError('Uninstall failed:', error);
-            showNotification('notificationUninstallError', 'error', that.getDescription());
-            throw error;
-        });
+        // Return value should be compatible with both jQuery Deferred and native Promise consumers
+        var dfd = (typeof $ !== 'undefined' && $.Deferred) ? $.Deferred() : null;
+        var consume = function(){
+            return chain.then(function(){
+                if (!options.silent) { showNotification('notificationUninstallSuccess', 'success', that.getDescription()); }
+                if (dfd) dfd.resolve();
+            }).catch(function(error){
+                smError('Uninstall failed:', error);
+                if (!options.silent) { showNotification('notificationUninstallError', 'error', that.getDescription()); }
+                if (dfd) dfd.reject(error);
+                else throw error;
+            });
+        };
+        var p = consume();
+        return dfd ? dfd.promise() : p;
     }
 
     /**
@@ -971,13 +1024,13 @@
         Object.values(gadgetsData).forEach(function(gadget) {
             sections.add(gadget.section);
         });
-        smInfo('loadSectionLabels: sections =', Array.from(sections));
+        smLog('loadSectionLabels: sections =', Array.from(sections));
         // Filter out placeholder section
         var names = Array.from(sections).filter(function(s){ return s && s !== 'other'; }).map(function(s){ return 'gadget-section-' + s; });
         if (!names.length) return Promise.resolve({});
 
         // Fetch all labels in one request via allmessages
-        smInfo('loadSectionLabels: allmessages request keys =', names.join('|'));
+        smLog('loadSectionLabels: allmessages request keys =', names.join('|'));
         var t0 = (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
         return api.get({
             action: 'query',
@@ -999,7 +1052,7 @@
             } catch(_) {}
             // Ensure all sections have a label
             Array.from(sections).forEach(function(s){ if (s && s !== 'other' && !map[s]) { map[s] = s.charAt(0).toUpperCase() + s.slice(1); } });
-            smInfo('loadSectionLabels: result keys =', Object.keys(map));
+            smLog('loadSectionLabels: result keys =', Object.keys(map));
             return map;
         }).catch(function(e){
             smWarn('loadSectionLabels: error', e);
@@ -1007,7 +1060,7 @@
             var fallback = {};
             Array.from(sections).forEach(function(s){ if (s && s !== 'other') { fallback[s] = s.charAt(0).toUpperCase() + s.slice(1); } });
             return fallback;
-        }).always(function(){ var t1=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now(); smInfo('loadSectionLabels: done in', Math.round(t1-t0),'ms'); });
+        }).always(function(){ var t1=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now(); smLog('loadSectionLabels: done in', Math.round(t1-t0),'ms'); });
     }
 
     var _pLoadUserGadgetSettings = null;
@@ -1106,7 +1159,15 @@
     }
 
     function reloadAfterChange(){
-        try { location.reload(true); } catch(e) { smLog('reloadAfterChange error', e); }
+        try { location.reload(true); } catch(e) { smError('reloadAfterChange error', e); }
+    }
+
+    // Refresh imports and update reactive view without full page reload
+    function refreshImportsView(){
+        try {
+            var p = buildImportList();
+            return toPromise(p).then(function(){ try { if (importsRef) { importsRef.value = imports; } } catch(_) {} });
+        } catch(e) { return Promise.resolve(); }
     }
 
     /********************************************
@@ -1441,31 +1502,31 @@
                     
                     if (isRemoved) {
                         // Restore script
-                        anImport.install().done(function() {
-                            // Remove from removed list
-                            var index = removedScripts.value.indexOf(scriptName);
-                            if (index > -1) {
-                                removedScripts.value.splice(index, 1);
-                            }
-                            reloadOnClose.value = true;
-                        }).fail(function(error) {
-                            smError('Failed to restore:', error);
-                            showNotification('notificationRestoreError', 'error', anImport.getDescription());
-                        }).always(function() {
-                            setLoading(key, false);
-                        });
+                        var pRestore = toPromise(anImport.install());
+                        pRestore
+                            .then(function(){
+                                var index = removedScripts.value.indexOf(scriptName);
+                                if (index > -1) removedScripts.value.splice(index, 1);
+                                reloadOnClose.value = true;
+                            })
+                            .catch(function(error){
+                                smError('Failed to restore:', error);
+                                showNotification('notificationRestoreError', 'error', anImport.getDescription());
+                            });
+                        if (pRestore && typeof pRestore.finally === 'function') { pRestore.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
                     } else {
                         // Remove script
-                        anImport.uninstall().done(function() {
-                            // Add to removed list
-                            removedScripts.value.push(scriptName);
-                            reloadOnClose.value = true;
-                        }).fail(function(error) {
-                            smError('Failed to uninstall:', error);
-                            showNotification('notificationUninstallError', 'error', anImport.getDescription());
-                        }).always(function() {
-                            setLoading(key, false);
-                        });
+                        var pUn = toPromise(anImport.uninstall());
+                        pUn
+                            .then(function(){
+                                removedScripts.value.push(scriptName);
+                                reloadOnClose.value = true;
+                            })
+                            .catch(function(error){
+                                smError('Failed to uninstall:', error);
+                                showNotification('notificationUninstallError', 'error', anImport.getDescription());
+                            });
+                        if (pUn && typeof pUn.finally === 'function') { pUn.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
                     }
                 };
                 
@@ -1484,21 +1545,11 @@
                     var key = 'toggle-' + anImport.getDescription();
                     setLoading(key, true);
                     try {
-                        var p = anImport.toggleDisabled();
-                        if (p && typeof p.then === 'function') {
-                            // Native/thenable promise path
-                            var onFinally = function(){ try { setLoading(key, false); } catch(_) {} };
-                            p.then(function(){ reloadOnClose.value = true; })
-                             .catch(function(error){ smError('Failed to toggle disabled state:', error); showNotification('notificationGeneralError', 'error'); })
-                             .finally ? p.finally(onFinally) : (p.then(onFinally, onFinally));
-                        } else if (p && typeof p.done === 'function') {
-                            // jQuery deferred path
-                            p.done(function(){ reloadOnClose.value = true; })
-                             .fail(function(error){ smError('Failed to toggle disabled state:', error); showNotification('notificationGeneralError', 'error'); })
-                             .always(function(){ setLoading(key, false); });
-                        } else {
-                            setLoading(key, false);
-                        }
+                        var pToggle = toPromise(anImport.toggleDisabled());
+                        pToggle
+                            .then(function(){ reloadOnClose.value = true; })
+                            .catch(function(error){ smError('Failed to toggle disabled state:', error); showNotification('notificationGeneralError', 'error'); })
+                        if (pToggle && typeof pToggle.finally === 'function') { pToggle.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
                     } catch(e) {
                         smError('toggleDisabled threw', e);
                         setLoading(key, false);
@@ -1520,20 +1571,19 @@
                     var normalizePromises = targets.map(function(targetName) {
                         var key = 'normalize-' + targetName;
                         setLoading(key, true);
-                        return normalize(targetName).always(function() {
-                            setLoading(key, false);
-                        });
+                        var p = toPromise(normalize(targetName));
+                        if (p && typeof p.finally === 'function') { p.finally(function(){ setLoading(key, false); }); }
+                        else { p.then(function(){ setLoading(key, false); }, function(){ setLoading(key, false); }); }
+                        return p;
                     });
                     
-                    $.when.apply($, normalizePromises).done(function() {
+                    Promise.all(normalizePromises).then(function(){
                         normalizeCompleted.value = true;
                         reloadOnClose.value = true;
-                    }).fail(function(error) {
+                    }).catch(function(error){
                         smError('Failed to normalize some scripts:', error);
                         showNotification('notificationNormalizeError', 'error');
-                    }).always(function() {
-                        isNormalizing.value = false;
-                    });
+                    }).finally ? Promise.all(normalizePromises).finally(function(){ isNormalizing.value = false; }) : (function(){ isNormalizing.value = false; })();
                 };
 
                 var handleGadgetToggle = function(gadgetName, enabled) {
@@ -1953,7 +2003,9 @@
     // Helper to mount Codex Install/Uninstall button into a host element for given scriptName
     function mountInstallButton(hostEl, scriptName) {
         try {
-            var initialLabel = (getTargetsForScript(scriptName).length ? SM_t('uninstallLinkText') : SM_t('installLinkText'));
+            // Compute label; may update after imports load
+            var computeLabel = function(){ return getInitialInstallLabel(scriptName); };
+            var initialLabel = computeLabel();
             loadVueCodex().then(function(libs){
                 var app = libs.createApp({
                     data: function(){ return { label: initialLabel, busy: false }; },
@@ -1963,22 +2015,21 @@
                     methods: {
                         onClick: function(){
                             var vm = this;
-                            smLog('install button click', { busy: !!vm.busy, label: vm.label, scriptName: scriptName });
-                            if (vm.busy) return; vm.busy=true; smLog('install button set busy=true');
+                            smInfo('install button click', { busy: !!vm.busy, label: vm.label, scriptName: scriptName });
+                            if (vm.busy) return; vm.busy=true; smInfo('install button set busy=true');
                             if (vm.label === SM_t('installLinkText')) {
                                 var adapter = {
                                     text: function(t){ try { vm.label = String(t); smLog('adapter.text set label', t); } catch(e){} },
                                     resetBusy: function(){ try { vm.busy = false; smLog('adapter.resetBusy executed'); } catch(e){} }
                                 };
-                                try { smLog('opening install dialog for', scriptName); showInstallDialog(scriptName, adapter); } catch(e) { vm.busy=false; smLog('showInstallDialog error', e); }
+                                try { smInfo('opening install dialog for', scriptName); showInstallDialog(scriptName, adapter); } catch(e) { vm.busy=false; smError('showInstallDialog error', e); }
                             } else {
-                                vm.label = SM_t('uninstallProgressMsg'); smLog('uninstall start', { scriptName: scriptName });
+                                vm.label = SM_t('uninstallProgressMsg'); smInfo('uninstall start (from infobox button)', { scriptName: scriptName, targets: getTargetsForScript(scriptName) });
                                 var targets = getTargetsForScript(scriptName);
-                                var uninstalls = uniques(targets).map(function(target){ return createImport.ofLocal(scriptName, target).uninstall(); });
-                                $.when.apply($, uninstalls).then(function(){
-                                    vm.label = SM_t('installLinkText'); smLog('uninstall done; reloading');
-                                    reloadAfterChange();
-                                }).always(function(){ vm.busy=false; });
+                                var uninstalls = uniques(targets).map(function(target){ return toPromise(createImport.ofLocal(scriptName, target).uninstall()); });
+                                Promise.all(uninstalls).then(function(){ smInfo('uninstall via button success', { scriptName: scriptName, targets: targets }); vm.label = SM_t('installLinkText'); return refreshImportsView(); })
+                                    .catch(function(e){ smError('uninstall via button failed', e); })
+                                    .finally ? Promise.all(uninstalls).finally(function(){ vm.busy=false; }) : (function(){ vm.busy=false; })();
                             }
                         }
                     },
@@ -1986,9 +2037,26 @@
                 });
                 try { if (app && app.config && app.config.compilerOptions) { app.config.compilerOptions.delimiters = ['[%','%]']; } } catch(_) {}
                 app.component('CdxButton', libs.CdxButton);
-                app.mount(hostEl);
+                var mounted = app.mount(hostEl);
+                // Refresh label once imports finished loading (first paint might precede it)
+                try { if (typeof SM_waitImportsReady === 'function') { SM_waitImportsReady(function(){ try { mounted.label = computeLabel(); } catch(_) {} }); } } catch(_) {}
             });
         } catch(e) { smLog('mountInstallButton error', e); }
+    }
+
+    // Ensure imports are fully known before deciding initial action, then mount button
+    function mountInstallButtonAfterImports(hostEl, scriptName){
+        try {
+            var proceed = function(){
+                try {
+                    // Load all targets to detect any existing installs accurately
+                    buildImportList().then(function(){
+                        try { mountInstallButton(hostEl, scriptName); } catch(e) { smLog('mount after imports failed', e); }
+                    }).catch(function(){ try { mountInstallButton(hostEl, scriptName); } catch(_) {} });
+                } catch(e) { mountInstallButton(hostEl, scriptName); }
+            };
+            if (typeof SM_waitApiReady === 'function') { SM_waitApiReady(proceed); } else { proceed(); }
+        } catch(e) { smLog('mountInstallButtonAfterImports error', e); }
     }
 
     function attachInstallLinks() {
@@ -2005,18 +2073,50 @@
         } );
 
         $( "table.infobox-user-script" ).each( function () {
-            if( $( this ).find( ".sm-ibx" ).length === 0 ) {
-                var scriptName = $( this ).find( "th:contains('Source')" ).next().text() ||
-                        mw.config.get( "wgPageName" );
-                scriptName = /user:.+?\/.+?.js/i.exec( scriptName )[0];
-                var td = $( this ).children( "tbody" ).append( $( "<tr>" ).append( $( "<td>" )
-                        .attr( "colspan", "2" )
-                        .addClass( "sm-ibx" ) ) )
-                    .find('td.sm-ibx');
-                var host = $( '<div class="sm-ibx-host"></div>' );
-                td.append( host );
-                mountInstallButton(host[0], scriptName);
+            // Avoid duplicates if our host already exists
+            if( $( this ).find( ".sm-ibx-host" ).length ) return;
+            var $table = $(this);
+            // Robust script name detection (priority: data-mainsource inside caption span.userscript-install-data)
+            var scriptName = null;
+            try {
+                var $data = $table.find('.userscript-install-data').first();
+                if ($data && $data.length) {
+                    var mainSrc = $data.attr('data-mainsource') || $data.data('mainsource');
+                    if (mainSrc) {
+                        var s = String(mainSrc); var m;
+                        if ((m = /[?&]title=([^&#]+)/i.exec(s))) scriptName = decodeURIComponent(m[1].replace(/\+/g,' '));
+                        else if ((m = /\/wiki\/([^?#]+)/i.exec(s))) scriptName = decodeURIComponent(m[1]).replace(/_/g, ' ');
+                        else if (/^User:/i.test(s)) scriptName = s;
+                    }
+                }
+            } catch(_) {}
+            try {
+                // Prefer link to User:*/*.js inside the infobox
+                if (!scriptName) {
+                    var $lnk = $table.find("a[title*='User:']").filter(function(){ var t=this.getAttribute('title')||''; return /user:\\S+\/.+?\.js/i.test(t); }).first();
+                    if ($lnk.length) { scriptName = $lnk.attr('title'); }
+                }
+            } catch(_) {}
+            if (!scriptName) {
+                try {
+                    // Try common localized headers
+                    var $th = $table.find("th:contains('Source'), th:contains('Исход'), th:contains('Источник'), th:contains('Исходник')").first();
+                    if ($th.length) { scriptName = ($th.next().text()||'').trim(); }
+                } catch(_) {}
             }
+            if (!scriptName) { scriptName = mw.config.get( "wgPageName" ); }
+            try { var m2 = /user:.+?\/.+?\.js/i.exec( scriptName ); if (m2) { scriptName = m2[0]; } } catch(_) {}
+
+            // Prefer existing ScriptInstaller cell if present
+            var $slot = $table.find('td.script-installer-ibx').last();
+            if (!$slot.length) {
+                // Otherwise create our own host row
+                var $tbody = $table.children("tbody"); if (!$tbody.length) { $tbody = $table; }
+                $slot = $tbody.append( $( "<tr>" ).append( $( "<td>" ).attr( "colspan", "2" ).addClass( "sm-ibx" ) ) ).find('td.sm-ibx');
+            }
+            var host = $( '<div class="sm-ibx-host"></div>' );
+            $slot.append( host );
+            mountInstallButtonAfterImports(host[0], scriptName);
         } );
     }
 
@@ -2060,23 +2160,29 @@
             } catch(_) {}
 
             loadVueCodex().then(function(libs) {
-            smLog('showInstallDialog: libs loaded');
+            smInfo('showInstallDialog: libs loaded');
             if (!libs.createApp || !libs.CdxDialog || !libs.CdxButton || !libs.CdxSelect || !libs.CdxField) {
                 throw new Error('Codex/Vue components not available for install dialog');
             }
             createInstallDialog(container, libs.createApp, libs.defineComponent, libs.ref, libs.CdxDialog, libs.CdxButton, libs.CdxSelect, libs.CdxField, scriptName, buttonElement);
         }).catch(function(error) {
-            smLog('Failed to load Vue/Codex for install dialog:', error);
+            smError('Failed to load Vue/Codex for install dialog:', error);
             // Fallback to old confirm dialog
             var okay = window.confirm(
                 SM_t('bigSecurityWarning').replace( '$1',
                     SM_t('securityWarningSection').replace( '$1', scriptName ) ) );
             if( okay ) {
                 buttonElement.text( SM_t('installProgressMsg') )
-                createImport.ofLocal( scriptName, SM_DEFAULT_SKIN ).install().done( function () {
-                    buttonElement.text( SM_t('uninstallLinkText') );
-                    reloadAfterChange();
-                }.bind( buttonElement ) );
+                var p0 = createImport.ofLocal( scriptName, SM_DEFAULT_SKIN ).install();
+                if (p0 && typeof p0.then === 'function') {
+                    p0.then(function(){ buttonElement.text( SM_t('uninstallLinkText') ); reloadAfterChange(); })
+                      .catch(function(){ buttonElement.text( SM_t('installLinkText') ); });
+                } else if (p0 && typeof p0.done === 'function') {
+                    p0.done( function () { buttonElement.text( SM_t('uninstallLinkText') ); reloadAfterChange(); } )
+                      .fail(function(){ buttonElement.text( SM_t('installLinkText') ); });
+                } else {
+                    buttonElement.text( SM_t('installLinkText') );
+                }
             }
         }); };
         try { if (typeof SM_waitI18n === 'function') { SM_waitI18n(open); } else { open(); } } catch(_) { open(); }
@@ -2102,19 +2208,34 @@
                 var handleInstall = function() {
                     isInstalling.value = true;
                     buttonElement.text(SM_t('installProgressMsg'));
-                    
-                    createImport.ofLocal(scriptName, selectedSkin.value).install().done(function() {
-                        buttonElement.text(SM_t('uninstallLinkText'));
-                        dialogOpen.value = false;
-                        try { safeUnmount(app, container[0]); } catch(e) {}
-                        reloadAfterChange();
-                    }).fail(function(error) {
-                        smLog('Failed to install script:', error);
-                        showNotification('notificationInstallError', 'error', scriptName);
-                        buttonElement.text(SM_t('installLinkText'));
-                    }).always(function() {
+                    var p = createImport.ofLocal(scriptName, selectedSkin.value).install();
+                    if (p && typeof p.then === 'function') {
+                        var onFinally = function(){ isInstalling.value = false; };
+                        p.then(function(){
+                            buttonElement.text(SM_t('uninstallLinkText'));
+                            dialogOpen.value = false;
+                            try { safeUnmount(app, container[0]); } catch(e) {}
+                            reloadAfterChange();
+                        }).catch(function(error){
+                            smLog('Failed to install script:', error);
+                            showNotification('notificationInstallError', 'error', scriptName);
+                            buttonElement.text(SM_t('installLinkText'));
+                        });
+                        if (typeof p.finally === 'function') { p.finally(onFinally); } else { p.then(onFinally, onFinally); }
+                    } else if (p && typeof p.done === 'function') {
+                        p.done(function(){
+                            buttonElement.text(SM_t('uninstallLinkText'));
+                            dialogOpen.value = false;
+                            try { safeUnmount(app, container[0]); } catch(e) {}
+                            reloadAfterChange();
+                        }).fail(function(error){
+                            smLog('Failed to install script:', error);
+                            showNotification('notificationInstallError', 'error', scriptName);
+                            buttonElement.text(SM_t('installLinkText'));
+                        }).always(function(){ isInstalling.value = false; });
+                    } else {
                         isInstalling.value = false;
-                    });
+                    }
                 };
                 
                 var handleCancel = function() {
@@ -2187,13 +2308,13 @@
         
         // Load Vue and Codex for move dialog
         loadVueCodex().then(function(libs) {
-            smLog('showMoveDialog: libs loaded');
+            smInfo('showMoveDialog: libs loaded');
             if (!libs.createApp || !libs.CdxDialog || !libs.CdxButton || !libs.CdxSelect || !libs.CdxField) {
                 throw new Error('Codex/Vue components not available for move dialog');
             }
             createMoveDialog(container, libs.createApp, libs.defineComponent, libs.ref, libs.CdxDialog, libs.CdxButton, libs.CdxSelect, libs.CdxField, anImport);
         }).catch(function(error) {
-            smLog('Failed to load Vue/Codex for move dialog:', error);
+            smError('Failed to load Vue/Codex for move dialog:', error);
             // Fallback to old prompt dialog
             var dest = null;
             var PROMPT = SM_t('movePrompt') + " " + SKINS.join(", ");
@@ -2204,19 +2325,15 @@
             
             var key = 'move-' + anImport.getDescription();
             setLoading(key, true);
-            anImport.move(dest).done(function() {
+            var pPromptMove = toPromise(anImport.move(dest));
+            pPromptMove.then(function(){
                 // Reload data without closing dialog
-                buildImportList().then(function() {
-                    if (importsRef) {
-                        importsRef.value = imports;
-                    }
-                });
-            }).fail(function(error) {
+                return refreshImportsView();
+            }).catch(function(error){
                 smLog('Failed to move script:', error);
                 showNotification('notificationMoveError', 'error', anImport.getDescription());
-            }).always(function() {
-                setLoading(key, false);
             });
+            if (pPromptMove && typeof pPromptMove.finally === 'function') { pPromptMove.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
         });
         
         // Add to body
@@ -2254,22 +2371,18 @@
                     smLog('From target:', anImport.target);
                     smLog('To target:', selectedTarget.value);
                     
-                    anImport.move(selectedTarget.value).done(function() {
+                    var pMoveDlg = toPromise(anImport.move(selectedTarget.value));
+                    pMoveDlg.then(function(){
                         smLog('Move successful');
-                        // Reload data without closing dialog
-                        buildImportList().then(function() {
-                            if (importsRef) {
-                                importsRef.value = imports;
-                            }
-                        });
+                        return buildImportList().then(function(){ if (importsRef) { importsRef.value = imports; } });
+                    }).then(function(){
                         dialogOpen.value = false;
                         try { safeUnmount(app, container[0]); } catch(e) {}
-                    }).fail(function(error) {
+                    }).catch(function(error){
                         smError('Failed to move script:', error);
                         showNotification('notificationMoveError', 'error', anImport.getDescription());
-                    }).always(function() {
-                        isMoving.value = false;
                     });
+                    if (pMoveDlg && typeof pMoveDlg.finally === 'function') { pMoveDlg.finally(function(){ isMoving.value = false; }); } else { isMoving.value = false; }
                 };
                 
                 var handleClose = function() {
