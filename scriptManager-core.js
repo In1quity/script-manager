@@ -538,10 +538,10 @@
         } );
         if (options.silent) return req;
         return req.then(function() {
-                showNotification('notificationInstallSuccess', 'success', self.getDescription());
+                showNotification('notification-install-success', 'success', self.getDescription());
             }).catch(function(error) {
             smError('Install failed:', error);
-                showNotification('notificationInstallError', 'error', self.getDescription());
+                showNotification('notification-install-error', 'error', self.getDescription());
             throw error;
             });
         });
@@ -632,11 +632,11 @@
         var dfd = (typeof $ !== 'undefined' && $.Deferred) ? $.Deferred() : null;
         var consume = function(){
             return chain.then(function(){
-                if (!options.silent) { showNotification('notificationUninstallSuccess', 'success', that.getDescription()); }
+                if (!options.silent) { showNotification('notification-uninstall-success', 'success', that.getDescription()); }
                 if (dfd) dfd.resolve();
             }).catch(function(error){
             smError('Uninstall failed:', error);
-                if (!options.silent) { showNotification('notificationUninstallError', 'error', that.getDescription()); }
+                if (!options.silent) { showNotification('notification-uninstall-error', 'error', that.getDescription()); }
                 if (dfd) dfd.reject(error);
                 else throw error;
         });
@@ -681,11 +681,11 @@
                 text: newWikitextLines.join( "\n" )
             } );
         } ).then(function() {
-            var notificationKey = disabled ? 'notificationDisableSuccess' : 'notificationEnableSuccess';
+            var notificationKey = disabled ? 'notification-disable-success' : 'notification-enable-success';
             showNotification(notificationKey, 'success', that.getDescription());
         }).catch(function(error) {
             smError('Set disabled failed:', error);
-            var notificationKey = disabled ? 'notificationDisableError' : 'notificationEnableError';
+            var notificationKey = disabled ? 'notification-disable-error' : 'notification-enable-error';
             showNotification(notificationKey, 'error', that.getDescription());
         });
     }
@@ -711,10 +711,10 @@
             return old.uninstall({silent:true});
             });
         }).then(function(){
-            showNotification('notificationMoveSuccess', 'success', that.getDescription());
+            showNotification('notification-move-success', 'success', that.getDescription());
         }).catch(function(error){
             smError('Move failed:', error);
-            showNotification('notificationMoveError', 'error', that.getDescription());
+            showNotification('notification-move-error', 'error', that.getDescription());
         });
     }
 
@@ -1151,10 +1151,10 @@
             } );
             });
         } ).then(function() {
-            showNotification('notificationNormalizeSuccess', 'success');
+            showNotification('notification-normalize-success', 'success');
         }).catch(function(error) {
             smError('Normalize failed:', error);
-            showNotification('notificationNormalizeError', 'error');
+            showNotification('notification-normalize-error', 'error');
         });
     }
 
@@ -1487,7 +1487,7 @@
                         reloadOnClose.value = true;
                     }).fail(function(error) {
                         smError('Failed to normalize:', error);
-                        showNotification('notificationNormalizeError', 'error');
+                        showNotification('notification-normalize-error', 'error');
                     }).always(function() {
                         setLoading(key, false);
                     });
@@ -1511,7 +1511,7 @@
                             })
                             .catch(function(error){
                             smError('Failed to restore:', error);
-                            showNotification('notificationRestoreError', 'error', anImport.getDescription());
+                            showNotification('notification-restore-error', 'error', anImport.getDescription());
                         });
                         if (pRestore && typeof pRestore.finally === 'function') { pRestore.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
                     } else {
@@ -1524,7 +1524,7 @@
                             })
                             .catch(function(error){
                             smError('Failed to uninstall:', error);
-                            showNotification('notificationUninstallError', 'error', anImport.getDescription());
+                            showNotification('notification-uninstall-error', 'error', anImport.getDescription());
                         });
                         if (pUn && typeof pUn.finally === 'function') { pUn.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
                     }
@@ -1548,7 +1548,7 @@
                         var pToggle = toPromise(anImport.toggleDisabled());
                         pToggle
                             .then(function(){ reloadOnClose.value = true; })
-                            .catch(function(error){ smError('Failed to toggle disabled state:', error); showNotification('notificationGeneralError', 'error'); })
+                            .catch(function(error){ smError('Failed to toggle disabled state:', error); showNotification('notification-general-error', 'error'); })
                         if (pToggle && typeof pToggle.finally === 'function') { pToggle.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
                     } catch(e) {
                         smError('toggleDisabled threw', e);
@@ -1582,7 +1582,7 @@
                         reloadOnClose.value = true;
                     }).catch(function(error){
                         smError('Failed to normalize some scripts:', error);
-                        showNotification('notificationNormalizeError', 'error');
+                        showNotification('notification-normalize-error', 'error');
                     }).finally ? Promise.all(normalizePromises).finally(function(){ isNormalizing.value = false; }) : (function(){ isNormalizing.value = false; })();
                 };
 
@@ -2218,7 +2218,7 @@
                         reloadAfterChange();
                         }).catch(function(error){
                         smLog('Failed to install script:', error);
-                        showNotification('notificationInstallError', 'error', scriptName);
+                        showNotification('notification-install-error', 'error', scriptName);
                             buttonElement.text(SM_t('action-install'));
                         });
                         if (typeof p.finally === 'function') { p.finally(onFinally); } else { p.then(onFinally, onFinally); }
@@ -2230,7 +2230,7 @@
                             reloadAfterChange();
                         }).fail(function(error){
                             smLog('Failed to install script:', error);
-                            showNotification('notificationInstallError', 'error', scriptName);
+                            showNotification('notification-install-error', 'error', scriptName);
                             buttonElement.text(SM_t('action-install'));
                         }).always(function(){ isInstalling.value = false; });
                     } else {
@@ -2331,7 +2331,7 @@
                 return refreshImportsView();
             }).catch(function(error){
                 smLog('Failed to move script:', error);
-                showNotification('notificationMoveError', 'error', anImport.getDescription());
+                showNotification('notification-move-error', 'error', anImport.getDescription());
             });
             if (pPromptMove && typeof pPromptMove.finally === 'function') { pPromptMove.finally(function(){ setLoading(key, false); }); } else { setLoading(key, false); }
         });
@@ -2380,7 +2380,7 @@
                         try { safeUnmount(app, container[0]); } catch(e) {}
                     }).catch(function(error){
                         smError('Failed to move script:', error);
-                        showNotification('notificationMoveError', 'error', anImport.getDescription());
+                        showNotification('notification-move-error', 'error', anImport.getDescription());
                     });
                     if (pMoveDlg && typeof pMoveDlg.finally === 'function') { pMoveDlg.finally(function(){ isMoving.value = false; }); } else { isMoving.value = false; }
                 };
