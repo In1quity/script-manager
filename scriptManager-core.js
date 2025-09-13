@@ -479,7 +479,7 @@
                     var title1 = buildSummaryLinkTitle(this);
                     return "[[" + title1 + "]]";
                 }
-                return SM_t('remote-url-desc').replace( "$1", this.page ).replace( "$2", this.wiki );
+                return SM_t('label-remote-url').replace( "$1", this.page ).replace( "$2", this.wiki );
             }
             case 2: return this.url;
         }
@@ -500,7 +500,7 @@
         var url = (this.type === 2)
             ? this.url
             : buildRawLoaderUrl(host, title);
-        var backlinkText = (this.target === 'global') ? STRINGS_EN.backlink : SM_t('backlink');
+        var backlinkText = (this.target === 'global') ? STRINGS_EN["label-backlink"] : SM_t('label-backlink');
 
         var backlinkPage = buildSummaryLinkTitle(this);
         var suffix = (this.type === 2)
@@ -1945,7 +1945,7 @@
                     (function(){
                         var $btn = $( "<a>" )
                             .attr( "id", "sm-manage-button" )
-                            .attr( "title", SM_t('manage-user-scripts') )
+                            .attr( "title", SM_t('tooltip-manage-user-scripts') )
                             .addClass( "sm-manage-button" )
                             .append(
                                 $( '<span class="sm-gear-icon"></span>' ),
