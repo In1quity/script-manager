@@ -16,7 +16,7 @@
     "summary-uninstall": "Uninstalling $1",
     "summary-disable": "Disabling $1",
     "summary-enable": "Enabling $1",
-    "dialog-move-prompt": "Destination? Enter one of:",
+    "summary-normalize": "Normalizing script installs",
 
     "action-install": "Install",
     "action-install-progress": "Installing...",
@@ -41,6 +41,7 @@
     "dialog-move-select-target": "Select target skin",
     "dialog-move-button": "Move Script",
     "dialog-move-progress": "Moving...",
+    "dialog-move-prompt": "Destination? Enter one of:",
 
     "panel-header": "You currently have the following scripts installed (find more at WP:USL)",
     "panel-title": "Script Manager",
@@ -83,11 +84,10 @@
     "security-warning": "Warning!$1\n\nAll user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump. Install this script?",
     "security-warning-section": " About to install $1.",
 
-    "summary-normalize": "Normalizing script installs",
-
     "backlink": "Backlink:",
     "remote-url-desc": "$1, loaded from $2",
     "manage-user-scripts": "Manage user scripts",
+
     "scriptManagerLink": "Script Manager",
     "scriptManagerLinkTitle": "Open Script Manager",
     "capturedScriptsHeading": "Captured scripts"
