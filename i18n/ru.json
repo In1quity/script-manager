@@ -99,12 +99,5 @@
     "scriptManagerLink": "Менеджер скриптов",
     "scriptManagerLinkTitle": "Открыть менеджер скриптов",
     "capturedScriptsHeading": "Перехваченные скрипты",
-    "selectSkin": "Выберите скин",
-
-    "interceptor-enable-scripts": "Включить скрипты",
-    "interceptor-load-script": "Загрузить скрипт",
-    "interceptor-script-loaded": "Скрипт загружен",
-    "interceptor-no-scripts": "Нет зарегистрированных скриптов!",
-    "interceptor-css-icon": "🎨",
-    "interceptor-js-icon": "📜"
+    "selectSkin": "Выберите скин"
 } 

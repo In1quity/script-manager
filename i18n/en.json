@@ -99,12 +99,5 @@
     "scriptManagerLink": "Script Manager",
     "scriptManagerLinkTitle": "Open Script Manager",
     "capturedScriptsHeading": "Captured scripts",
-    "selectSkin": "Select skin",
-
-    "interceptor-enable-scripts": "Enable scripts",
-    "interceptor-load-script": "Load script",
-    "interceptor-script-loaded": "Script loaded",
-    "interceptor-no-scripts": "No scripts registered!",
-    "interceptor-css-icon": "🎨",
-    "interceptor-js-icon": "📜"
+    "selectSkin": "Select skin"
 }
