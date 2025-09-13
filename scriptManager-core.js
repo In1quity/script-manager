@@ -533,7 +533,7 @@
         var req = targetApi.postWithEditToken( {
             action: "edit",
                 title: getFullTarget( self.target ),
-                summary: getSummaryForTarget( self.target, 'installSummary', self.getDescription( /* useWikitext */ true ) ),
+                summary: getSummaryForTarget( self.target, 'summary-install', self.getDescription( /* useWikitext */ true ) ),
                 appendtext: "\n" + self.toJs()
         } );
         if (options.silent) return req;
@@ -610,7 +610,7 @@
             return getApiForTarget( that.target ).postWithEditToken( {
                 action: "edit",
                 title: getFullTarget( that.target ),
-                summary: getSummaryForTarget( that.target, 'uninstallSummary', that.getDescription( /* useWikitext */ true ) ),
+                summary: getSummaryForTarget( that.target, 'summary-uninstall', that.getDescription( /* useWikitext */ true ) ),
                 text: newWikitext
             } ).then(function(resp){
                 // Verify removal actually happened
@@ -672,7 +672,7 @@
                 } );
             }
 
-            var summaryKey = disabled ? 'disableSummary' : 'enableSummary';
+            var summaryKey = disabled ? 'summary-disable' : 'summary-enable';
             var summary = getSummaryForTarget( that.target, summaryKey, that.getDescription( /* useWikitext */ true ) );
             return getApiForTarget( that.target ).postWithEditToken( {
                 action: "edit",
@@ -1140,7 +1140,7 @@
                     newLines[idx] = importsToResolve[j].toJs();
                 }
                 var summaryText = (function(){
-                    var base = getSummaryForTarget(target, 'normalizeSummary', '');
+                    var base = getSummaryForTarget(target, 'summary-normalize', '');
                     return base;
                 })();
             return getApiForTarget( target ).postWithEditToken( {

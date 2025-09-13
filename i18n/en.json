@@ -12,10 +12,10 @@
     "skin-global": "Global (applies to all wikis)",
     "skin-all": "All skins",
 
-    "installSummary": "Installing $1",
-    "uninstallSummary": "Uninstalling $1",
-    "disableSummary": "Disabling $1",
-    "enableSummary": "Enabling $1",
+    "summary-install": "Installing $1",
+    "summary-uninstall": "Uninstalling $1",
+    "summary-disable": "Disabling $1",
+    "summary-enable": "Enabling $1",
     "dialog-move-prompt": "Destination? Enter one of:",
 
     "action-install": "Install",
@@ -83,7 +83,7 @@
     "security-warning": "Warning!$1\n\nAll user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump. Install this script?",
     "security-warning-section": " About to install $1.",
 
-    "normalizeSummary": "Normalizing script installs",
+    "summary-normalize": "Normalizing script installs",
 
     "backlink": "Backlink:",
     "remote-url-desc": "$1, loaded from $2",
