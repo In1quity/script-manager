@@ -1,42 +1,42 @@
 {
-  "name": "Script Manager",
-  "version": "1.0.0",
-  "description": "Script Manager Core - MediaWiki user script management",
-  "main": "scriptManager.js",
-  "type": "module",
-  "scripts": {
-    "lint": "eslint \"**/*.js\"",
-    "lint:fix": "eslint \"**/*.js\" --fix",
-    "format": "prettier --write \"**/*.{js,css,json,md}\"",
-    "format:check": "prettier --check \"**/*.{js,css,json,md}\"",
-    "prepare": "husky"
-  },
-  "devDependencies": {
-    "@babel/core": "^7.25.0",
-    "@babel/preset-env": "^7.25.0",
-    "eslint": "^9.35.0",
-    "eslint-config-prettier": "^10.1.8",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.1.6",
-    "prettier": "^3.6.2",
-    "puppeteer": "^24.20.0"
-  },
-  "keywords": [
-    "mediawiki",
-    "gadget",
-    "userscript",
-    "script-manager",
-    "testing"
-  ],
-  "author": "Iniquity",
-  "license": "MIT",
-  "lint-staged": {
-    "*.js": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{css,json,md}": [
-      "prettier --write"
-    ]
-  }
+	"name": "Script Manager",
+	"version": "1.0.0",
+	"description": "Script Manager Core - MediaWiki user script management",
+	"main": "scriptManager.js",
+	"type": "module",
+	"scripts": {
+		"lint": "eslint \"**/*.js\"",
+		"lint:fix": "eslint \"**/*.js\" --fix",
+		"format": "prettier --write \"**/*.{js,css,json,md}\"",
+		"format:check": "prettier --check \"**/*.{js,css,json,md}\"",
+		"prepare": "husky"
+	},
+	"devDependencies": {
+		"@babel/core": "^7.25.0",
+		"@babel/preset-env": "^7.25.0",
+		"eslint": "^9.35.0",
+		"eslint-config-prettier": "^10.1.8",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.1.6",
+		"prettier": "^3.6.2",
+		"puppeteer": "^24.20.0"
+	},
+	"keywords": [
+		"mediawiki",
+		"gadget",
+		"userscript",
+		"script-manager",
+		"testing"
+	],
+	"author": "Iniquity",
+	"license": "MIT",
+	"lint-staged": {
+		"*.js": [
+			"eslint --fix",
+			"prettier --write"
+		],
+		"*.{css,json,md}": [
+			"prettier --write"
+		]
+	}
 }
