@@ -1,3 +1,5 @@
+import prettier from 'eslint-config-prettier'
+
 export default [
   {
     ignores: ['node_modules/**', 'extra_scr/**']
@@ -18,18 +20,7 @@ export default [
     rules: {
       'no-unused-vars': 'warn',
       'no-console': 'off',
-      indent: ['error', 2],
-      quotes: ['error', 'single'],
-      semi: ['error', 'never'],
       'no-tabs': 'error',
-      'space-before-function-paren': ['error', 'always'],
-      'space-before-blocks': 'error',
-      'keyword-spacing': 'error',
-      'brace-style': ['error', '1tbs'],
-      'comma-spacing': 'error',
-      'no-multi-spaces': 'error',
-      'no-multiple-empty-lines': 'error',
-      'padded-blocks': ['error', 'never'],
       'object-shorthand': 'warn',
       'prefer-const': 'warn',
       'no-var': 'warn',
@@ -40,5 +31,6 @@ export default [
       'no-throw-literal': 'error',
       'no-redeclare': 'error'
     }
-  }
+  },
+  prettier
 ]
