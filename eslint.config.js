@@ -1,9 +1,6 @@
 export default [
   {
-    ignores: [
-      'node_modules/**',
-      'extra_scr/**'
-    ]
+    ignores: ['node_modules/**', 'extra_scr/**']
   },
   {
     languageOptions: {
@@ -21,9 +18,9 @@ export default [
     rules: {
       'no-unused-vars': 'warn',
       'no-console': 'off',
-      'indent': ['error', 2],
-      'quotes': ['error', 'single'],
-      'semi': ['error', 'never'],
+      indent: ['error', 2],
+      quotes: ['error', 'single'],
+      semi: ['error', 'never'],
       'no-tabs': 'error',
       'space-before-function-paren': ['error', 'always'],
       'space-before-blocks': 'error',
@@ -36,7 +33,7 @@ export default [
       'object-shorthand': 'warn',
       'prefer-const': 'warn',
       'no-var': 'warn',
-      'camelcase': 'off',
+      camelcase: 'off',
       'no-useless-escape': 'error',
       'prefer-regex-literals': 'error',
       'no-mixed-operators': 'error',
