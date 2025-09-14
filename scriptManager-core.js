@@ -655,19 +655,35 @@
         return resolveDocumentationInterwiki(this).then(function(iw){ if (iw) { try { that.docInterwiki = iw; } catch(_) {} } }).then(function(){
             return getWikitext( getFullTarget( that.target ) );
         }).then( function ( wikitext ) {
-            var lineNums = that.getLineNums( wikitext ),
-                newWikitextLines = wikitext.split( "\n" );
+            // Parse lines semantically (handles encoded titles and second arg),
+            // and preserve original indentation when toggling comments
+            var newWikitextLines = wikitext.split( "\n" );
+            var lineNums = [];
+            try {
+                for (var i = 0; i < newWikitextLines.length; i++) {
+                    var parsed = createImport.fromJs(newWikitextLines[i], that.target);
+                    if (!parsed) continue;
+                    var pPage = (parsed.page||'').toLowerCase();
+                    var tPage = (that.page||'').toLowerCase();
+                    if (pPage && tPage && pPage === tPage) { lineNums.push(i); continue; }
+                    if (parsed.url && that.url && parsed.url === that.url) { lineNums.push(i); }
+                }
+            } catch(e) {
+                try { lineNums = that.getLineNums(wikitext) || []; } catch(_) { lineNums = []; }
+            }
 
             if( disabled ) {
                 lineNums.forEach( function ( lineNum ) {
-                    if( newWikitextLines[lineNum].trim().indexOf( "//" ) != 0 ) {
-                        newWikitextLines[lineNum] = "//" + newWikitextLines[lineNum].trim();
+                    // If not already commented, add '//' after leading whitespace
+                    if( !/^\s*\/\//.test(newWikitextLines[lineNum]) ) {
+                        newWikitextLines[lineNum] = newWikitextLines[lineNum].replace(/^(\s*)(?!\/\/)/, '$1//');
                     }
                 } );
             } else {
                 lineNums.forEach( function ( lineNum ) {
-                    if( newWikitextLines[lineNum].trim().indexOf( "//" ) == 0 ) {
-                        newWikitextLines[lineNum] = newWikitextLines[lineNum].replace( /^\s*\/\/\s*/, "" );
+                    // If commented, remove a single leading '//'
+                    if( /^\s*\/\//.test(newWikitextLines[lineNum]) ) {
+                        newWikitextLines[lineNum] = newWikitextLines[lineNum].replace(/^(\s*)\/\/\s?/, '$1');
                     }
                 } );
             }
