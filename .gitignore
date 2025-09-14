@@ -1,15 +1,5 @@
 # Maintenance files (reference only)
-maintenance-core.js
-maintenance.css
-maintenance-init.js
 node_modules
 
 # Test files (temporary)
-tests/
-coverage/
-package.json
-package-lock.json
-jest.config.js
-jest.e2e.config.js
-.eslintrc.json
-TEST_RESULTS.md
+extra_scr/
