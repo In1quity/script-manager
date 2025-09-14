@@ -108,6 +108,15 @@ Configuration is in `.prettierrc`. Settings:
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
+## 🔄 Repository Information
+
+**GitLab is the primary repository** for this project.
+
+- **Primary repository**: [GitLab](https://gitlab.wikimedia.org/iniquity/script-manager) (gitlab.wikimedia.org)
+- **Development**: All development happens on GitLab
+- **Issues & PRs**: Use GitLab for issues and merge requests
+- **Mirror**: GitHub repository is a read-only mirror
+
 ## 👥 Authors
 
 - **Equazcion** - Original concept
