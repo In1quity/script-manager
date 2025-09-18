@@ -1,22 +1,20 @@
 {
 	"@metadata": {
 		"description": "Message documentation for Script Manager gadget. This file contains descriptions of all message keys used in the localization files.",
-		"authors": ["Iniquity"]
+		"authors": [
+			"Iniquity"
+		]
 	},
-
 	"script-name": "Full name of the script displayed in the interface",
 	"script-name-short": "Short abbreviation of the script name used in compact views",
-
 	"skin-common": "Label for scripts that apply to all skins",
 	"skin-global": "Label for scripts that apply globally across all wikis",
 	"skin-all": "Label indicating that a script works with all available skins",
-
 	"summary-install": "Edit summary when installing a script. $1 is replaced with the script name",
 	"summary-uninstall": "Edit summary when uninstalling a script. $1 is replaced with the script name",
 	"summary-disable": "Edit summary when disabling a script. $1 is replaced with the script name",
 	"summary-enable": "Edit summary when enabling a script. $1 is replaced with the script name",
 	"summary-normalize": "Edit summary when normalizing script installations",
-
 	"action-install": "Button text for installing a script",
 	"action-install-progress": "Button text shown while installation is in progress",
 	"action-uninstall": "Button text for uninstalling a script",
@@ -32,7 +30,6 @@
 	"action-normalize": "Button text for normalizing script installations",
 	"action-normalize-progress": "Button text shown while normalization is in progress",
 	"action-normalize-completed": "Text shown when normalization is completed",
-
 	"dialog-install-title": "Title of the installation dialog. $1 is replaced with the script name",
 	"dialog-move-title": "Title of the move dialog. $1 is replaced with the script name",
 	"dialog-move-current-location": "Label showing the current location of the script being moved",
@@ -41,11 +38,9 @@
 	"dialog-move-button": "Button text to confirm the move operation",
 	"dialog-move-progress": "Text shown while the move operation is in progress",
 	"dialog-move-prompt": "Prompt text asking where to move the script, with available options listed",
-
 	"panel-header": "Header text for the main script management panel",
 	"panel-quick-filter": "Label for the quick filter input field",
 	"panel-enabled-only": "Label for checkbox to show only enabled scripts",
-
 	"gadgets-available": "Text shown when gadgets are available for installation",
 	"gadgets-not-available": "Message shown when no gadgets are available or when loading fails",
 	"gadgets-not-installed": "Message shown when the Gadgets extension is not installed",
@@ -53,7 +48,6 @@
 	"gadgets-api-restricted": "Message shown when API access is restricted",
 	"gadgets-no-description": "Placeholder text when no description is available for a gadget",
 	"gadgets-this-might-be-because": "Introductory text for explaining why gadgets might not be available",
-
 	"notification-install-success": "Success notification when a script is installed. $1 is replaced with the script name",
 	"notification-uninstall-success": "Success notification when a script is uninstalled. $1 is replaced with the script name",
 	"notification-enable-success": "Success notification when a script is enabled. $1 is replaced with the script name",
@@ -69,7 +63,6 @@
 	"notification-normalize-error": "Error notification when script normalization fails",
 	"notification-restore-error": "Error notification when script restoration fails. $1 is replaced with the script name",
 	"notification-general-error": "Generic error message when an unspecified error occurs",
-
 	"error-cannot-install": "Error message when installation is not possible",
 	"error-cannot-install-skin": "Error message explaining why certain pages cannot be installed as scripts",
 	"error-cannot-install-content-model": "Error message when page content model is incompatible. $1 shows the actual content model",
@@ -78,14 +71,11 @@
 	"error-install-via-preferences": "Suggestion text to install via user preferences instead",
 	"error-temp-warning": "Warning about temporary installation of non-user pages",
 	"error-bad-page": "Error message for pages that cannot be used as scripts",
-
 	"security-warning": "Security warning dialog text about potential malicious content in user scripts. $1 contains additional context",
 	"security-warning-section": "Additional context for security warning. $1 is replaced with the script name",
-
 	"label-backlink": "Label for backlink to the script's source page",
 	"label-remote-url": "Label for remote scripts. $1 is the script name, $2 is the URL",
 	"tooltip-manage-user-scripts": "Tooltip text for the script management interface",
-
 	"sidebar-link": "Text for the sidebar link to open the Script Manager",
 	"sidebar-link-title": "Title attribute for the sidebar link",
 	"sidebar-captured-heading": "Heading for captured scripts section in the sidebar"
