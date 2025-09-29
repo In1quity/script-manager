@@ -1,0 +1,35 @@
+{
+	"@metadata": {
+		"authors": [
+			"Hakimi97"
+		]
+	},
+	"script-name": "Pengurus Skrip",
+	"script-name-short": "SM",
+	"skin-common": "common (diterapkan kepada semua rupa kulit)",
+	"skin-global": "Global (diterapkan kepada semua wiki)",
+	"skin-all": "Semua rupa",
+	"summary-install": "Memasang $1",
+	"summary-uninstall": "Menyahpasang $1",
+	"summary-disable": "Melumpuhkan $1",
+	"summary-enable": "Mendayakan $1",
+	"summary-normalize": "Menormalkan pemasangan skrip",
+	"action-install": "Pasang",
+	"action-install-progress": "Memasang...",
+	"action-uninstall": "Nyahpasang",
+	"action-uninstall-progress": "Menyahpasang...",
+	"action-disable": "Lumpuh",
+	"action-disable-progress": "Melumpuhkan...",
+	"action-enable": "Dayakan",
+	"action-enable-progress": "Mendayakan...",
+	"action-move": "Pindah",
+	"action-move-progress": "Memindahkan...",
+	"action-restore": "Pulih",
+	"action-cancel": "Batalkan",
+	"action-normalize": "Normalkan",
+	"action-normalize-progress": "Menormalkan...",
+	"action-normalize-completed": "Dinormalkan",
+	"dialog-install-title": "Pasang $1",
+	"dialog-move-title": "Pindahkan skrip: $1",
+	"dialog-move-current-location": "Lokasi semasa:"
+}
