@@ -3374,16 +3374,22 @@
 		const chain = [lang]
 		let current = lang
 		const visited = new Set([lang])
-		while (languageFallbacks[current]) {
+		while (
+			languageFallbacks[current] &&
+			Array.isArray(languageFallbacks[current]) &&
+			languageFallbacks[current].length
+		) {
+			const prev = current
 			for (const fallback of languageFallbacks[current]) {
-				if (!visited.has(fallback)) {
+				if (fallback && !visited.has(fallback)) {
 					chain.push(fallback)
 					visited.add(fallback)
 					current = fallback
 					break
 				}
 			}
-			if (chain[chain.length - 1] === current) break
+			// Stop if we couldn't advance (prevents infinite loops)
+			if (current === prev) break
 		}
 		if (!chain.includes('en')) chain.push('en')
 		return chain
@@ -3408,50 +3414,71 @@
 
 	function loadI18nWithFallback(lang, callback) {
 		const chain = getLanguageChain(lang)
-		let idx = 0
-		let loadedCount = 0
+		let primaryDone = false
+		let didCallback = false
 
-		function tryNext() {
-			if (idx >= chain.length) {
-				smLog('No localization found for any fallback language')
-				return
-			}
-			const tryLang = chain[idx++]
+		function maybeCallback() {
+			try {
+				if (!callback) return
+				if (!primaryDone || didCallback) return
+				didCallback = true
+				callback()
+			} catch (_) {}
+		}
+
+		function fetchI18n(tryLang) {
 			const url = `https://gitlab-content.toolforge.org/iniquity/script-manager/-/raw/main/i18n/${tryLang}.json?mime=application/json`
-			fetch(url)
-				.then(resp => (resp.ok ? resp.json() : Promise.reject('HTTP ' + resp.status)))
-				.then(i18n => {
-					if (tryLang === 'en') {
-						STRINGS_EN = i18n
-						// Only set STRINGS to English if no other language was loaded
-						if (loadedCount === 0) {
+			return fetch(url).then(resp => (resp.ok ? resp.json() : Promise.reject('HTTP ' + resp.status)))
+		}
+
+		function loadPrimary() {
+			let idx = 0
+			function tryNext() {
+				if (idx >= chain.length) {
+					smLog('No localization found for any fallback language')
+					primaryDone = true
+					maybeCallback()
+					return
+				}
+				const tryLang = chain[idx++]
+				fetchI18n(tryLang)
+					.then(i18n => {
+						if (tryLang === 'en') {
+							STRINGS_EN = i18n
+							STRINGS = i18n
+						} else {
 							STRINGS = i18n
 						}
-					} else {
-						STRINGS = i18n
-					}
-					loadedCount++
-					if (
-						loadedCount >= 2 ||
-						(loadedCount === 1 && !chain.includes('en')) ||
-						(loadedCount === 1 && tryLang === 'en')
-					) {
-						if (callback) callback()
-					}
-				})
-				.catch(err => {
-					smLog('Failed to load i18n for', tryLang, ':', err)
-					tryNext()
-				})
-		}
-
-		// Load both current language and English
-		tryNext()
-		if (lang !== 'en') {
-			idx = chain.indexOf('en')
-			if (idx === -1) idx = chain.length
+						primaryDone = true
+						maybeCallback()
+					})
+					.catch(err => {
+						smLog('Failed to load i18n for', tryLang, ':', err)
+						tryNext()
+					})
+			}
 			tryNext()
 		}
+
+		function loadEnglish() {
+			if (lang === 'en') return
+			try {
+				const p = fetchI18n('en')
+					.then(i18n => {
+						STRINGS_EN = i18n
+					})
+					.catch(function () {})
+				// Keep best-effort; do not gate readiness on English.
+				void p
+			} catch (_) {
+				// Ignore
+			}
+		}
+
+		// Load primary language via fallback chain; also ensure English is available for missing keys.
+		loadPrimary()
+		loadEnglish()
+
 		// Additionally load site content language for summaries if different
 		try {
 			const siteLang = mw && mw.config && mw.config.get ? mw.config.get('wgContentLanguage') || 'en' : 'en'
@@ -3549,7 +3576,7 @@
 	function SM_startGadgetsAndLabels() {
 		if (!SM_GADGETS_READY && !SM_GADGETS_LOADING) {
 			SM_GADGETS_LOADING = true
-			loadGadgets()
+			const p = loadGadgets()
 				.then(function () {
 					return loadSectionLabels()
 				})
@@ -3559,14 +3586,33 @@
 				})
 				.catch(function () {
 					SM_GADGETS_READY = true
-				}).finally
-				? null
-				: (function () {
+				})
+			try {
+				if (p && typeof p.finally === 'function') {
+					p.finally(function () {
 						try {
 							if (scriptInstallerVueComponent && typeof scriptInstallerVueComponent.$forceUpdate === 'function')
 								scriptInstallerVueComponent.$forceUpdate()
 						} catch (_) {}
-					})()
+					})
+				} else if (p && typeof p.then === 'function') {
+					// Fallback for environments without Promise.finally
+					p.then(
+						function () {
+							try {
+								if (scriptInstallerVueComponent && typeof scriptInstallerVueComponent.$forceUpdate === 'function')
+									scriptInstallerVueComponent.$forceUpdate()
+							} catch (_) {}
+						},
+						function () {
+							try {
+								if (scriptInstallerVueComponent && typeof scriptInstallerVueComponent.$forceUpdate === 'function')
+									scriptInstallerVueComponent.$forceUpdate()
+							} catch (_) {}
+						}
+					)
+				}
+			} catch (_) {}
 			if (!_pLoadUserGadgetSettings) {
 				loadUserGadgetSettings()
 			}
