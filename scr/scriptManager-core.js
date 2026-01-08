@@ -140,6 +140,60 @@
 		}
 	}
 
+	/**
+	 * Normalize a page title coming from external sources (DOM/jQuery/HTML strings).
+	 * Prevents broken summaries like [[meta:User:Foo/<a ...>User:Foo/Bar</a>.]].
+	 *
+	 * @param {any} page
+	 * @returns {string|null}
+	 */
+	function normalizeImportPageTitle(page) {
+		try {
+			if (page === null || page === undefined) return null
+
+			let s = null
+			if (typeof page === 'string') {
+				s = page
+			} else if (page && typeof page === 'object') {
+				// DOM node
+				if (typeof page.textContent === 'string') s = page.textContent
+				else if (typeof page.innerText === 'string') s = page.innerText
+				// jQuery-ish wrappers
+				else if (page[0] && typeof page[0].textContent === 'string') s = page[0].textContent
+				else if (typeof page.toString === 'function') s = page.toString()
+			}
+			if (s === null || s === undefined) s = ''
+
+			s = String(s)
+			// Strip any HTML tags that may have been concatenated into the title.
+			s = s.replace(/<[^>]*>/g, '')
+			// Prevent wikitext/HTML injection in edit summaries.
+			s = s.replace(/\[|\]/g, '')
+			// Normalize whitespace.
+			s = s.replace(/\s+/g, ' ').trim()
+
+			// Collapse duplicate "User:<name>/" path prefix (case-insensitive).
+			// Example: "User:Foo/User:Foo/Bar" -> "User:Foo/Bar"
+			const m = /^((?:[a-z-]+:)?User:([^/]+)\/)User:([^/]+)\//i.exec(s)
+			if (m && m[2] && m[3] && String(m[2]).toLowerCase() === String(m[3]).toLowerCase()) {
+				s = m[1] + s.slice(m[0].length)
+			}
+
+			// Remove a trailing "." that was likely punctuation after an injected link.
+			if (s.endsWith('.') && /\/|User:|\.js|\.css/i.test(s)) {
+				s = s.slice(0, -1)
+			}
+
+			return s
+		} catch (e) {
+			try {
+				return typeof page === 'string' ? page : String(page || '')
+			} catch (_) {
+				return ''
+			}
+		}
+	}
+
 	// Normalize jQuery Deferred or native Promise into a native Promise
 	function toPromise(maybeThenable) {
 		try {
@@ -526,8 +580,8 @@
 	 * - type: 0 local, 1 cross-wiki, 2 url
 	 */
 	function createImport(page, wiki, url, target, disabled) {
-		this.page = page
 		this.wiki = wiki
+		this.page = normalizeImportPageTitle(page)
 		this.url = url
 		this.target = target
 		this.disabled = disabled
