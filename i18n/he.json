@@ -1,6 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
+			"Amire80",
 			"YaronSh"
 		]
 	},
@@ -10,8 +11,8 @@
 	"skin-all": "כל ערכות העיצוב",
 	"summary-install": "$1 מותקן כעת",
 	"summary-uninstall": "ההתקנה של $1 מבוטלת כעת",
-	"summary-disable": "$1 מושבת",
-	"summary-enable": "$1 מופעל",
+	"summary-disable": "השבתת $1",
+	"summary-enable": "הפעלת $1",
 	"action-install": "התקנה",
 	"action-install-progress": "מתבצעת התקנה...",
 	"action-uninstall": "הסרה",
@@ -31,12 +32,12 @@
 	"dialog-move-select-target": "בחירת ערכת עיצוב היעד",
 	"dialog-move-button": "העברת הסקריפט",
 	"dialog-move-progress": "מועבר...",
-	"dialog-move-prompt": "היעד? יש לבחור אחד מבין:",
+	"dialog-move-prompt": "מה היעד? יש לבחור אחד מתוך:",
 	"panel-quick-filter": "מסנן מהיר:",
 	"panel-enabled-only": "פעילים בלבד",
 	"gadgets-available": "גאדג׳טים זמינים",
 	"gadgets-not-available": "אין גאדג׳טים זמינים או שטעינת נתוני הגאדג׳טים נכשלה.",
-	"gadgets-not-installed": "הרחבת הגאדג׳טים לא מותקנת באתר הוויקי הזה",
+	"gadgets-not-installed": "ההרחבה Gadgets לא מותקנת בוויקי הזה",
 	"gadgets-not-configured": "לא מוגדרים גאדג׳טים",
 	"gadgets-api-restricted": "גישה דרך API מוגבלת",
 	"gadgets-no-description": "אין תיאור זמין",
@@ -54,7 +55,7 @@
 	"notification-restore-error": "שחזור הסקריפט $1 נכשל",
 	"notification-general-error": "אירעה שגיאה. נא לנסות שוב.",
 	"error-cannot-install": "לא ניתן להתקין",
-	"error-insecure": "(לא בטוח)",
+	"error-insecure": "(לא מאובטח)",
 	"error-not-javascript": "לא JavaScript",
 	"error-install-via-preferences": "התקנה דרך ההעדפות",
 	"security-warning-section": "תתבצע ההתקנה של $1.",
