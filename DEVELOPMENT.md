@@ -4,9 +4,11 @@
 
 - `src/App.js` is the Vite entry point and bootstrap layer.
 - `src/components`, `src/services`, `src/utils`, `src/constants`, and `src/styles` contain the modular runtime code.
-- `src/core/scriptManagerCoreRuntime.js` is the authoritative runtime core source loaded by `src/services/coreRuntime.js`.
-- `src/services/bootstrap.js` is the orchestration layer (readiness -> data preload -> runtime start).
-- `src/services/coreRuntime.js` is the runtime adapter that starts the current core implementation.
+- `src/services/bootstrap.js` is the orchestration layer (readiness -> data preload -> UI runtime start).
+- `src/services/coreRuntime.js` initializes UI orchestration directly (no runtime bridge).
+- `src/services/pageUi.js` handles page-level UI integration points (heading button, indicators, install links).
+- `src/services/uiOrchestrator.js` coordinates UI entry points (`showUi`, install links, open handlers).
+- `src/services/summaryBuilder.js` centralizes summary text and interwiki summary links.
 - `scr/scriptManager.js` remains the loader source and is emitted as `dist/scriptManager.js` during build.
 
 ## Code Quality Tools

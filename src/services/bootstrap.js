@@ -1,7 +1,7 @@
 import { DEFAULT_SKIN } from '@constants/skins';
 import { initApis } from './api.js';
-import { startCoreRuntime } from './coreRuntime.js';
-import { loadGadgets, loadUserGadgetSettings } from './gadgets.js';
+import { initCoreUi } from './coreRuntime.js';
+import { loadGadgets, loadGadgetsLabel, loadSectionLabels, loadUserGadgetSettings } from './gadgets.js';
 import { loadI18n } from './i18n.js';
 import { ensureImportsForTarget } from './importList.js';
 import { showNotification } from './notification.js';
@@ -17,25 +17,26 @@ export function createBootstrapService(context, readiness) {
 		},
 		async loadDomainData() {
 			const userLang = context.runtime.mw?.config?.get('wgUserLanguage') || 'en';
+			const siteLang = context.runtime.mw?.config?.get('wgContentLanguage') || 'en';
 			const importsReady = ensureImportsForTarget(DEFAULT_SKIN);
-			const i18nReady = loadI18n(userLang);
-			const gadgetsReady = Promise.all([ loadGadgets(), loadUserGadgetSettings() ]);
+			const i18nReady = loadI18n(userLang, { siteLanguage: siteLang });
+			const gadgetsReady = loadGadgets()
+				.then(() => Promise.all([ loadSectionLabels(), loadGadgetsLabel(), loadUserGadgetSettings() ]))
+				.catch(() => Promise.resolve());
 			await Promise.all([ importsReady, i18nReady, gadgetsReady ]);
 			logger.info('Domain data loaded.');
 		},
-		async startCore() {
-			await startCoreRuntime(context);
+		async initCoreUi() {
+			await initCoreUi(context);
 		},
 		async run() {
 			try {
 				await this.prepareRuntime();
 				await this.loadDomainData();
-				await this.startCore();
+				await this.initCoreUi();
 			} catch (error) {
 				logger.error('Bootstrap failed.', error);
-				showNotification('Script Manager failed to initialize. Check console for details.', {
-					type: 'error'
-				});
+				showNotification('Script Manager failed to initialize. Check console for details.', 'error');
 				throw error;
 			}
 		}

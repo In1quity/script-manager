@@ -2,45 +2,234 @@ import { getApi } from '@services/api';
 
 let gadgetsData = {};
 let userGadgetSettings = {};
+let gadgetSectionOrder = [];
+let gadgetSectionLabels = {};
+let gadgetsLabel = 'Gadgets';
+
+let loadGadgetsPromise = null;
+let loadSectionLabelsPromise = null;
+let loadGadgetsLabelPromise = null;
+let loadUserSettingsPromise = null;
 
 export async function loadGadgets() {
+	if (loadGadgetsPromise) {
+		return loadGadgetsPromise;
+	}
+
 	const api = getApi();
 	if (!api) {
 		return gadgetsData;
 	}
 
-	try {
-		const response = await api.get({
+	loadGadgetsPromise = api
+		.get({
 			action: 'query',
-			meta: 'siteinfo',
-			siprop: 'general'
+			list: 'gadgets',
+			gaprop: 'id|desc|metadata',
+			format: 'json'
+		})
+		.then((response) => {
+			const list = response?.query?.gadgets || [];
+			const nextData = {};
+			const sectionMap = Object.create(null);
+
+			list.forEach((gadget) => {
+				const settings = gadget?.metadata?.settings || {};
+				if (Object.prototype.hasOwnProperty.call(settings, 'hidden')) {
+					return;
+				}
+
+				const section = settings.section || 'other';
+				if (!sectionMap[section]) {
+					sectionMap[section] = true;
+				}
+
+				nextData[gadget.id] = {
+					name: gadget.id,
+					description: gadget.desc || '',
+					section,
+					isDefault: settings.default === ''
+				};
+			});
+
+			gadgetsData = nextData;
+			gadgetSectionOrder = Object.keys(sectionMap);
+			return gadgetsData;
+		})
+		.catch(() => {
+			gadgetsData = {};
+			gadgetSectionOrder = [];
+			return gadgetsData;
+		})
+		.finally(() => {
+			loadGadgetsPromise = null;
 		});
-		gadgetsData = response || {};
-	} catch {
-		gadgetsData = {};
+
+	return loadGadgetsPromise;
+}
+
+export async function loadGadgetsLabel() {
+	if (loadGadgetsLabelPromise) {
+		return loadGadgetsLabelPromise;
 	}
 
-	return gadgetsData;
+	const api = getApi();
+	if (!api) {
+		return gadgetsLabel;
+	}
+
+	loadGadgetsLabelPromise = api
+		.get({
+			action: 'query',
+			meta: 'allmessages',
+			ammessages: 'prefs-gadgets',
+			format: 'json'
+		})
+		.then((response) => {
+			const value = response?.query?.allmessages?.[0]?.['*'];
+			gadgetsLabel = value || 'Gadgets';
+			return gadgetsLabel;
+		})
+		.catch(() => {
+			gadgetsLabel = 'Gadgets';
+			return gadgetsLabel;
+		})
+		.finally(() => {
+			loadGadgetsLabelPromise = null;
+		});
+
+	return loadGadgetsLabelPromise;
+}
+
+export async function loadSectionLabels() {
+	if (loadSectionLabelsPromise) {
+		return loadSectionLabelsPromise;
+	}
+
+	const api = getApi();
+	if (!api) {
+		return gadgetSectionLabels;
+	}
+
+	const sections = Array.from(
+		new Set(
+			Object.values(gadgetsData)
+				.map((gadget) => gadget?.section)
+				.filter((section) => section && section !== 'other')
+		)
+	);
+	if (!sections.length) {
+		gadgetSectionLabels = {};
+		return gadgetSectionLabels;
+	}
+
+	const keys = sections.map((section) => `gadget-section-${section}`);
+	loadSectionLabelsPromise = api
+		.get({
+			action: 'query',
+			meta: 'allmessages',
+			ammessages: keys.join('|'),
+			format: 'json'
+		})
+		.then((response) => {
+			const out = {};
+			const items = response?.query?.allmessages || [];
+			items.forEach((entry) => {
+				const name = entry?.name || '';
+				const section = name.replace(/^gadget-section-/, '');
+				const text = typeof entry?.['*'] === 'string' ? entry['*'].trim() : '';
+				if (section) {
+					out[section] = text || section.charAt(0).toUpperCase() + section.slice(1);
+				}
+			});
+			sections.forEach((section) => {
+				if (!out[section]) {
+					out[section] = section.charAt(0).toUpperCase() + section.slice(1);
+				}
+			});
+			gadgetSectionLabels = out;
+			return gadgetSectionLabels;
+		})
+		.catch(() => {
+			const fallback = {};
+			sections.forEach((section) => {
+				fallback[section] = section.charAt(0).toUpperCase() + section.slice(1);
+			});
+			gadgetSectionLabels = fallback;
+			return gadgetSectionLabels;
+		})
+		.finally(() => {
+			loadSectionLabelsPromise = null;
+		});
+
+	return loadSectionLabelsPromise;
+}
+
+export function applyGadgetLabels(sectionLabels = {}, tabLabel = gadgetsLabel) {
+	gadgetSectionLabels = {
+		...gadgetSectionLabels,
+		...(sectionLabels || {})
+	};
+	if (tabLabel) {
+		gadgetsLabel = tabLabel;
+	}
+	return {
+		sectionLabels: gadgetSectionLabels,
+		label: gadgetsLabel
+	};
 }
 
 export async function loadUserGadgetSettings() {
+	if (loadUserSettingsPromise) {
+		return loadUserSettingsPromise;
+	}
+
 	const api = getApi();
 	if (!api) {
 		return userGadgetSettings;
 	}
 
-	try {
-		const response = await api.get({
+	loadUserSettingsPromise = api
+		.get({
 			action: 'query',
 			meta: 'userinfo',
 			uiprop: 'options'
+		})
+		.then((response) => {
+			const options = response?.query?.userinfo?.options || {};
+			const next = {};
+			Object.keys(options).forEach((key) => {
+				if (key.startsWith('gadget-')) {
+					next[key] = options[key];
+				}
+			});
+			userGadgetSettings = next;
+			return userGadgetSettings;
+		})
+		.catch(() => {
+			userGadgetSettings = {};
+			return userGadgetSettings;
+		})
+		.finally(() => {
+			loadUserSettingsPromise = null;
 		});
-		userGadgetSettings = response?.query?.userinfo?.options || {};
-	} catch {
-		userGadgetSettings = {};
+
+	return loadUserSettingsPromise;
+}
+
+export async function toggleGadget(gadgetName, enabled) {
+	const api = getApi();
+	if (!api || !gadgetName) {
+		return false;
 	}
 
-	return userGadgetSettings;
+	await api.postWithToken('csrf', {
+		action: 'options',
+		optionname: `gadget-${gadgetName}`,
+		optionvalue: enabled ? '1' : '0'
+	});
+	userGadgetSettings[`gadget-${gadgetName}`] = enabled ? '1' : '0';
+	return true;
 }
 
 export function getGadgetsData() {
@@ -49,4 +238,16 @@ export function getGadgetsData() {
 
 export function getUserGadgetSettings() {
 	return userGadgetSettings;
+}
+
+export function getGadgetsLabel() {
+	return gadgetsLabel;
+}
+
+export function getGadgetSectionLabels() {
+	return gadgetSectionLabels;
+}
+
+export function getGadgetSectionOrder() {
+	return gadgetSectionOrder.slice();
 }

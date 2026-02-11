@@ -27,10 +27,18 @@ export function getProjectPrefix(wiki) {
 		return `${PROJECT_MAP[project] || project}:${lang}`;
 	}
 
-	const commonsProject = normalized.match(/^(commons|meta|species|wikidata|mediawiki)\.wikimedia$/);
+	const commonsProject = normalized.match(/^(commons|meta|species)\.wikimedia$/);
 	if (commonsProject) {
 		const prefix = commonsProject[1];
 		return prefix === 'commons' ? 'c' : prefix;
+	}
+
+	if (normalized === 'wikidata') {
+		return 'd';
+	}
+
+	if (normalized === 'mediawiki') {
+		return 'mw';
 	}
 
 	return null;
@@ -39,10 +47,17 @@ export function getProjectPrefix(wiki) {
 export function getCurrentWikiFragment() {
 	try {
 		const serverName = mw?.config?.get('wgServerName') || '';
-		return String(serverName || '').replace(/\.org$/i, '');
+		return String(serverName || '')
+			.toLowerCase()
+			.replace(/\.org$/i, '')
+			.replace(/^www\./, '');
 	} catch {
 		return '';
 	}
+}
+
+export function getTargetWikiFragment(target) {
+	return target === 'global' ? 'meta.wikimedia' : getCurrentWikiFragment();
 }
 
 export function urlToInterwiki(url) {
@@ -50,12 +65,12 @@ export function urlToInterwiki(url) {
 		const parsed = new URL(url, window.location.href);
 		const host = parsed.hostname.replace(/\.org$/i, '');
 		const prefix = getProjectPrefix(host);
-		const title = parsed.searchParams.get('title');
+		const title = parsed.searchParams.get('title') || parsed.pathname.replace(/^\/wiki\//, '');
 		if (!prefix || !title) {
 			return null;
 		}
 
-		return `${prefix}:${decodeURIComponent(title)}`;
+		return `${prefix}:${decodeURIComponent(title).replace(/_/g, ' ')}`;
 	} catch {
 		return null;
 	}

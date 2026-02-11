@@ -7,10 +7,12 @@ A MediaWiki user script management system for managing and installing gadgets ac
 ```
 ├── src/                         # Vite entry + modular runtime architecture
 │   ├── App.js                   # Runtime entrypoint
-│   ├── core/
-│   │   └── scriptManagerCoreRuntime.js # Authoritative core runtime source
-│   ├── components/              # Shared models/components (e.g. Import)
-│   ├── services/                # Bootstrap, runtime adapters, domain services
+│   ├── components/              # Vue UI blocks (panel, dialogs, install button)
+│   ├── services/                # Bootstrap + domain/runtime orchestration
+│   │   ├── coreRuntime.js       # Initializes UI runtime without legacy bridge
+│   │   ├── pageUi.js            # Page-level UI wiring (heading, indicators, links)
+│   │   ├── summaryBuilder.js    # Summary/interwiki helpers for edits
+│   │   └── uiOrchestrator.js    # UI open/attach orchestration layer
 │   ├── utils/                   # Shared utility helpers
 │   ├── constants/               # Runtime constants
 │   └── styles/                  # Style entry points

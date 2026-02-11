@@ -1,8 +1,187 @@
-export function buildMoveDialogState(scriptName, fromTarget = 'common', toTarget = 'global') {
-	return {
-		scriptName,
-		fromTarget,
-		toTarget,
-		open: false
-	};
+import { SKINS } from '@constants/skins';
+import { refreshImportsView } from '@services/importList';
+import { showNotification } from '@services/notification';
+import { t } from '@services/i18n';
+import { loadVueCodex } from '@utils/codex';
+import { createLogger } from '@utils/logger';
+
+const logger = createLogger('component.moveDialog');
+
+function safeUnmount(app, root) {
+	try {
+		if (app && typeof app.unmount === 'function') {
+			app.unmount();
+		}
+	} catch {
+		// Ignore unmount race conditions.
+	}
+	try {
+		if (root?.parentNode) {
+			root.parentNode.removeChild(root);
+		}
+	} catch {
+		// Ignore already removed roots.
+	}
+}
+
+export function showMoveDialog(anImport, onDone) {
+	const container = $('<div>').attr('id', 'sm-move-dialog');
+	$('body').append(container);
+
+	void loadVueCodex()
+		.then((libs) =>
+			createMoveDialog(
+				container,
+				libs.createApp,
+				libs.defineComponent,
+				libs.ref,
+				libs.CdxDialog,
+				libs.CdxButton,
+				libs.CdxSelect,
+				libs.CdxField,
+				anImport,
+				onDone
+			)
+		)
+		.catch((error) => {
+			logger.error('Failed to load move dialog dependencies', error);
+			const promptText = `${t('dialog-move-prompt', 'Move to target:')} ${SKINS.join(', ')}`;
+			let destination = '';
+			do {
+				destination = String(window.prompt(promptText) || '').toLowerCase();
+			} while (destination && !SKINS.includes(destination));
+
+			if (!destination) {
+				container.remove();
+				return;
+			}
+
+			void Promise.resolve(anImport.move(destination))
+				.then(() => refreshImportsView())
+				.then(() => {
+					if (typeof onDone === 'function') {
+						onDone();
+					}
+				})
+				.catch((moveError) => {
+					logger.error('Fallback move failed', moveError);
+					showNotification('notification-move-error', 'error', anImport.getDescription());
+				})
+				.finally(() => {
+					container.remove();
+				});
+		});
+}
+
+export function createMoveDialog(
+	container,
+	createApp,
+	defineComponent,
+	ref,
+	CdxDialog,
+	CdxButton,
+	CdxSelect,
+	CdxField,
+	anImport,
+	onDone
+) {
+	let app = null;
+
+	const MoveDialog = defineComponent({
+		components: { CdxDialog, CdxButton, CdxSelect, CdxField },
+		setup() {
+			const dialogOpen = ref(true);
+			const selectedTarget = ref('common');
+			const isMoving = ref(false);
+
+			const targetOptions = SKINS.filter((skin) => skin !== anImport.target).map((skin) => ({
+				label: skin === 'global' ? t('skin-global', 'global') : skin,
+				value: skin
+			}));
+
+			const closeDialog = () => {
+				dialogOpen.value = false;
+				safeUnmount(app, container[0]);
+			};
+
+			const handleMove = async () => {
+				if (isMoving.value) {
+					return;
+				}
+				isMoving.value = true;
+				try {
+					await Promise.resolve(anImport.move(selectedTarget.value));
+					await refreshImportsView();
+					if (typeof onDone === 'function') {
+						onDone();
+					}
+					closeDialog();
+				} catch (error) {
+					logger.error('Move failed', error);
+					showNotification('notification-move-error', 'error', anImport.getDescription());
+				} finally {
+					isMoving.value = false;
+				}
+			};
+
+			return {
+				dialogOpen,
+				selectedTarget,
+				isMoving,
+				targetOptions,
+				handleMove,
+				closeDialog,
+				scriptName: anImport.getDescription(),
+				currentTarget: anImport.target,
+				SM_t: t
+			};
+		},
+		template: `
+			<cdx-dialog
+				v-model:open="dialogOpen"
+				:title="SM_t('dialog-move-title', 'Move $1').replace('$1', scriptName)"
+				:use-close-button="true"
+				@close="closeDialog"
+			>
+				<div class="sm-move-content">
+					<p><strong><span v-text="SM_t('dialog-move-current-location', 'Current target:')"></span></strong> <span v-text="currentTarget === 'global' ? SM_t('skin-global', 'global') : currentTarget"></span></p>
+					<cdx-field>
+						<template #label><span v-text="SM_t('dialog-move-to-skin', 'Move to')"></span></template>
+						<cdx-select
+							v-model:selected="selectedTarget"
+							:menu-items="targetOptions"
+							:disabled="isMoving"
+							:default-label="SM_t('dialog-move-select-target', 'Select target')"
+						/>
+					</cdx-field>
+					<div class="sm-move-actions">
+						<cdx-button
+							@click="handleMove"
+							:disabled="isMoving"
+							action="progressive"
+						>
+							<span v-text="isMoving ? SM_t('dialog-move-progress', 'Moving...') : SM_t('dialog-move-button', 'Move')"></span>
+						</cdx-button>
+					</div>
+				</div>
+			</cdx-dialog>
+		`
+	});
+
+	try {
+		app = createApp(MoveDialog);
+		if (app?.config?.compilerOptions) {
+			app.config.compilerOptions.delimiters = [ '[%', '%]' ];
+		}
+		app.component('CdxDialog', CdxDialog);
+		app.component('CdxButton', CdxButton);
+		app.component('CdxSelect', CdxSelect);
+		app.component('CdxField', CdxField);
+		app.mount(container[0] || container);
+		return app;
+	} catch (error) {
+		logger.error('MoveDialog mount error', error);
+		container.remove();
+		return null;
+	}
 }

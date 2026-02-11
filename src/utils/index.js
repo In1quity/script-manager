@@ -6,3 +6,4 @@ export * from './escape.js';
 export * from './targets.js';
 export * from './codex.js';
 export * from './wikitext.js';
+export * from './icons.js';
