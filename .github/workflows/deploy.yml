@@ -42,24 +42,53 @@ jobs:
         id: release_preface
         run: |
           chmod +x .github/scripts/extract_tag_message.sh
-          TAG_MESSAGE=$(.github/scripts/extract_tag_message.sh "${{ github.ref_name }}")
+          TAG_NAME="${{ github.ref_name }}"
+          REPO_NAME="${{ github.repository }}"
+          TAG_MESSAGE=$(.github/scripts/extract_tag_message.sh "$TAG_NAME")
 
-          PREFACE=""
+          PREV_TAG=$(git describe --tags --abbrev=0 "${TAG_NAME}^" 2>/dev/null || true)
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${TAG_NAME}"
+            COMPARE_URL="https://github.com/${REPO_NAME}/compare/${PREV_TAG}...${TAG_NAME}"
+          else
+            RANGE="$TAG_NAME"
+            COMPARE_URL="https://github.com/${REPO_NAME}/releases/tag/${TAG_NAME}"
+          fi
+
+          COMMITS=$(git log --pretty=format:'- `%h` %s' --no-merges "$RANGE")
+          if [ -z "$COMMITS" ]; then
+            COMMITS='- No commits found in this release range.'
+          fi
+
+          cat > /tmp/release_preface.txt <<EOF
+          ## Highlights
+          - Automated release notes are attached below.
+          - This release includes the following commits in \`$RANGE\`.
+
+          ## Included commits
+          $COMMITS
+          EOF
+
+          if [ -n "$PREV_TAG" ]; then
+            cat >> /tmp/release_preface.txt <<EOF
+
+          **Full Changelog**: $COMPARE_URL
+          EOF
+          fi
+
           if [ -n "$TAG_MESSAGE" ]; then
             TAG_LEN=$(printf '%s' "$TAG_MESSAGE" | wc -c | tr -d ' ')
             if [ "$TAG_LEN" -ge 80 ] || printf '%s' "$TAG_MESSAGE" | awk 'NR > 1 { exit 0 } END { exit 1 }'; then
-              cat > /tmp/release_preface.txt <<EOF
-          ## Release notes
+              cat >> /tmp/release_preface.txt <<EOF
 
+          ## Tag notes
           $TAG_MESSAGE
-
           EOF
-              PREFACE=$(cat /tmp/release_preface.txt)
             fi
           fi
 
           echo "release_preface<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$PREFACE" >> "$GITHUB_OUTPUT"
+          cat /tmp/release_preface.txt >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Create Release
