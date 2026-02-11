@@ -382,11 +382,9 @@ export function createVuePanel(
 
 			const isGadgetEnabled = (gadgetName) => {
 				const settings = userGadgetSettingsReactive.value || {};
-				if (settings[`gadget-${gadgetName}`] === '1') {
-					return true;
-				}
-				if (settings[`gadget-${gadgetName}`] === '0') {
-					return false;
+				const key = `gadget-${gadgetName}`;
+				if (Object.prototype.hasOwnProperty.call(settings, key)) {
+					return settings[key] === '1';
 				}
 				const gadget = gadgetsReactive.value?.[gadgetName];
 				return Boolean(gadget?.isDefault);
