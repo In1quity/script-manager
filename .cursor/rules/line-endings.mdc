@@ -1,0 +1,20 @@
+---
+description: LF line endings policy for cross-platform consistency
+alwaysApply: true
+---
+# Line Endings Policy
+
+This repository uses LF line endings via `.gitattributes`.
+
+## Required Defaults
+- Keep `.gitattributes` with `* text=auto eol=lf`.
+- Prefer repository-local `core.autocrlf=false` on Windows.
+
+## If Lint Fails with CRLF Errors
+1. Run `git config core.autocrlf false` in this repository.
+2. Run `npm run lint:fix`.
+3. Re-run `npm run lint` and verify no linebreak errors remain.
+
+## Notes
+- Do not switch project files to CRLF.
+- Keep committed text files in LF to ensure stable pre-push checks.

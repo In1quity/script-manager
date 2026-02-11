@@ -1,5 +1,7 @@
 ---
-globs: scr/**/*.js,eslint.config.js
+globs:
+  - scr/**/*.js
+  - eslint.config.js
 description: Script Manager code formatting and style
 ---
 # Code Formatting Rules
@@ -16,7 +18,7 @@ Follow the repository ESLint flat config and keep formatting consistent across `
 ## MediaWiki Context
 - This is a Wikimedia/MediaWiki gadget project.
 - Allowed globals include `mw`, `$`, `jQuery`, and `OO`.
-- Keep compatibility with ES2017.
+- Keep compatibility with ES2021 (current ESLint parser level).
 
 ## Linting Workflow
 1. `npm run lint:fix`

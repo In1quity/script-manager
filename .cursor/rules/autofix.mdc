@@ -1,9 +1,10 @@
 ---
+description: ESLint autofix-first workflow for JS changes
 alwaysApply: true
 ---
 # ESLint Auto-fix Rule
 
-Always run `npm run lint:fix` first when updating JS code in this repository.
+Run `npm run lint:fix` first when updating JS code or lint configuration in this repository.
 
 ## Priority Order
 1. Run `npm run lint:fix`.

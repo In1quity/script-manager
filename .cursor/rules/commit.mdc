@@ -1,22 +1,65 @@
 ---
+description: Commit and push policy with conventional commits
 alwaysApply: true
 ---
 # Git Commit Rules
 
-Create commits only when the user explicitly asks for it.
+Follow these guidelines to keep history clean and predictable.
+
+## Commit Creation Policy
+
+**CRITICAL**: Commits are created ONLY upon explicit user command. Never commit automatically.
+
+### Allowed Triggers
+- User explicitly asks to commit/push/save changes.
+- User provides a commit message explicitly.
 
 ## Commit Message Format
-Use Conventional Commits:
-- `feat(scope): description`
-- `fix(scope): description`
-- `docs(scope): description`
-- `refactor(scope): description`
-- `chore(scope): description`
 
-## Requirements Before Commit
+Use conventional commits format: `type(scope): description`
+
+### Recommended Types
+`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+
+## Examples:
+
+✅ **Good commits:**
+```
+feat(gadgets): add script move action
+fix(api): handle empty gadget list response
+docs(readme): clarify local setup steps
+```
+
+❌ **Bad commits:**
+```
+fixed bug.
+updates
+WIP
+```
+
+## Quality Gates Before Commit
+
 1. Run `npm run lint`.
 2. Stage only relevant files.
-3. Keep commits atomic and focused on one logical change.
+3. Ensure the commit is atomic (one logical change).
+4. Use imperative, lowercase subject without trailing period.
+5. Keep subject under 72 chars.
+
+## Optional Body and Breaking Changes
+
+For complex changes, add a body with the reason. If breaking:
+```
+feat(api): change parameter format
+
+BREAKING CHANGE: The API now requires 'class' parameter instead of 'rating'
+```
+
+## Branch Naming (if creating branches)
+- `feature/description`: New features
+- `fix/description`: Bug fixes
+- `docs/description`: Documentation updates
+- `refactor/description`: Code refactoring
+- `chore/description`: Maintenance tasks
 
 ## Push Policy
 - Never push without explicit user instruction.
