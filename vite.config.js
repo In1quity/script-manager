@@ -1,0 +1,148 @@
+import { defineConfig } from 'vite';
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const readJson = (relativePath) => {
+	const filePath = new URL(relativePath, import.meta.url);
+	return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+};
+
+const resolveLoaderSource = () => {
+	const rootLoader = path.resolve(__dirname, 'scriptManager.js');
+	if (fs.existsSync(rootLoader)) {
+		return rootLoader;
+	}
+	return path.resolve(__dirname, 'scr', 'scriptManager.js');
+};
+
+export default defineConfig(({ command, mode }) => {
+	const isProd = command === 'build' && mode === 'production';
+	const isDev = command === 'serve' || mode === 'development';
+	const pkg = readJson('./package.json');
+	const enDict = readJson('./i18n/en.json');
+	const buildDate = new Date().toISOString().slice(0, 10);
+
+	const banner = `/*
+ * Script Manager - Wikimedia userscript installer
+ *
+ * @author ${pkg.author.name} (${pkg.author.url})
+ * @license ${pkg.license}
+ * @repository ${pkg.repository.url.replace('.git', '')}
+ * @version ${pkg.version}
+ * @buildDate ${buildDate}
+ *
+ * Built from source. All changes should be made in the repository.
+ * For updates and documentation, visit: ${pkg.documentation}
+ */`;
+
+	return {
+		envPrefix: [ 'VITE_', 'SM_' ],
+		resolve: {
+			alias: {
+				'@': path.resolve(__dirname, 'src'),
+				'@components': path.resolve(__dirname, 'src/components'),
+				'@services': path.resolve(__dirname, 'src/services'),
+				'@utils': path.resolve(__dirname, 'src/utils'),
+				'@constants': path.resolve(__dirname, 'src/constants'),
+				'@styles': path.resolve(__dirname, 'src/styles')
+			}
+		},
+		define: {
+			SM_VERSION: JSON.stringify(pkg.version),
+			SM_DOC_PAGE: JSON.stringify(pkg.documentation),
+			SM_I18N_EN: JSON.stringify(enDict),
+			BUILD_DATE: JSON.stringify(buildDate),
+			__DEV__: isDev,
+			__PROD__: isProd
+		},
+		plugins: [
+			cssInjectedByJsPlugin(),
+			{
+				name: 'script-manager-minify-vue-templates',
+				enforce: 'pre',
+				transform(code, id) {
+					if (!id.endsWith('.js') || !code.includes('template:')) {
+						return null;
+					}
+
+					const templateRegex = /template:\s*`([^`]*)`/gs;
+					const transformed = code.replace(templateRegex, (_match, templateContent) => {
+						const minified = templateContent
+							.replace(/\r?\n\s*/g, ' ')
+							.replace(/\s+/g, ' ')
+							.replace(/>\s+</g, '><')
+							.trim();
+
+						return `template: \`${minified}\``;
+					});
+
+					if (transformed === code) {
+						return null;
+					}
+
+					return {
+						code: transformed,
+						map: null
+					};
+				}
+			},
+			{
+				name: 'script-manager-banner',
+				apply: 'build',
+				enforce: 'post',
+				generateBundle(_options, bundle) {
+					for (const [ fileName, chunk ] of Object.entries(bundle)) {
+						if (chunk.type === 'chunk' && fileName.endsWith('.js')) {
+							chunk.code = `${banner}\n${chunk.code}\n`;
+						}
+					}
+				}
+			},
+			{
+				name: 'script-manager-copy-loader',
+				apply: 'build',
+				generateBundle() {
+					const loaderSource = resolveLoaderSource();
+					if (!fs.existsSync(loaderSource)) {
+						return;
+					}
+
+					const source = fs.readFileSync(loaderSource, 'utf8');
+					this.emitFile({
+						type: 'asset',
+						fileName: 'scriptManager.js',
+						source: `${banner}\n${source}\n`
+					});
+				}
+			}
+		],
+		build: {
+			emptyOutDir: true,
+			lib: {
+				entry: path.resolve(__dirname, 'src/App.js'),
+				name: 'ScriptManager',
+				fileName: () => 'scriptManager-core.js',
+				formats: [ 'iife' ]
+			},
+			target: 'es2021',
+			minify: isProd ? 'esbuild' : false,
+			sourcemap: isDev,
+			rollupOptions: {
+				output: {
+					extend: true,
+					inlineDynamicImports: true,
+					entryFileNames: 'scriptManager-core.js',
+					chunkFileNames: 'scriptManager-core.js'
+				}
+			},
+			reportCompressedSize: false,
+			chunkSizeWarningLimit: 1000
+		},
+		publicDir: false
+	};
+});

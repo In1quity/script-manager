@@ -5,10 +5,20 @@ A MediaWiki user script management system for managing and installing gadgets ac
 ## 📁 Project Structure
 
 ```
+├── src/                         # Vite entry + modular runtime architecture
+│   ├── App.js                   # Runtime entrypoint
+│   ├── core/
+│   │   └── scriptManagerCoreRuntime.js # Authoritative core runtime source
+│   ├── components/              # Shared models/components (e.g. Import)
+│   ├── services/                # Bootstrap, runtime adapters, domain services
+│   ├── utils/                   # Shared utility helpers
+│   ├── constants/               # Runtime constants
+│   └── styles/                  # Style entry points
 ├── scr/
-│   ├── scriptManager-core.js    # Main script logic
-│   ├── scriptManager.js         # Loader and initialization
-│   └── scriptManager-core.css   # Styles and UI
+│   └── scriptManager.js         # Loader and initialization
+├── dist/                        # Build output artifacts
+│   ├── scriptManager-core.js
+│   └── scriptManager.js
 ├── i18n/                        # Internationalization files
 │   ├── en.json                  # English translations
 │   └── ru.json                  # Russian translations
@@ -16,7 +26,6 @@ A MediaWiki user script management system for managing and installing gadgets ac
 │   └── languageFallbacks.json   # Language fallback mappings
 ├── .husky/                      # Git hooks
 ├── eslint.config.js             # ESLint configuration
-├── .prettierrc                  # Prettier configuration
 └── package.json                 # Dependencies and scripts
 ```
 
@@ -26,7 +35,7 @@ All language files are located in the `i18n/` folder and named according to the 
 
 Localization is loaded automatically based on the user's MediaWiki language (`wgUserLanguage`).
 
-Language files are loaded directly from GitLab:
+Language files are loaded directly from Toolforge GitLab mirror:
 
 ```
 https://gitlab.wikimedia.org/iniquity/script-manager/-/raw/main/i18n/{lang}.json
@@ -38,8 +47,8 @@ If the file for the selected language is missing, English (`en.json`) is used as
 
 ### Prerequisites
 
-- Node.js 16+
-- npm 8+
+- Node.js 22+
+- npm 10+
 
 ### Installation
 
@@ -51,15 +60,16 @@ npm install
 
 | Command                | Description               |
 | ---------------------- | ------------------------- |
-| `npm run lint`         | Check code with ESLint    |
-| `npm run lint:fix`     | Auto-fix ESLint issues    |
-| `npm run format`       | Format code with Prettier |
-| `npm run format:check` | Check code formatting     |
+| `npm run lint`         | Run ESLint + Stylelint checks |
+| `npm run lint:fix`     | Auto-fix ESLint + Stylelint issues |
+| `npm run build:dev`    | Build development artifact bundle |
+| `npm run build:prod`   | Build production artifact bundle |
+| `npm run build`        | Run lint and both builds |
 
 ### Code Quality Tools
 
 - **ESLint** - Code linting and style enforcement
-- **Prettier** - Automatic code formatting
+- **Stylelint** - CSS linting for `src/`
 - **Husky** - Git hooks for pre-commit checks
 - **lint-staged** - Run linters on staged files
 
@@ -67,9 +77,9 @@ npm install
 
 - **Indentation**: Tabs (2-space display width)
 - **Quotes**: Single quotes
-- **Semicolons**: None
+- **Semicolons**: Required
 - **Line endings**: LF
-- **Print width**: 120 characters
+- **Formatting source of truth**: `eslint.config.js`
 
 ## 📋 Features
 
@@ -87,22 +97,17 @@ Configuration is in `eslint.config.js`. Rules enforce:
 
 - Tab indentation
 - Single quotes
-- No semicolons
+- Semicolons
 - Modern JavaScript practices
 
-### Prettier
+### Stylelint
 
-Configuration is in `.prettierrc`. Settings:
-
-- Use tabs for indentation
-- Single quotes
-- No semicolons
-- 120 character line width
+Configuration is in `stylelint.config.js`. It validates CSS in `src/`.
 
 ### Git Hooks
 
-- **pre-commit**: Runs ESLint and Prettier on staged files
-- **pre-push**: Runs full linting and formatting checks
+- **pre-commit**: Runs ESLint on staged files
+- **pre-push**: Runs full linting checks
 
 ## 📄 License
 

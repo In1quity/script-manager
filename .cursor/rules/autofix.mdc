@@ -13,5 +13,5 @@ Run `npm run lint:fix` first when updating JS code or lint configuration in this
 
 ## Project Notes
 - This project uses tabs for indentation.
-- JS sources live in `scr/`.
+- JS sources live in `src/` and `scr/`.
 - Formatting is enforced by ESLint (`@stylistic`), not Prettier.

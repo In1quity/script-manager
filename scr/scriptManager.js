@@ -21,8 +21,6 @@
 	})();
 	const CORE_JS =
 		'//www.mediawiki.org/w/index.php?title=User:Iniquity/scriptManager-core.js&action=raw&ctype=text/javascript';
-	const CORE_CSS =
-		'//www.mediawiki.org/w/index.php?title=User:Iniquity/scriptManager-core.css&action=raw&ctype=text/css';
 	const USER_LANG = mw.config.get('wgUserLanguage') || 'en';
 
 	// Lightweight i18n loader: fetch our JSON (user lang, then 'en'); create only when available
@@ -82,17 +80,7 @@
 	}
 
 	function loadCssOnce() {
-		if (window.__SM_CSS_LOADED) return;
-		try {
-			mw.loader.load(CORE_CSS, 'text/css');
-			window.__SM_CSS_LOADED = true;
-		} catch {
-			const el = document.createElement('link');
-			el.rel = 'stylesheet';
-			el.href = CORE_CSS;
-			document.head.appendChild(el);
-			window.__SM_CSS_LOADED = true;
-		}
+		// CSS is injected by scriptManager-core.js runtime.
 	}
 
 	function ensureCoreLoaded(callback) {

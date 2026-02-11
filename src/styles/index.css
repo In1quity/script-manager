@@ -36,7 +36,7 @@
    ========================================================================== */
 .sm-search-wrap {
 	width: 100%;
-	margin: 0 0 10px 0;
+	margin: 0 0 10px;
 }
 
 .sm-search-wrap .cdx-text-input {
@@ -50,7 +50,7 @@
 	justify-content: space-between;
 	align-items: center;
 	gap: 1rem;
-	margin: 0 0 10px 0;
+	margin: 0 0 10px;
 }
 
 .sm-skin-tabs {
@@ -101,7 +101,7 @@
 }
 
 .script-target-section h3 {
-	margin: 0 0 0.5rem 0;
+	margin: 0 0 0.5rem;
 	font-size: 1.1em;
 	font-weight: bold;
 	color: var(--color-base, #000);
@@ -132,21 +132,6 @@
 	opacity: 0.6;
 }
 
-.script-item.disabled .script-link {
-	text-decoration: line-through;
-	font-style: italic;
-}
-
-.script-item-removed {
-	background-color: var(--background-color-destructive-subtle, #ffe9e5);
-	border-color: var(--border-color-destructive, #f54739);
-	opacity: 0.7;
-}
-
-.script-item-removed .script-link {
-	color: var(--color-destructive, #bf3c2c);
-}
-
 .script-info {
 	flex: 1;
 }
@@ -161,6 +146,21 @@
 	text-decoration: underline;
 }
 
+.script-item-removed {
+	background-color: var(--background-color-destructive-subtle, #ffe9e5);
+	border-color: var(--border-color-destructive, #f54739);
+	opacity: 0.7;
+}
+
+.script-item-removed .script-link {
+	color: var(--color-destructive, #bf3c2c);
+}
+
+.script-item.disabled .script-link {
+	text-decoration: line-through;
+	font-style: italic;
+}
+
 .script-actions {
 	display: flex;
 	gap: 0.5rem;
@@ -169,11 +169,6 @@
 
 .script-actions .cdx-button {
 	min-width: auto;
-}
-
-.script-actions .cdx-button:disabled {
-	opacity: 0.6;
-	cursor: not-allowed;
 }
 
 .normalize-wrapper {
@@ -205,7 +200,7 @@
 	font-size: 1rem;
 	font-weight: 600;
 	color: var(--color-base, #202122);
-	margin: 0 0 0.75rem 0;
+	margin: 0 0 0.75rem;
 	padding-bottom: 0.5rem;
 	border-bottom: 1px solid var(--border-color-subtle, #eaecf0);
 }
@@ -223,7 +218,7 @@
 	padding: 1rem;
 	border: 1px solid var(--border-color-base, #a2a9b1);
 	border-radius: 4px;
-	background-color: var(--background-color-base, #ffffff);
+	background-color: var(--background-color-base, #fff);
 	transition: background-color 0.2s ease;
 }
 
@@ -243,7 +238,7 @@
 .gadget-name {
 	font-weight: 600;
 	font-size: 1rem;
-	color: var(--color-base, #000000);
+	color: var(--color-base, #000);
 	margin-bottom: 0.25rem;
 }
 
@@ -261,6 +256,11 @@
 
 .gadget-actions .cdx-button {
 	min-width: auto;
+}
+
+.script-actions .cdx-button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 
 .no-gadgets {
@@ -318,7 +318,7 @@
 }
 
 .sm-message-host .cdx-message {
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
 
 .sm-message-host .cdx-message--block {
@@ -386,6 +386,7 @@ td.sm-ibx {
 
 /* Utility Classes
    ========================================================================== */
+
 /* Error States */
 #sm-panel .error {
 	padding: 1rem;
@@ -415,10 +416,10 @@ td.sm-ibx {
 
 /* Responsive Design
    ========================================================================== */
-@media (max-width: 768px) {
+@media (width <= 768px) {
 	.sm-cdx-dialog {
 		width: 95%;
-		margin: 0 auto 15px auto;
+		margin: 0 auto 15px;
 	}
 
 	.sm-controls {

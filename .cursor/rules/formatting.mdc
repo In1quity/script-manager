@@ -1,12 +1,13 @@
 ---
 globs:
   - scr/**/*.js
+  - src/**/*.js
   - eslint.config.js
 description: Script Manager code formatting and style
 ---
 # Code Formatting Rules
 
-Follow the repository ESLint flat config and keep formatting consistent across `scr/`.
+Follow the repository ESLint flat config and keep formatting consistent across `scr/` and `src/`.
 
 ## Core Style
 - Use tabs for indentation.

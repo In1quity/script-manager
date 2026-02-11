@@ -9,11 +9,11 @@ import unicorn from 'eslint-plugin-unicorn';
 
 export default [
 	{
-		ignores: [ 'node_modules/**', 'extra_scr/**' ]
+		ignores: [ 'node_modules/**', 'extra_scr/**', 'dist/**' ]
 	},
 	{
 		name: 'script-manager/javascript',
-		files: [ '*.js', 'scr/**/*.js' ],
+		files: [ '*.js', 'scr/**/*.js', 'src/**/*.js' ],
 		plugins: {
 			'@stylistic': stylistic,
 			unicorn,

@@ -1,5 +1,6 @@
 # Maintenance files (reference only)
 node_modules
+dist
 
 # Test files (temporary)
 extra_scr/

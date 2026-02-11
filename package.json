@@ -3,10 +3,22 @@
 	"version": "1.0.0",
 	"description": "Script Manager Core - MediaWiki user script management",
 	"main": "scriptManager.js",
+	"browser": "scriptManager.js",
 	"type": "module",
+	"engines": {
+		"node": ">=22.0.0"
+	},
 	"scripts": {
-		"lint": "eslint .",
-		"lint:fix": "eslint . --fix",
+		"lint:eslint": "eslint .",
+		"lint:stylelint": "stylelint \"src/**/*.css\" --allow-empty-input",
+		"lint": "npm run lint:eslint && npm run lint:stylelint",
+		"lint:fix": "eslint . --fix && stylelint \"src/**/*.css\" --fix --allow-empty-input",
+		"test": "vitest --passWithNoTests",
+		"test:run": "vitest run --passWithNoTests",
+		"build:dev": "vite build --mode development",
+		"build:prod": "vite build --mode production",
+		"build": "npm run build:dev && npm run build:prod",
+		"prebuild": "npm run lint",
 		"prepare": "husky"
 	},
 	"devDependencies": {
@@ -20,7 +32,13 @@
 		"eslint-plugin-security": "^3.0.1",
 		"eslint-plugin-unicorn": "^63.0.0",
 		"husky": "^9.1.7",
-		"lint-staged": "^16.1.6"
+		"jsdom": "^28.0.0",
+		"lint-staged": "^16.1.6",
+		"stylelint": "^17.2.0",
+		"stylelint-config-standard": "^40.0.0",
+		"vite": "^7.3.1",
+		"vite-plugin-css-injected-by-js": "^3.5.2",
+		"vitest": "^4.0.18"
 	},
 	"keywords": [
 		"mediawiki",
@@ -29,7 +47,20 @@
 		"script-manager",
 		"testing"
 	],
-	"author": "Iniquity",
+	"homepage": "https://www.mediawiki.org/wiki/Script_Manager",
+	"documentation": "https://www.mediawiki.org/wiki/Script_Manager",
+	"bugs": {
+		"url": "https://github.com/In1quity/script-manager/issues"
+	},
+	"author": {
+		"name": "Iniquity",
+		"url": "https://www.mediawiki.org/wiki/User:Iniquity"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/In1quity/script-manager.git",
+		"directory": "."
+	},
 	"license": "MIT",
 	"lint-staged": {
 		"*.js": [
