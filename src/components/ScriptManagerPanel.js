@@ -1,5 +1,4 @@
 import { showMoveDialog } from '@components/MoveDialog';
-import { showInstallDialog } from '@components/InstallDialog';
 import { DEFAULT_SKIN, SKINS } from '@constants/skins';
 import {
 	getGadgetsData,
@@ -229,7 +228,7 @@ export function createVuePanel(
 
 			const skinTabs = computed(() => [
 				{ name: 'gadgets', label: gadgetsLabel.value || 'Gadgets' },
-				{ name: 'all', label: t('skin-all', 'all') },
+				{ name: 'all', label: t('skin-all') },
 				{ name: 'global', label: 'global' },
 				{ name: 'common', label: 'common' },
 				...SKINS.filter((skin) => skin !== 'common' && skin !== 'global').map((skin) => ({ name: skin, label: skin }))
@@ -273,24 +272,6 @@ export function createVuePanel(
 					{ immediate: true }
 				);
 			}
-
-			const handleNormalize = (targetName) => {
-				const key = `normalize-${targetName}`;
-				setLoading(key, true);
-				void normalize(targetName)
-					.then((changed) => {
-						if (changed) {
-							reloadOnClose.value = true;
-						}
-					})
-					.catch((error) => {
-						logger.error('normalize failed', error);
-						showNotification('notification-normalize-error', 'error');
-					})
-					.finally(() => {
-						setLoading(key, false);
-					});
-			};
 
 			const handleUninstall = (anImport) => {
 				const scriptName = anImport.getDescription();
@@ -429,14 +410,6 @@ export function createVuePanel(
 				return anImport.url;
 			};
 
-			const openInstallDialogFromPanel = () => {
-				const pageName = String(mw.config.get('wgPageName') || '').replace(/_/g, ' ');
-				showInstallDialog(pageName, {
-					text() {},
-					resetBusy() {}
-				});
-			};
-
 			return {
 				dialogOpen,
 				filterText,
@@ -451,7 +424,6 @@ export function createVuePanel(
 				enabledOnly,
 				isNormalizing,
 				normalizeCompleted,
-				handleNormalize,
 				handleUninstall,
 				handleToggleDisabled,
 				handleMove,
@@ -460,7 +432,6 @@ export function createVuePanel(
 				isGadgetEnabled,
 				getSkinUrl,
 				getImportHumanUrl,
-				openInstallDialogFromPanel,
 				SM_t: t,
 				onPanelClose
 			};
@@ -469,16 +440,16 @@ export function createVuePanel(
 			<cdx-dialog
 				class="sm-cdx-dialog"
 				v-model:open="dialogOpen"
-				:title="SM_t('script-name', 'Script manager')"
+				:title="SM_t('script-name')"
 				:use-close-button="true"
 				@close="onPanelClose"
 			>
-				<div class="sm-subtitle" v-text="SM_t('panel-header', 'Manage installed scripts and gadgets')"></div>
+				<div class="sm-subtitle" v-text="SM_t('panel-header')"></div>
 				<div class="sm-controls">
 					<div class="sm-search-wrap">
 						<cdx-text-input
 							v-model="filterText"
-							:placeholder="SM_t('panel-quick-filter', 'Quick filter')"
+							:placeholder="SM_t('panel-quick-filter')"
 							clearable
 						/>
 					</div>
@@ -489,8 +460,8 @@ export function createVuePanel(
 							</cdx-tabs>
 						</div>
 						<div class="sm-enabled-toggle">
-							<cdx-toggle-button v-model="enabledOnly" :aria-label="SM_t('panel-enabled-only', 'Enabled only')">
-								<span v-text="SM_t('panel-enabled-only', 'Enabled only')"></span>
+							<cdx-toggle-button v-model="enabledOnly" :aria-label="SM_t('panel-enabled-only')">
+								<span v-text="SM_t('panel-enabled-only')"></span>
 							</cdx-toggle-button>
 						</div>
 					</div>
@@ -504,7 +475,7 @@ export function createVuePanel(
 						<template v-if="selectedSkin === 'gadgets'">
 							<div class="gadgets-section">
 								<div v-if="Object.keys(filteredImports).length === 0" class="no-gadgets">
-									<p v-text="SM_t('gadgets-not-available', 'Gadgets are not available')"></p>
+									<p v-text="SM_t('gadgets-not-available')"></p>
 								</div>
 								<div v-else class="gadgets-list">
 									<div v-for="(sectionData, sectionName) in filteredImports" :key="sectionName" class="gadget-section">
@@ -527,7 +498,7 @@ export function createVuePanel(
 														:disabled="loadingStates['gadget-' + gadgetName]"
 														@click="handleGadgetToggle(gadgetName, !isGadgetEnabled(gadgetName))"
 													>
-														<span v-text="loadingStates['gadget-' + gadgetName] ? '...' : (isGadgetEnabled(gadgetName) ? SM_t('action-disable', 'Disable') : SM_t('action-enable', 'Enable'))"></span>
+														<span v-text="loadingStates['gadget-' + gadgetName] ? '...' : (isGadgetEnabled(gadgetName) ? SM_t('action-disable') : SM_t('action-enable'))"></span>
 													</cdx-button>
 												</div>
 											</div>
@@ -540,10 +511,10 @@ export function createVuePanel(
 							<div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
 								<h3>
 									<template v-if="targetName === 'common'">
-										<a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skin-common', 'common')"></a>
+										<a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skin-common')"></a>
 									</template>
 									<template v-else-if="targetName === 'global'">
-										<a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skin-global', 'global')"></a>
+										<a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skin-global')"></a>
 									</template>
 									<template v-else>
 										<a :href="getSkinUrl(targetName)" target="_blank" v-text="targetName"></a>
@@ -566,7 +537,7 @@ export function createVuePanel(
 												:disabled="loadingStates['toggle-' + anImport.getDescription()]"
 												@click="handleToggleDisabled(anImport)"
 											>
-												<span v-text="loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? SM_t('action-enable', 'Enable') : SM_t('action-disable', 'Disable'))"></span>
+												<span v-text="loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
 											</cdx-button>
 											<cdx-button
 												weight="quiet"
@@ -574,7 +545,7 @@ export function createVuePanel(
 												:disabled="loadingStates['move-' + anImport.getDescription()]"
 												@click="handleMove(anImport)"
 											>
-												<span v-text="loadingStates['move-' + anImport.getDescription()] ? '...' : SM_t('action-move', 'Move')"></span>
+												<span v-text="loadingStates['move-' + anImport.getDescription()] ? '...' : SM_t('action-move')"></span>
 											</cdx-button>
 											<cdx-button
 												action="destructive"
@@ -583,20 +554,10 @@ export function createVuePanel(
 												:disabled="loadingStates['uninstall-' + anImport.getDescription()]"
 												@click="handleUninstall(anImport)"
 											>
-												<span v-text="loadingStates['uninstall-' + anImport.getDescription()] ? '...' : (removedScripts.includes(anImport.getDescription()) ? SM_t('action-restore', 'Restore') : SM_t('action-uninstall', 'Uninstall'))"></span>
+												<span v-text="loadingStates['uninstall-' + anImport.getDescription()] ? '...' : (removedScripts.includes(anImport.getDescription()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
 											</cdx-button>
 										</div>
 									</div>
-								</div>
-								<div class="sm-target-actions">
-									<cdx-button
-										weight="quiet"
-										size="small"
-										:disabled="loadingStates['normalize-' + targetName]"
-										@click="handleNormalize(targetName)"
-									>
-										<span v-text="loadingStates['normalize-' + targetName] ? SM_t('action-normalize-progress', 'Normalizing...') : SM_t('action-normalize', 'Normalize')"></span>
-									</cdx-button>
 								</div>
 							</div>
 						</template>
@@ -605,9 +566,6 @@ export function createVuePanel(
 
 				<div class="sm-dialog-module">
 					<div class="sm-bottom-left">
-						<cdx-button weight="quiet" size="small" @click="openInstallDialogFromPanel">
-							<span v-text="SM_t('action-install', 'Install')"></span>
-						</cdx-button>
 					</div>
 					<div class="sm-dialog-actions">
 						<cdx-button
@@ -615,7 +573,7 @@ export function createVuePanel(
 							:disabled="Object.keys(filteredImports).length === 0 || selectedSkin === 'gadgets' || isNormalizing || normalizeCompleted"
 							@click="handleNormalizeAll"
 						>
-							<span v-text="isNormalizing ? SM_t('action-normalize-progress', 'Normalizing...') : (normalizeCompleted ? SM_t('action-normalize-completed', 'Normalized') : SM_t('action-normalize', 'Normalize'))"></span>
+							<span v-text="isNormalizing ? SM_t('action-normalize-progress') : (normalizeCompleted ? SM_t('action-normalize-completed') : SM_t('action-normalize'))"></span>
 						</cdx-button>
 					</div>
 				</div>

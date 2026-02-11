@@ -104,7 +104,10 @@ export class Import {
 		const url = this.toLoaderUrl(serverName);
 		const isCss = /\.css($|[?#])/i.test(String(url || ''));
 		const typeArg = isCss ? ", 'text/css'" : '';
-		const backlinkText = this.target === 'global' ? 'Backlink' : translate('label-backlink', 'Backlink');
+		const backlinkText =
+			this.target === 'global'
+				? getStrings().fallback['label-backlink']
+				: translate('label-backlink');
 		const summaryLinkTitle = buildSummaryLinkTitle(this);
 		const suffix = this.type === 2 ? '' : ` // ${backlinkText} [[${escapeForJsComment(summaryLinkTitle)}]]`;
 		return `${disabledPrefix}mw.loader.load('${escapeForJsString(url)}'${typeArg});${suffix}`;
@@ -118,7 +121,7 @@ export class Import {
 				if (useWikitext) {
 					return `[[${buildSummaryLinkTitle(this)}]]`;
 				}
-				return translate('label-remote-url', '$1 @ $2').replace('$1', this.page || '').replace('$2', this.wiki || '');
+				return translate('label-remote-url').replace('$1', this.page || '').replace('$2', this.wiki || '');
 			default:
 				return this.url;
 		}
@@ -215,8 +218,9 @@ export class Import {
 				formatversion: 2
 			});
 			showNotification(
-				translate(disabled ? 'notification-disable-success' : 'notification-enable-success', 'Script updated'),
-				'success'
+				disabled ? 'notification-disable-success' : 'notification-enable-success',
+				'success',
+				this.getDescription()
 			);
 			return true;
 		})();
@@ -242,7 +246,7 @@ export class Import {
 
 			await this.install();
 			await old.uninstall();
-			showNotification(translate('notification-move-success', 'Script moved'), 'success');
+			showNotification('notification-move-success', 'success', this.getDescription());
 			return true;
 		})();
 	}

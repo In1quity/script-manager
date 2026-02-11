@@ -89,22 +89,22 @@ export function showInstallDialog(scriptName, buttonElement) {
 			)
 			.catch((error) => {
 				logger.error('Failed to open install dialog', error);
-				const okay = window.confirm(t('security-warning', 'Security warning').replace('$1', scriptName));
+				const okay = window.confirm(t('security-warning').replace('$1', scriptName));
 				if (!okay) {
 					resetButtonBusy(buttonElement);
 					return;
 				}
-				setButtonText(buttonElement, t('action-install-progress', 'Installing...'));
+				setButtonText(buttonElement, t('action-install-progress'));
 				void Promise.resolve(Import.ofLocal(scriptName, 'common').install())
 					.then(() => {
-						setButtonText(buttonElement, t('action-uninstall', 'Uninstall'));
+						setButtonText(buttonElement, t('action-uninstall'));
 						return refreshImportsView();
 					})
 					.then(() => {
 						reloadAfterChange();
 					})
 					.catch(() => {
-						setButtonText(buttonElement, t('action-install', 'Install'));
+						setButtonText(buttonElement, t('action-install'));
 						resetButtonBusy(buttonElement);
 					});
 			});
@@ -141,7 +141,7 @@ export function createInstallDialog(
 			const isInstalling = ref(false);
 
 			const skinOptions = SKINS.map((skin) => ({
-				label: skin === 'common' ? t('skin-common', 'common') : skin,
+				label: skin === 'common' ? t('skin-common') : skin,
 				value: skin
 			}));
 
@@ -156,17 +156,17 @@ export function createInstallDialog(
 					return;
 				}
 				isInstalling.value = true;
-				setButtonText(buttonElement, t('action-install-progress', 'Installing...'));
+				setButtonText(buttonElement, t('action-install-progress'));
 				try {
 					await Promise.resolve(Import.ofLocal(scriptName, selectedSkin.value).install());
-					setButtonText(buttonElement, t('action-uninstall', 'Uninstall'));
+					setButtonText(buttonElement, t('action-uninstall'));
 					closeDialog();
 					await refreshImportsView();
 					reloadAfterChange();
 				} catch (error) {
 					logger.error('Failed to install script', error);
 					showNotification('notification-install-error', 'error', scriptName);
-					setButtonText(buttonElement, t('action-install', 'Install'));
+					setButtonText(buttonElement, t('action-install'));
 					resetButtonBusy(buttonElement);
 				} finally {
 					isInstalling.value = false;
@@ -187,21 +187,21 @@ export function createInstallDialog(
 		template: `
 			<cdx-dialog
 				v-model:open="dialogOpen"
-				:title="SM_t('dialog-install-title', 'Install $1').replace('$1', scriptName)"
+				:title="SM_t('dialog-install-title').replace('$1', scriptName)"
 				:use-close-button="true"
-				:default-action="{ label: SM_t('action-cancel', 'Cancel') }"
-				:primary-action="{ label: isInstalling ? SM_t('action-install-progress', 'Installing...') : SM_t('action-install', 'Install'), actionType: 'progressive', disabled: isInstalling }"
+				:default-action="{ label: SM_t('action-cancel') }"
+				:primary-action="{ label: isInstalling ? SM_t('action-install-progress') : SM_t('action-install'), actionType: 'progressive', disabled: isInstalling }"
 				@default="closeDialog"
 				@close="closeDialog"
 				@primary="handleInstall"
 			>
-				<p v-text="SM_t('security-warning', 'Check source before installing').replace('$1', scriptName)"></p>
+				<p v-text="SM_t('security-warning').replace('$1', scriptName)"></p>
 				<cdx-field>
-					<template #label><span v-text="SM_t('dialog-move-to-skin', 'Target page')"></span></template>
+					<template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>
 					<cdx-select
 						v-model:selected="selectedSkin"
 						:menu-items="skinOptions"
-						:default-label="SM_t('dialog-move-select-target', 'Select target')"
+						:default-label="SM_t('dialog-move-select-target')"
 					/>
 				</cdx-field>
 			</cdx-dialog>

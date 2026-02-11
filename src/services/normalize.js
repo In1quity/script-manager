@@ -66,7 +66,7 @@ export async function normalize(target) {
 		return true;
 	} catch (error) {
 		logger.error('normalize failed', error);
-		showNotification(t('notification-normalize-error', 'Normalize failed'), 'error');
+		showNotification(t('notification-normalize-error'), 'error');
 		return false;
 	}
 }

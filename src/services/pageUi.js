@@ -28,8 +28,8 @@ function getUserNamespaceName() {
 export function makeLocalInstallClickHandler(scriptName) {
 	return function localInstallClickHandler() {
 		const $self = $(this);
-		const installText = t('action-install', 'Install');
-		const uninstallText = t('action-uninstall', 'Uninstall');
+		const installText = t('action-install');
+		const uninstallText = t('action-uninstall');
 
 		if ($self.text() === installText) {
 			const adapter = {
@@ -44,7 +44,7 @@ export function makeLocalInstallClickHandler(scriptName) {
 			return;
 		}
 
-		$self.text(t('action-uninstall-progress', 'Uninstalling...'));
+		$self.text(t('action-uninstall-progress'));
 		const targets = getTargetsForScript(scriptName);
 		void Promise.all(uniques(targets).map((target) => Promise.resolve(Import.ofLocal(scriptName, target).uninstall())))
 			.then(() => refreshImportsView())
@@ -75,23 +75,23 @@ export function buildCurrentPageInstallElement() {
 				const nameWithoutNs = pageName.substring(prefix.length + 1);
 				const baseSkinName = nameWithoutNs.replace(/\.(?:js|css)$/i, '');
 				if (SKINS.includes(baseSkinName)) {
-					return $('<abbr>').text(t('error-cannot-install', 'Cannot install')).attr('title', t('error-cannot-install-skin', 'Skin page'));
+					return $('<abbr>').text(t('error-cannot-install')).attr('title', t('error-cannot-install-skin'));
 				}
 			}
 			addingInstallLink = true;
 		} else {
 			return $('<abbr>')
-				.text(`${t('error-cannot-install', 'Cannot install')} (${t('error-not-javascript', 'Not JavaScript')})`)
+				.text(`${t('error-cannot-install')} (${t('error-not-javascript')})`)
 				.attr(
 					'title',
-					t('error-cannot-install-content-model', 'Unsupported content model: $1').replace('$1', String(contentModel || ''))
+					t('error-cannot-install-content-model').replace('$1', String(contentModel || ''))
 				);
 		}
 	}
 
 	if (namespaceNumber === SM_MEDIAWIKI_NAMESPACE_NUMBER) {
 		return $('<a>')
-			.text(t('error-install-via-preferences', 'Install via preferences'))
+			.text(t('error-install-via-preferences'))
 			.attr('href', `${mw.util.getUrl('Special:Preferences')}#mw-prefsection-gadgets`);
 	}
 
@@ -111,17 +111,17 @@ export function buildCurrentPageInstallElement() {
 							'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Achtung-yellow.svg/20px-Achtung-yellow.svg.png'
 						)
 						.addClass('warning'),
-					t('error-insecure', 'Potentially unsafe')
+					t('error-insecure')
 				)
-				.attr('title', t('error-temp-warning', 'Review source before installing'))
+				.attr('title', t('error-temp-warning'))
 		);
 		addingInstallLink = true;
 	}
 
 	if (!addingInstallLink) {
 		return $('<abbr>')
-			.text(`${t('error-cannot-install', 'Cannot install')} ${t('error-insecure', 'Potentially unsafe')}`)
-			.attr('title', t('error-bad-page', 'Unsupported page'));
+			.text(`${t('error-cannot-install')} ${t('error-insecure')}`)
+			.attr('title', t('error-bad-page'));
 	}
 
 	const fixedPageName = String(mw.config.get('wgPageName') || '').replace(/_/g, ' ');
@@ -129,7 +129,7 @@ export function buildCurrentPageInstallElement() {
 	installElement.prepend(
 		$('<a>')
 			.attr('id', 'script-installer-main-install')
-			.text(installedTargets.length ? t('action-uninstall', 'Uninstall') : t('action-install', 'Install'))
+			.text(installedTargets.length ? t('action-uninstall') : t('action-install'))
 			.click(makeLocalInstallClickHandler(fixedPageName))
 	);
 
@@ -141,9 +141,9 @@ export function buildCurrentPageInstallElement() {
 			' | ',
 			$('<a>')
 				.attr('id', 'script-installer-main-enable')
-				.text(t('action-enable', 'Enable'))
+				.text(t('action-enable'))
 				.click(function onEnableClick() {
-					$(this).text(t('action-enable-progress', 'Enabling...'));
+					$(this).text(t('action-enable-progress'));
 					void Promise.resolve(importObj.setDisabled(false)).then(() => reloadAfterChange());
 				})
 		);
@@ -200,7 +200,7 @@ export function showUi() {
 				(() => {
 					const $button = $('<a>')
 						.attr('id', 'sm-manage-button')
-						.attr('title', t('tooltip-manage-user-scripts', 'Manage scripts'))
+						.attr('title', t('tooltip-manage-user-scripts'))
 						.addClass('sm-manage-button')
 						.append($('<span class="sm-gear-icon"></span>'))
 						.click(function onManageClick() {
@@ -260,7 +260,7 @@ export function attachInstallLinks() {
 		$(this).append(
 			' | ',
 			$('<a>')
-				.text(installedTargets.length ? t('action-uninstall', 'Uninstall') : t('action-install', 'Install'))
+				.text(installedTargets.length ? t('action-uninstall') : t('action-install'))
 				.click(makeLocalInstallClickHandler(scriptName))
 		);
 	});

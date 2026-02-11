@@ -13,9 +13,9 @@ function uniques(array) {
 
 function getInitialInstallLabel(scriptName) {
 	try {
-		return getTargetsForScript(scriptName).length ? t('action-uninstall', 'Uninstall') : t('action-install', 'Install');
+		return getTargetsForScript(scriptName).length ? t('action-uninstall') : t('action-install');
 	} catch {
-		return t('action-install', 'Install');
+		return t('action-install');
 	}
 }
 
@@ -38,7 +38,7 @@ export function mountInstallButton(hostElement, scriptName) {
 				},
 				computed: {
 					actionType() {
-						return this.label === t('action-install', 'Install') ? 'progressive' : 'destructive';
+						return this.label === t('action-install') ? 'progressive' : 'destructive';
 					}
 				},
 				methods: {
@@ -48,7 +48,7 @@ export function mountInstallButton(hostElement, scriptName) {
 						}
 						this.busy = true;
 
-						if (this.label === t('action-install', 'Install')) {
+						if (this.label === t('action-install')) {
 							const adapter = {
 								text: (text) => {
 									this.label = String(text);
@@ -67,18 +67,18 @@ export function mountInstallButton(hostElement, scriptName) {
 							return;
 						}
 
-						this.label = t('action-uninstall-progress', 'Uninstalling...');
+						this.label = t('action-uninstall-progress');
 						const targets = uniques(getTargetsForScript(scriptName));
 						Promise.all(
 							targets.map((target) => Promise.resolve(Import.ofLocal(scriptName, target).uninstall()))
 						)
 							.then(() => refreshImportsView())
 							.then(() => {
-								this.label = t('action-install', 'Install');
+								this.label = t('action-install');
 							})
 							.catch((error) => {
 								logger.error('Uninstall from button failed', error);
-								this.label = t('action-uninstall', 'Uninstall');
+								this.label = t('action-uninstall');
 							})
 							.finally(() => {
 								this.busy = false;

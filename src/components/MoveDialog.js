@@ -45,7 +45,7 @@ export function showMoveDialog(anImport, onDone) {
 		)
 		.catch((error) => {
 			logger.error('Failed to load move dialog dependencies', error);
-			const promptText = `${t('dialog-move-prompt', 'Move to target:')} ${SKINS.join(', ')}`;
+			const promptText = `${t('dialog-move-prompt')} ${SKINS.join(', ')}`;
 			let destination = '';
 			do {
 				destination = String(window.prompt(promptText) || '').toLowerCase();
@@ -95,7 +95,7 @@ export function createMoveDialog(
 			const isMoving = ref(false);
 
 			const targetOptions = SKINS.filter((skin) => skin !== anImport.target).map((skin) => ({
-				label: skin === 'global' ? t('skin-global', 'global') : skin,
+				label: skin === 'global' ? t('skin-global') : skin,
 				value: skin
 			}));
 
@@ -139,19 +139,19 @@ export function createMoveDialog(
 		template: `
 			<cdx-dialog
 				v-model:open="dialogOpen"
-				:title="SM_t('dialog-move-title', 'Move $1').replace('$1', scriptName)"
+				:title="SM_t('dialog-move-title').replace('$1', scriptName)"
 				:use-close-button="true"
 				@close="closeDialog"
 			>
 				<div class="sm-move-content">
-					<p><strong><span v-text="SM_t('dialog-move-current-location', 'Current target:')"></span></strong> <span v-text="currentTarget === 'global' ? SM_t('skin-global', 'global') : currentTarget"></span></p>
+					<p><strong><span v-text="SM_t('dialog-move-current-location')"></span></strong> <span v-text="currentTarget === 'global' ? SM_t('skin-global') : currentTarget"></span></p>
 					<cdx-field>
-						<template #label><span v-text="SM_t('dialog-move-to-skin', 'Move to')"></span></template>
+						<template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>
 						<cdx-select
 							v-model:selected="selectedTarget"
 							:menu-items="targetOptions"
 							:disabled="isMoving"
-							:default-label="SM_t('dialog-move-select-target', 'Select target')"
+							:default-label="SM_t('dialog-move-select-target')"
 						/>
 					</cdx-field>
 					<div class="sm-move-actions">
@@ -160,7 +160,7 @@ export function createMoveDialog(
 							:disabled="isMoving"
 							action="progressive"
 						>
-							<span v-text="isMoving ? SM_t('dialog-move-progress', 'Moving...') : SM_t('dialog-move-button', 'Move')"></span>
+							<span v-text="isMoving ? SM_t('dialog-move-progress') : SM_t('dialog-move-button')"></span>
 						</cdx-button>
 					</div>
 				</div>
