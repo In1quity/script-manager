@@ -20,6 +20,14 @@ const resolveLoaderSource = () => {
 	return path.resolve(__dirname, 'scr', 'scriptManager.js');
 };
 
+const resolveCaptureSource = () => {
+	const rootCapture = path.resolve(__dirname, 'scriptManager-capture.js');
+	if (fs.existsSync(rootCapture)) {
+		return rootCapture;
+	}
+	return path.resolve(__dirname, 'scr', 'scriptManager-capture.js');
+};
+
 export default defineConfig(({ command, mode }) => {
 	const isProd = command === 'build' && mode === 'production';
 	const isDev = command === 'serve' || mode === 'development';
@@ -117,6 +125,17 @@ export default defineConfig(({ command, mode }) => {
 						type: 'asset',
 						fileName: 'scriptManager.js',
 						source: `${banner}\n${source}\n`
+					});
+
+					const captureSource = resolveCaptureSource();
+					if (!fs.existsSync(captureSource)) {
+						return;
+					}
+					const capture = fs.readFileSync(captureSource, 'utf8');
+					this.emitFile({
+						type: 'asset',
+						fileName: 'scriptManager-capture.js',
+						source: `${banner}\n${capture}\n`
 					});
 				}
 			}
