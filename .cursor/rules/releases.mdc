@@ -10,8 +10,19 @@ Create releases only on explicit user request.
 - Do not create tags or releases automatically.
 - Follow semantic versioning (`major.minor.patch`).
 - Update version in `package.json` when requested.
+- Prefer reproducible, automation-friendly release notes over manual one-liners.
 
 ## Release Steps
 1. Ensure `npm run lint` passes.
 2. Bump version (`npm version patch|minor|major`) when requested.
 3. Push commits and tags only after explicit approval.
+4. Ensure the GitHub Release body includes meaningful change notes:
+   - If an annotated tag message exists and is detailed, it may be used.
+   - Otherwise generate notes from PRs/commits between tags (e.g. GitHub auto-generated notes).
+5. Verify release assets match built outputs in `dist/` (do not omit newly added public artifacts).
+6. Confirm the release exists and is published, then provide the release URL.
+
+## Modern Best Practices (for this repo)
+- Keep Conventional Commits in release-related commits to improve note generation quality.
+- Prefer draft-first release flow when release notes/assets may still need checks.
+- Use `.github/release.yml` categories/exclusions if automated notes become noisy.

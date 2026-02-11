@@ -37,35 +37,29 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Get tag message
+      - name: Prepare release preface
         if: startsWith(github.ref, 'refs/tags/')
-        id: tag_message
+        id: release_preface
         run: |
           chmod +x .github/scripts/extract_tag_message.sh
           TAG_MESSAGE=$(.github/scripts/extract_tag_message.sh "${{ github.ref_name }}")
 
-          if [ -z "$TAG_MESSAGE" ]; then
-            TAG_MESSAGE="Release ${{ github.ref_name }}"
-          else
-            cat > /tmp/release_message.txt <<'EOF'
-          ## Release ${{ github.ref_name }}
+          PREFACE=""
+          if [ -n "$TAG_MESSAGE" ]; then
+            TAG_LEN=$(printf '%s' "$TAG_MESSAGE" | wc -c | tr -d ' ')
+            if [ "$TAG_LEN" -ge 80 ] || printf '%s' "$TAG_MESSAGE" | awk 'NR > 1 { exit 0 } END { exit 1 }'; then
+              cat > /tmp/release_preface.txt <<EOF
+          ## Release notes
+
+          $TAG_MESSAGE
 
           EOF
-            echo "$TAG_MESSAGE" >> /tmp/release_message.txt
-            cat >> /tmp/release_message.txt <<'EOF'
-
-          ## Build Artifacts
-          - `dist/scriptManager.js` - Loader script
-          - `dist/scriptManager-core.js` - Main application bundle
-
-          ## Installation
-          Install userscript by copying the contents of `dist/scriptManager.js`.
-          EOF
-            TAG_MESSAGE=$(cat /tmp/release_message.txt)
+              PREFACE=$(cat /tmp/release_preface.txt)
+            fi
           fi
 
-          echo "tag_message<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$TAG_MESSAGE" >> "$GITHUB_OUTPUT"
+          echo "release_preface<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$PREFACE" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Create Release
@@ -76,7 +70,10 @@ jobs:
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
-          body: ${{ steps.tag_message.outputs.tag_message || format('Release {0}', github.ref_name) }}
+          body: ${{ steps.release_preface.outputs.release_preface }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
           files: |
             dist/scriptManager.js
             dist/scriptManager-core.js
+            dist/scriptManager-capture.js
