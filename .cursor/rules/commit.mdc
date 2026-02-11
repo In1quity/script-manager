@@ -1,18 +1,10 @@
 ---
-description: Commit and push policy with conventional commits
-alwaysApply: true
+description: Conventional commit format and commit checklist
+alwaysApply: false
 ---
 # Git Commit Rules
 
-Follow these guidelines to keep history clean and predictable.
-
-## Commit Creation Policy
-
-**CRITICAL**: Commits are created ONLY upon explicit user command. Never commit automatically.
-
-### Allowed Triggers
-- User explicitly asks to commit/push/save changes.
-- User provides a commit message explicitly.
+Use this rule when the user explicitly requests commit/push work.
 
 ## Commit Message Format
 
@@ -61,5 +53,3 @@ BREAKING CHANGE: The API now requires 'class' parameter instead of 'rating'
 - `refactor/description`: Code refactoring
 - `chore/description`: Maintenance tasks
 
-## Push Policy
-- Never push without explicit user instruction.
