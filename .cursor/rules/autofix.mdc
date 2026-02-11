@@ -1,0 +1,16 @@
+---
+alwaysApply: true
+---
+# ESLint Auto-fix Rule
+
+Always run `npm run lint:fix` first when updating JS code in this repository.
+
+## Priority Order
+1. Run `npm run lint:fix`.
+2. Fix remaining issues manually.
+3. Run `npm run lint` and ensure there are no errors.
+
+## Project Notes
+- This project uses tabs for indentation.
+- JS sources live in `scr/`.
+- Formatting is enforced by ESLint (`@stylistic`), not Prettier.

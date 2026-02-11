@@ -1,0 +1,22 @@
+---
+alwaysApply: true
+---
+# Git Commit Rules
+
+Create commits only when the user explicitly asks for it.
+
+## Commit Message Format
+Use Conventional Commits:
+- `feat(scope): description`
+- `fix(scope): description`
+- `docs(scope): description`
+- `refactor(scope): description`
+- `chore(scope): description`
+
+## Requirements Before Commit
+1. Run `npm run lint`.
+2. Stage only relevant files.
+3. Keep commits atomic and focused on one logical change.
+
+## Push Policy
+- Never push without explicit user instruction.

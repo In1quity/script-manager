@@ -1,0 +1,23 @@
+---
+globs: scr/**/*.js,eslint.config.js
+description: Script Manager code formatting and style
+---
+# Code Formatting Rules
+
+Follow the repository ESLint flat config and keep formatting consistent across `scr/`.
+
+## Core Style
+- Use tabs for indentation.
+- Use single quotes.
+- Use semicolons.
+- Use Unix line endings (LF).
+- Keep brace style as 1tbs.
+
+## MediaWiki Context
+- This is a Wikimedia/MediaWiki gadget project.
+- Allowed globals include `mw`, `$`, `jQuery`, and `OO`.
+- Keep compatibility with ES2017.
+
+## Linting Workflow
+1. `npm run lint:fix`
+2. `npm run lint`

@@ -1,0 +1,16 @@
+---
+description: Release and versioning workflow for Script Manager
+---
+# Release Management Rules
+
+Create releases only on explicit user request.
+
+## Release Policy
+- Do not create tags or releases automatically.
+- Follow semantic versioning (`major.minor.patch`).
+- Update version in `package.json` when requested.
+
+## Release Steps
+1. Ensure `npm run lint` passes.
+2. Bump version (`npm version patch|minor|major`) when requested.
+3. Push commits and tags only after explicit approval.
