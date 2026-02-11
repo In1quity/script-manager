@@ -7,7 +7,7 @@
 	"script-name-short": "SM",
 
 	"skin-common": "common (applies to all skins)",
-	"skin-global": "Global (applies to all wikis)",
+	"skin-global": "global (applies to all wikis)",
 	"skin-all": "All skins",
 
 	"summary-install": "Installing $1",
@@ -41,17 +41,11 @@
 	"dialog-move-progress": "Moving...",
 	"dialog-move-prompt": "Destination? Enter one of:",
 
-	"panel-header": "You currently have the following scripts installed (find more at WP:USL)",
-	"panel-quick-filter": "Quick filter:",
+	"panel-header": "You currently have the following scripts installed",
+	"panel-quick-filter": "Quick filter",
 	"panel-enabled-only": "Enabled only",
 
-	"gadgets-available": "Available gadgets",
 	"gadgets-not-available": "No gadgets available or failed to load gadgets data.",
-	"gadgets-not-installed": "Gadgets extension is not installed on this wiki",
-	"gadgets-not-configured": "No gadgets are configured",
-	"gadgets-api-restricted": "API access is restricted",
-	"gadgets-no-description": "No description available",
-	"gadgets-this-might-be-because": "This might be because:",
 
 	"notification-install-success": "Script $1 installed successfully",
 	"notification-uninstall-success": "Script $1 uninstalled successfully",
@@ -79,7 +73,6 @@
 	"error-bad-page": "Page is not User: or MediaWiki: and is unprotected",
 
 	"security-warning": "Warning!$1\n\nAll user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump. Install this script?",
-	"security-warning-section": " About to install $1.",
 
 	"label-backlink": "Backlink:",
 	"label-remote-url": "$1, loaded from $2",
