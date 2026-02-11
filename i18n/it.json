@@ -1,0 +1,31 @@
+{
+	"@metadata": {
+		"authors": [
+			"Giorgx12"
+		]
+	},
+	"script-name": "Gestore di Script",
+	"script-name-short": "SM",
+	"summary-install": "Installazione di $1",
+	"summary-uninstall": "Disinstallazione di $1",
+	"summary-disable": "Disabilitazione di $1",
+	"summary-enable": "Abilitazione di $1",
+	"action-install": "Installa",
+	"action-install-progress": "Installazione...",
+	"action-uninstall": "Disinstalla",
+	"action-uninstall-progress": "Disinstallazione...",
+	"action-disable": "Disabilita",
+	"action-disable-progress": "Disabilitazione...",
+	"action-enable": "Abilita",
+	"action-enable-progress": "Abilitazione...",
+	"action-move": "Sposta",
+	"action-move-progress": "Spostamento...",
+	"action-restore": "Ripristina",
+	"action-cancel": "Cancella",
+	"action-normalize": "Normalizza",
+	"action-normalize-progress": "Normalizzazione...",
+	"action-normalize-completed": "Normalizzato",
+	"dialog-install-title": "Installa $1",
+	"dialog-move-title": "Muovi lo script $1",
+	"dialog-move-current-location": "Posizione attuale:"
+}

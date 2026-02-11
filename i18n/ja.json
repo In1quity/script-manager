@@ -1,0 +1,33 @@
+{
+	"@metadata": {
+		"authors": [
+			"Largestone"
+		]
+	},
+	"script-name": "スクリプトマネージャー",
+	"script-name-short": "SM",
+	"summary-install": "$1をインストール中",
+	"summary-uninstall": "$1をアンインストール中",
+	"summary-disable": "$1を無効化中",
+	"summary-enable": "$1を有効化中",
+	"action-install": "インストール",
+	"action-install-progress": "インストール中...",
+	"action-uninstall": "アンインストール",
+	"action-uninstall-progress": "アンインストール中...",
+	"action-disable": "無効化",
+	"action-disable-progress": "無効化中...",
+	"action-enable": "有効化",
+	"action-enable-progress": "有効化中...",
+	"action-move": "移動",
+	"action-move-progress": "移動中...",
+	"action-restore": "復元",
+	"action-cancel": "キャンセル",
+	"dialog-install-title": "$1をインストール",
+	"dialog-move-current-location": "現在の位置:",
+	"dialog-move-button": "スクリプトを移動",
+	"dialog-move-progress": "移動中...",
+	"error-cannot-install": "インストールできません",
+	"error-not-javascript": "JavaScriptではありません",
+	"sidebar-link": "スクリプトマネージャー",
+	"sidebar-link-title": "スクリプトマネージャを開く"
+}

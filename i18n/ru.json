@@ -1,21 +1,19 @@
 {
 	"@metadata": {
-		"authors": ["Iniquity"]
+		"authors": [
+			"Iniquity"
+		]
 	},
-
 	"script-name": "Менеджер скриптов",
 	"script-name-short": "МС",
-
 	"skin-common": "(common) применяется ко всем темам оформления",
 	"skin-global": "Global (применяется ко всем вики)",
 	"skin-all": "Все скины",
-
 	"summary-install": "Установка $1",
 	"summary-uninstall": "Удаление $1",
 	"summary-disable": "Выключение $1",
 	"summary-enable": "Включение $1",
 	"summary-normalize": "Нормализация установленных скриптов",
-
 	"action-install": "Установить",
 	"action-install-progress": "Установка...",
 	"action-uninstall": "Удалить",
@@ -31,7 +29,6 @@
 	"action-normalize": "Нормализовать",
 	"action-normalize-progress": "Нормализация...",
 	"action-normalize-completed": "Нормализовано",
-
 	"dialog-install-title": "Установка $1",
 	"dialog-move-title": "Переместить скрипт: $1",
 	"dialog-move-current-location": "Текущее местоположение:",
@@ -40,11 +37,9 @@
 	"dialog-move-button": "Переместить скрипт",
 	"dialog-move-progress": "Перемещение...",
 	"dialog-move-prompt": "Куда установить? Выберите один из вариантов:",
-
 	"panel-header": "На данный момент у вас установлены следующие скрипты (более подробную информацию можно найти на ВП:JS)",
 	"panel-quick-filter": "Быстрый фильтр:",
 	"panel-enabled-only": "Включенные",
-
 	"gadgets-available": "Доступные гаджеты",
 	"gadgets-not-available": "Гаджеты недоступны или не удалось загрузить данные о гаджетах.",
 	"gadgets-not-installed": "Расширение Gadgets не установлено на этой вики",
@@ -52,7 +47,6 @@
 	"gadgets-api-restricted": "Доступ к API ограничен",
 	"gadgets-no-description": "Описание недоступно",
 	"gadgets-this-might-be-because": "Это может быть потому что:",
-
 	"notification-install-success": "Скрипт $1 успешно установлен",
 	"notification-uninstall-success": "Скрипт $1 успешно удален",
 	"notification-enable-success": "Скрипт $1 успешно включен",
@@ -68,7 +62,6 @@
 	"notification-normalize-error": "Не удалось нормализовать скрипты",
 	"notification-restore-error": "Не удалось восстановить скрипт $1",
 	"notification-general-error": "Произошла ошибка. Попробуйте еще раз.",
-
 	"error-cannot-install": "Невозможно установить",
 	"error-cannot-install-skin": "Эта страница является одной из ваших страниц настройки пользователя и может (будет, если существует common.js) запускаться при каждой загрузке страницы.",
 	"error-cannot-install-content-model": "Контентная модель страницы $1, не 'javascript'",
@@ -77,14 +70,11 @@
 	"error-install-via-preferences": "Установить через настройки",
 	"error-temp-warning": "Установка непользовательских и не защищенных MediaWiki страниц является временной и может быть удалена в будущем.",
 	"error-bad-page": "Страница не является User: или MediaWiki: и не защищена.",
-
 	"security-warning": "Предупреждение!$1\n\nВсе пользовательские скрипты могут содержать вредоносный контент, способный поставить под угрозу вашу учетную запись. Установка скрипта означает, что его могут изменить другие; убедитесь, что вы доверяете его автору. Если вы не уверены, безопасен ли скрипт, проверьте его на техническом форуме. Установить этот скрипт?",
 	"security-warning-section": " Перед установкой скрипта $1.",
-
 	"label-backlink": "Ссылка на скрипт:",
 	"label-remote-url": "$1, загружается из $2",
 	"tooltip-manage-user-scripts": "Управление скриптами",
-
 	"sidebar-link": "Менеджер скриптов",
 	"sidebar-link-title": "Открыть менеджер скриптов",
 	"sidebar-captured-heading": "Перехваченные скрипты"
