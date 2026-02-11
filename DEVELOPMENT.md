@@ -2,14 +2,6 @@
 
 ## Code Quality Tools
 
-### Prettier
-
-- **Purpose**: Automatic code formatting
-- **Config**: `.prettierrc`
-- **Commands**:
-  - `npm run format` - Format all files
-  - `npm run format:check` - Check formatting without changes
-
 ### ESLint
 
 - **Purpose**: Code linting and style enforcement
@@ -22,19 +14,26 @@
 
 - **Purpose**: Pre-commit hooks for automatic code quality checks
 - **Hooks**:
-  - `pre-commit`: Runs ESLint and Prettier on staged files
-  - `pre-push`: Runs full linting and formatting checks
+  - `pre-commit`: Runs ESLint on staged files
+  - `pre-push`: Runs full lint
+
+## Line endings (Windows)
+
+The project uses LF (`.gitattributes`). On Windows, set in this repo so pre-push passes:
+
+```bash
+git config core.autocrlf false
+```
+
+Then run `npm run lint:fix` once if the working copy had CRLF.
 
 ## Workflow
 
-1. **Before committing**: Husky automatically runs lint-staged
-2. **Manual formatting**: `npm run format`
-3. **Manual linting**: `npm run lint:fix`
+1. **Before committing**: Husky runs lint-staged
+2. **Manual linting**: `npm run lint:fix`
 
 ## Configuration Files
 
-- `.prettierrc` - Prettier configuration
-- `.prettierignore` - Files to ignore for formatting
 - `eslint.config.js` - ESLint configuration
 - `.husky/pre-commit` - Pre-commit hook
 - `.husky/pre-push` - Pre-push hook
