@@ -6,23 +6,45 @@ alwaysApply: false
 
 Use this rule when the user explicitly requests commit/push work.
 
+Spec: [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/)
+
 ## Commit Message Format
 
-Use conventional commits format: `type(scope): description`
+```
+type(scope): description
 
-### Recommended Types
-`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+[optional body]
 
-## Examples:
+[optional footer(s)]
+```
 
-✅ **Good commits:**
+- **type**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+- **scope**: optional noun (e.g. `panel`, `api`, `i18n`)
+- **description**: short summary; imperative mood, lowercase, no trailing period
+
+## Line Length
+
+- **Subject**: 50 characters or less (tools truncate; GitHub warns at 50).
+- **Body**: wrap at 72 characters (fits 80‑col terminal and email).
+
+## Examples
+
+✅ **Good:**
 ```
 feat(gadgets): add script move action
 fix(api): handle empty gadget list response
 docs(readme): clarify local setup steps
 ```
 
-❌ **Bad commits:**
+✅ **With body (reason, not changelog):**
+```
+feat(panel): list scripts by key and show sources
+
+Use stable keys so toggles and state stay correct. Show where each
+script is loaded from.
+```
+
+❌ **Bad:**
 ```
 fixed bug.
 updates
@@ -33,23 +55,33 @@ WIP
 
 1. Run `npm run lint`.
 2. Stage only relevant files.
-3. Ensure the commit is atomic (one logical change).
-4. Use imperative, lowercase subject without trailing period.
-5. Keep subject under 72 chars.
+3. One logical change per commit (atomic).
+4. Subject: imperative, lowercase, no period, ≤50 chars.
+5. Body: explain why / context; wrap at 72 chars.
 
-## Optional Body and Breaking Changes
+## Breaking Changes
 
-For complex changes, add a body with the reason. If breaking:
+Use footer or `!` after type/scope:
+
 ```
 feat(api): change parameter format
 
-BREAKING CHANGE: The API now requires 'class' parameter instead of 'rating'
+BREAKING CHANGE: The API now requires 'class' instead of 'rating'
 ```
 
-## Branch Naming (if creating branches)
-- `feature/description`: New features
-- `fix/description`: Bug fixes
-- `docs/description`: Documentation updates
-- `refactor/description`: Code refactoring
-- `chore/description`: Maintenance tasks
+```
+feat(api)!: require 'class' parameter
+```
 
+## Footers
+
+- `BREAKING CHANGE: description` — MAJOR bump.
+- `Closes #123` / `Refs #123` — link to issues (optional).
+
+## Branch Naming (if creating branches)
+
+- `feature/description` — new features
+- `fix/description` — bug fixes
+- `docs/description` — documentation
+- `refactor/description` — refactoring
+- `chore/description` — maintenance
