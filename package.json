@@ -61,7 +61,7 @@
 		"url": "https://github.com/In1quity/script-manager.git",
 		"directory": "."
 	},
-	"license": "MIT",
+	"license": "MIT OR CC-BY-SA-4.0",
 	"lint-staged": {
 		"*.js": [
 			"eslint --fix"
