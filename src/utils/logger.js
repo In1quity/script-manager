@@ -1,8 +1,25 @@
 import { APP_NAMESPACE, DEFAULT_LOG_LEVEL, LOGGER_PREFIX, LOG_LEVELS } from '@constants/runtime';
 
+function getGlobal() {
+	try {
+		if (typeof globalThis !== 'undefined') {
+			return globalThis;
+		}
+		if (typeof window !== 'undefined') {
+			return window;
+		}
+		return {};
+	} catch {
+		return {};
+	}
+}
+
 function resolveLevelName() {
 	try {
-		const raw = window.SM_LOG_LEVEL || (window.scriptInstallerDebug ? 'debug' : DEFAULT_LOG_LEVEL);
+		const g = getGlobal();
+		const raw =
+			g.SM_LOG_LEVEL ||
+			(g.scriptInstallerDebug ? 'debug' : DEFAULT_LOG_LEVEL);
 		return String(raw || DEFAULT_LOG_LEVEL).toLowerCase();
 	} catch {
 		return DEFAULT_LOG_LEVEL;
@@ -11,7 +28,9 @@ function resolveLevelName() {
 
 function resolveLevelValue() {
 	const levelName = resolveLevelName();
-	return Object.prototype.hasOwnProperty.call(LOG_LEVELS, levelName) ? LOG_LEVELS[levelName] : LOG_LEVELS.info;
+	return Object.prototype.hasOwnProperty.call(LOG_LEVELS, levelName)
+		? LOG_LEVELS[levelName]
+		: LOG_LEVELS.info;
 }
 
 function write(method, minLevel, namespace, argsLike) {
@@ -22,7 +41,9 @@ function write(method, minLevel, namespace, argsLike) {
 	try {
 		const args = Array.prototype.slice.call(argsLike);
 		const scope = namespace ? `${APP_NAMESPACE}:${namespace}` : APP_NAMESPACE;
-		method.apply(console, [ LOGGER_PREFIX, `[${scope}]`, ...args ]);
+		// Use console.log for debug so messages are visible when "Verbose" is off in devtools
+		const out = method === console.debug ? console.log : method;
+		out.apply(console, [ LOGGER_PREFIX, `[${scope}]`, ...args ]);
 	} catch {
 		// Keep logger resilient in wiki runtimes with patched consoles.
 	}
