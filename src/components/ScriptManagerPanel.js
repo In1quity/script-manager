@@ -1,6 +1,8 @@
+import { decaptureImport, showCaptureDialog } from '@components/CaptureDialog';
 import { showMoveDialog } from '@components/MoveDialog';
 import { showSettingsDialog } from '@components/SettingsDialog';
 import { DEFAULT_SKIN, SKINS } from '@constants/skins';
+import { ensureCaptureRuntimeLoaded } from '@services/captureRuntime';
 import {
 	getEnabledGadgets,
 	getGadgetsData,
@@ -261,6 +263,11 @@ export function createVuePanel(
 					if (typeof defaultTab === 'string' && validTabs.includes(defaultTab)) {
 						selectedSkin.value = defaultTab;
 					}
+					if (savedSettings?.captureEnabled === true) {
+						void ensureCaptureRuntimeLoaded().catch((error) => {
+							logger.warn('capture runtime load failed after settings save', error);
+						});
+					}
 				});
 			};
 
@@ -368,6 +375,52 @@ export function createVuePanel(
 				});
 			};
 
+			const handleCapture = (anImport) => {
+				const key = `capture-${anImport.getKey()}`;
+				if (loadingStates.value[key]) {
+					return;
+				}
+				const captureEnabled = getSetting('captureEnabled') === true;
+				const ensureCaptureReady = captureEnabled
+					? ensureCaptureRuntimeLoaded().catch((error) => {
+						logger.warn('capture runtime preload failed', error);
+					})
+					: Promise.resolve();
+				if (anImport?.captured) {
+					setLoading(key, true);
+					void ensureCaptureReady
+						.then(() => decaptureImport(anImport))
+						.then(() => {
+							reloadOnClose.value = true;
+							return refreshImportsView();
+						})
+						.then(() => {
+							importsReactive.value = Object.assign({}, getImportList());
+						})
+						.catch((error) => {
+							logger.error('decapture failed', error);
+							showNotification('notification-decapture-error', 'error', anImport.getDisplayName());
+						})
+						.finally(() => {
+							setLoading(key, false);
+						});
+					return;
+				}
+				setLoading(key, true);
+				void ensureCaptureReady
+					.then(() => {
+						showCaptureDialog(anImport, () => {
+							reloadOnClose.value = true;
+							void refreshImportsView().then(() => {
+								importsReactive.value = Object.assign({}, getImportList());
+							});
+						});
+					})
+					.finally(() => {
+						setLoading(key, false);
+					});
+			};
+
 			const handleNormalizeAll = () => {
 				const targets = Object.keys(filteredImports.value).filter((targetName) => targetName !== 'gadgets');
 				if (!targets.length || isNormalizing.value) {
@@ -453,6 +506,12 @@ export function createVuePanel(
 				return anImport.getSourceLabel();
 			};
 
+			if (getSetting('captureEnabled') === true) {
+				void ensureCaptureRuntimeLoaded().catch((error) => {
+					logger.warn('capture runtime load on panel init failed', error);
+				});
+			}
+
 			return {
 				dialogOpen,
 				filterText,
@@ -470,6 +529,7 @@ export function createVuePanel(
 				handleUninstall,
 				handleToggleDisabled,
 				handleMove,
+				handleCapture,
 				handleNormalizeAll,
 				handleGadgetToggle,
 				isGadgetEnabled,
@@ -596,6 +656,12 @@ export function createVuePanel(
 									>
 										<div class="script-info">
 											<a :href="getImportHumanUrl(anImport)" class="script-link" v-text="getImportDisplayName(anImport)"></a>
+											<span
+												v-if="anImport.captured"
+												class="sm-captured-indicator"
+												:title="SM_t('label-captured-script')"
+												:aria-label="SM_t('label-captured-script')"
+											></span>
 											<span v-if="getImportSourceLabel(anImport)" class="script-source" v-text="getImportSourceLabel(anImport)"></span>
 										</div>
 										<div class="script-actions">
@@ -614,6 +680,14 @@ export function createVuePanel(
 												@click="handleMove(anImport)"
 											>
 												<span v-text="loadingStates['move-' + anImport.getKey()] ? '...' : SM_t('action-move')"></span>
+											</cdx-button>
+											<cdx-button
+												weight="quiet"
+												size="small"
+												:disabled="removedScripts.includes(anImport.getKey()) || loadingStates['capture-' + anImport.getKey()]"
+												@click="handleCapture(anImport)"
+											>
+												<span v-text="loadingStates['capture-' + anImport.getKey()] ? (anImport.captured ? SM_t('action-decapture-progress') : SM_t('action-capture-progress')) : (anImport.captured ? SM_t('action-decapture') : SM_t('action-capture'))"></span>
 											</cdx-button>
 											<cdx-button
 												action="destructive"

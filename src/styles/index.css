@@ -204,6 +204,15 @@
 	text-decoration: underline;
 }
 
+.sm-captured-indicator {
+	display: inline-flex;
+	width: 0.6rem;
+	height: 0.6rem;
+	border-radius: 999px;
+	background-color: var(--color-progressive, #36c);
+	flex-shrink: 0;
+}
+
 .script-item-removed {
 	background-color: var(--background-color-destructive-subtle, #ffe9e5);
 	border-color: var(--border-color-destructive, #f54739);
@@ -382,6 +391,22 @@
 }
 
 .sm-settings-actions {
+	margin-top: 1rem;
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+}
+
+/* Capture Dialog */
+.sm-capture-dialog.cdx-dialog {
+	max-width: 32rem;
+}
+
+.sm-capture-content {
+	padding: 1rem 0;
+}
+
+.sm-capture-actions {
 	margin-top: 1rem;
 	display: flex;
 	justify-content: flex-end;

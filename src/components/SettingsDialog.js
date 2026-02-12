@@ -2,7 +2,7 @@ import { SKINS } from '@constants/skins';
 import { getGadgetsLabel } from '@services/gadgets';
 import { t } from '@services/i18n';
 import { showNotification } from '@services/notification';
-import { loadSettings, setSetting } from '@services/settings';
+import { loadSettings, saveSettings } from '@services/settings';
 import { loadVueCodex } from '@utils/codex';
 import { createLogger } from '@utils/logger';
 
@@ -74,6 +74,7 @@ export function showSettingsDialog(onSaved) {
 				libs.CdxButton,
 				libs.CdxSelect,
 				libs.CdxField,
+				libs.CdxCheckbox,
 				currentSettings,
 				onSaved
 			)
@@ -94,17 +95,19 @@ export function createSettingsDialog(
 	CdxButton,
 	CdxSelect,
 	CdxField,
+	CdxCheckbox,
 	currentSettings,
 	onSaved
 ) {
 	let app = null;
 
 	const SettingsDialog = defineComponent({
-		components: { CdxDialog, CdxButton, CdxSelect, CdxField },
+		components: { CdxDialog, CdxButton, CdxSelect, CdxField, CdxCheckbox },
 		setup() {
 			const dialogOpen = ref(true);
 			const isSaving = ref(false);
 			const defaultTab = ref(currentSettings?.defaultTab || 'common');
+			const captureEnabled = ref(currentSettings?.captureEnabled === true);
 
 			const targetOptions = getDefaultTabOptions();
 
@@ -119,10 +122,17 @@ export function createSettingsDialog(
 				}
 				isSaving.value = true;
 				try {
-					await setSetting('defaultTab', defaultTab.value);
+					await saveSettings({
+						...(currentSettings || {}),
+						defaultTab: defaultTab.value,
+						captureEnabled: captureEnabled.value
+					});
 					showNotification('settings-saved', 'success');
 					if (typeof onSaved === 'function') {
-						onSaved({ defaultTab: defaultTab.value });
+						onSaved({
+							defaultTab: defaultTab.value,
+							captureEnabled: captureEnabled.value
+						});
 					}
 					closeDialog();
 				} catch (error) {
@@ -137,6 +147,7 @@ export function createSettingsDialog(
 				dialogOpen,
 				isSaving,
 				defaultTab,
+				captureEnabled,
 				targetOptions,
 				closeDialog,
 				handleSave,
@@ -160,6 +171,15 @@ export function createSettingsDialog(
 							:menu-items="targetOptions"
 							:disabled="isSaving"
 						/>
+					</cdx-field>
+					<cdx-field>
+						<template #description><span v-text="SM_t('settings-capture-enabled-description')"></span></template>
+						<cdx-checkbox
+							v-model="captureEnabled"
+							:disabled="isSaving"
+						>
+							<span v-text="SM_t('settings-capture-enabled')"></span>
+						</cdx-checkbox>
 					</cdx-field>
 					<div class="sm-settings-actions">
 						<cdx-button
@@ -192,6 +212,7 @@ export function createSettingsDialog(
 		app.component('CdxButton', CdxButton);
 		app.component('CdxSelect', CdxSelect);
 		app.component('CdxField', CdxField);
+		app.component('CdxCheckbox', CdxCheckbox);
 		app.mount(container[0] || container);
 		return app;
 	} catch (error) {

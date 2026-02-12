@@ -8,6 +8,9 @@ const importsByTarget = Object.create(null);
 const importsLoadedTargets = Object.create(null);
 let importsRef = null;
 let buildImportListPromise = null;
+const CAPTURE_BLOCK_START_RGX = /^\s*\/\/\s*SM-CAPTURE-START\b/;
+const CAPTURE_BLOCK_END_RGX = /^\s*\/\/\s*SM-CAPTURE-END\b/;
+const CAPTURE_NAME_LINE_RGX = /name:\s*("(?:\\.|[^"])*")\s*,?\s*$/;
 
 function getLocalUserNamespaceName() {
 	try {
@@ -53,10 +56,44 @@ function getTargetFromTitle(pageTitle) {
 }
 
 function parseImportsFromWikitext(text, target) {
-	return String(text || '')
-		.split('\n')
-		.map((line) => Import.fromJs(line, target))
-		.filter(Boolean);
+	const lines = String(text || '').split('\n');
+	const imports = [];
+	let captureDepth = 0;
+
+	for (let index = 0; index < lines.length; index++) {
+		const line = lines[index];
+		if (CAPTURE_BLOCK_START_RGX.test(line)) {
+			captureDepth++;
+		}
+
+		const parsed = Import.fromJs(line, target);
+		if (parsed) {
+			if (captureDepth > 0) {
+				parsed.captured = true;
+				for (let i = index; i >= 0; i--) {
+					if (CAPTURE_BLOCK_START_RGX.test(lines[i])) {
+						break;
+					}
+					const nameMatch = CAPTURE_NAME_LINE_RGX.exec(lines[i]);
+					if (nameMatch) {
+						try {
+							parsed.captureName = JSON.parse(nameMatch[1]);
+						} catch {
+							parsed.captureName = '';
+						}
+						break;
+					}
+				}
+			}
+			imports.push(parsed);
+		}
+
+		if (captureDepth > 0 && CAPTURE_BLOCK_END_RGX.test(line)) {
+			captureDepth--;
+		}
+	}
+
+	return imports;
 }
 
 export async function getWikitextForTarget(target) {

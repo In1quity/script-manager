@@ -9,6 +9,11 @@
  */
 
 ;(function() {
+	function loaderLog() {
+		try {
+			console.log.apply(console, [ '[SM-loader]' ].concat([].slice.call(arguments)));
+		} catch {}
+	}
 	const NS = mw.config.get('wgNamespaceNumber');
 	const jsPage = (function() {
 		try {
@@ -21,6 +26,9 @@
 	})();
 	const CORE_JS =
 		'//www.mediawiki.org/w/index.php?title=User:Iniquity/scriptManager-core.js&action=raw&ctype=text/javascript';
+	const CAPTURE_JS =
+		'//www.mediawiki.org/w/index.php?title=User:Iniquity/scriptManager-capture.js&action=raw&ctype=text/javascript';
+	const SETTINGS_OPTION_KEY = 'userjs-sm-settings';
 	const USER_LANG = mw.config.get('wgUserLanguage') || 'en';
 	const SIDEBAR_I18N_CACHE_KEY_PREFIX = 'SM_sidebar_i18n';
 	const SIDEBAR_I18N_LEGACY_CACHE_KEY = 'SM_sidebar_i18n';
@@ -32,6 +40,48 @@
 		capturedScriptsHeading: 'Captured scripts'
 	};
 	let corePromise = null;
+	let capturePromise = null;
+	let captureBypassHookInstalled = false;
+
+	function runCapturePayloadNow(payload) {
+		try {
+			if (window.__SM_CAPTURE_ACTIVE === true || window.__SM_CAPTURE_READY === true) {
+				return;
+			}
+		} catch {}
+		try {
+			if (typeof payload === 'function') {
+				payload();
+				return;
+			}
+			if (payload && typeof payload === 'object' && Array.isArray(payload.items)) {
+				payload.items.forEach(function(item) {
+					if (item && typeof item.fn === 'function') {
+						item.fn();
+					}
+				});
+				return;
+			}
+			if (payload && typeof payload === 'object' && typeof payload.fn === 'function') {
+				payload.fn();
+			}
+		} catch {}
+	}
+
+	function installCaptureBypassHook() {
+		if (captureBypassHookInstalled) {
+			return;
+		}
+		try {
+			if (mw && mw.hook && typeof mw.hook === 'function') {
+				mw.hook('scriptManager.capture').add(function(payload) {
+					runCapturePayloadNow(payload);
+				});
+				captureBypassHookInstalled = true;
+				loaderLog('capture bypass hook installed');
+			}
+		} catch {}
+	}
 
 	function normalizeSidebarMessages(json) {
 		try {
@@ -190,6 +240,60 @@
 		});
 	}
 
+	function loadCaptureScriptAsync() {
+		return new Promise(function(resolve, reject) {
+			try {
+				if (mw.loader && typeof mw.loader.getScript === 'function') {
+					mw.loader.getScript(CAPTURE_JS).then(resolve, reject);
+					return;
+				}
+			} catch {}
+
+			const s = document.createElement('script');
+			s.src = CAPTURE_JS;
+			s.async = true;
+			s.onload = resolve;
+			s.onerror = function(err) {
+				reject(err || new Error('Failed to load capture script'));
+			};
+			document.head.appendChild(s);
+		});
+	}
+
+	// Load capture synchronously so it runs before global.js / other scripts that fire the hook.
+	function loadCaptureScriptSync() {
+		try {
+			const s = document.createElement('script');
+			s.src = CAPTURE_JS;
+			s.async = false;
+			document.head.appendChild(s);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	function ensureCaptureLoaded() {
+		if (!capturePromise) {
+			capturePromise = loadCaptureScriptAsync().catch(function(err) {
+				capturePromise = null;
+				throw err;
+			});
+		}
+		return capturePromise;
+	}
+
+	function isCaptureEnabled() {
+		try {
+			const raw = mw?.user?.options?.get?.(SETTINGS_OPTION_KEY) || '';
+			if (!raw) return false;
+			const parsed = JSON.parse(raw);
+			return Boolean(parsed && parsed.captureEnabled === true);
+		} catch {
+			return false;
+		}
+	}
+
 	function ensureCoreLoaded() {
 		if (!corePromise) {
 			corePromise = loadCoreScript().catch(function(err) {
@@ -268,11 +372,36 @@
 
 	function bootstrap() {
 		addSidebarLink();
+		bootstrapCapture();
 		if (shouldAutoload()) {
 			// SUMMARY_TAG is now handled internally by the core
 			ensureCoreLoaded().catch(function() {});
 		}
 	}
+
+	function bootstrapCapture() {
+		if (!isCaptureEnabled()) {
+			loaderLog('capture disabled, bypass wrappers');
+			installCaptureBypassHook();
+			return;
+		}
+		loaderLog('capture enabled, loading sync');
+		try {
+			window.__SM_CAPTURE_ACTIVE = true;
+		} catch {}
+		// Load synchronously so capture runs before global.js (and other scripts) that fire the hook.
+		if (!loadCaptureScriptSync()) {
+			loaderLog('sync load failed, fallback async');
+			ensureCaptureLoaded().catch(function() {});
+		} else {
+			loaderLog('capture script injected (sync)');
+		}
+	}
+
+	// Start capture helper ASAP; wrappers can run before DOMContentLoaded.
+	loaderLog('bootstrapCapture start');
+	bootstrapCapture();
+	loaderLog('bootstrapCapture done');
 
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', bootstrap);

@@ -9,6 +9,10 @@ const URL_RGX = /^(?:https?:)?\/\/(.+?)\.org\/w\/index\.php\?.*?title=(.+?(?:&|$
 const IMPORT_RGX = /^\s*(\/\/)?\s*importScript\s*\(\s*(['"])\s*(.+?)\s*\2\s*\)\s*;?/;
 const LOADER_RGX =
 	/^\s*(\/\/)?\s*mw\s*\.\s*loader\s*\.\s*load\s*\(\s*(['"])\s*(.+?)\s*\2\s*(?:,\s*(['"])\s*(?:text\/css|application\/css|text\/javascript|application\/javascript)\s*\4\s*)?\)\s*;?/;
+const CAPTURE_BLOCK_START_RGX = /^\s*\/\/\s*SM-CAPTURE-START\b/;
+const CAPTURE_BLOCK_END_RGX = /^\s*\/\/\s*SM-CAPTURE-END\b/;
+const CAPTURE_ITEM_START_RGX = /^\s*\/\/\s*SM-CAPTURE-ITEM-START\b/;
+const CAPTURE_ITEM_END_RGX = /^\s*\/\/\s*SM-CAPTURE-ITEM-END\b/;
 
 function decodeSafe(value) {
 	try {
@@ -18,6 +22,70 @@ function decodeSafe(value) {
 	}
 }
 
+function getCaptureBlockRange(lines, lineIndex) {
+	let start = -1;
+	for (let i = lineIndex; i >= 0; i--) {
+		if (CAPTURE_BLOCK_START_RGX.test(lines[i])) {
+			start = i;
+			break;
+		}
+		if (CAPTURE_BLOCK_END_RGX.test(lines[i])) {
+			return null;
+		}
+	}
+	if (start < 0) {
+		return null;
+	}
+
+	let end = -1;
+	for (let i = lineIndex; i < lines.length; i++) {
+		if (CAPTURE_BLOCK_END_RGX.test(lines[i])) {
+			end = i;
+			break;
+		}
+		if (i !== lineIndex && CAPTURE_BLOCK_START_RGX.test(lines[i])) {
+			return null;
+		}
+	}
+	if (end < 0 || end < start) {
+		return null;
+	}
+
+	return { start, end };
+}
+
+function getCaptureItemRange(lines, lineIndex) {
+	let start = -1;
+	for (let i = lineIndex; i >= 0; i--) {
+		if (CAPTURE_ITEM_START_RGX.test(lines[i])) {
+			start = i;
+			break;
+		}
+		if (CAPTURE_ITEM_END_RGX.test(lines[i])) {
+			return null;
+		}
+	}
+	if (start < 0) {
+		return null;
+	}
+
+	let end = -1;
+	for (let i = lineIndex; i < lines.length; i++) {
+		if (CAPTURE_ITEM_END_RGX.test(lines[i])) {
+			end = i;
+			break;
+		}
+		if (i !== lineIndex && CAPTURE_ITEM_START_RGX.test(lines[i])) {
+			return null;
+		}
+	}
+	if (end < 0 || end < start) {
+		return null;
+	}
+
+	return { start, end };
+}
+
 export class Import {
 	constructor(options = {}) {
 		const {
@@ -25,13 +93,17 @@ export class Import {
 			wiki: wikiValue = null,
 			url: urlValue = null,
 			target: targetValue = 'common',
-			disabled: disabledValue = false
+			disabled: disabledValue = false,
+			captured: capturedValue = false,
+			captureName: captureNameValue = ''
 		} = options;
 		this.page = page;
 		this.wiki = wikiValue;
 		this.url = urlValue;
 		this.target = targetValue;
 		this.disabled = Boolean(disabledValue);
+		this.captured = Boolean(capturedValue);
+		this.captureName = captureNameValue || '';
 		this.type = this.url ? 2 : this.wiki ? 1 : 0;
 	}
 
@@ -193,13 +265,21 @@ export class Import {
 		}
 
 		const lines = String(targetWikitext || '').split('\n');
-		const indexes = [];
+		const indexes = new Set();
 		for (let index = 0; index < lines.length; index++) {
 			if (toFind.test(lines[index])) {
-				indexes.push(index);
+				const itemRange = getCaptureItemRange(lines, index);
+				const blockRange = itemRange || getCaptureBlockRange(lines, index);
+				if (blockRange) {
+					for (let i = blockRange.start; i <= blockRange.end; i++) {
+						indexes.add(i);
+					}
+				} else {
+					indexes.add(index);
+				}
 			}
 		}
-		return indexes;
+		return Array.from(indexes).sort((a, b) => a - b);
 	}
 
 	install() {

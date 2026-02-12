@@ -4,6 +4,12 @@
  */
 
 ;(function() {
+	function capLog() {
+		try {
+			console.log.apply(console, [ '[SM-cap]' ].concat([].slice.call(arguments)));
+		} catch {}
+	}
+	capLog('script running');
 	const SIDEBAR_I18N_CACHE_KEY = 'SM_sidebar_i18n';
 	const DEFAULT_CAPTURED_HEADING = 'Captured scripts';
 
@@ -27,12 +33,6 @@
 		importStylesheet: null,
 		importStylesheetURI: null
 	};
-
-	function capLog() {
-		try {
-			console.log.apply(console, [ '[SM-cap]' ].concat([].slice.call(arguments)));
-		} catch {}
-	}
 
 	function labelFromUrl(url) {
 		try {
@@ -182,8 +182,24 @@
 		return out;
 	}
 
-	function captureLoads(runFn) {
+	const allCaptured = [];
+	let renderScheduled = false;
+
+	function scheduleRender() {
+		if (renderScheduled) return;
+		renderScheduled = true;
+		setTimeout(function() {
+			renderScheduled = false;
+			renderCaptured(allCaptured.slice());
+		}, 0);
+	}
+
+	function captureLoads(entries, resetCapturedList) {
+		if (resetCapturedList) {
+			allCaptured.length = 0;
+		}
 		const captured = [];
+		let activeName = '';
 		// save originals once
 		try {
 			if (!ORIG.mwLoad && mw && mw.loader) ORIG.mwLoad = mw.loader.load;
@@ -205,22 +221,24 @@
 			capLog('capture: mw.loader.load', spec, type);
 			if (typeof spec === 'string') {
 				const css = isCss(spec, type);
+				const fallbackLabel = labelFromUrl(spec);
 				captured.push({
 					callType: 'mw.loader.load',
 					args: [ spec ].concat(css ? [ 'text/css' ] : []),
 					isCss: css,
 					key: spec,
-					label: labelFromUrl(spec)
+					label: activeName || fallbackLabel
 				});
 				return; // don't execute
 			}
 			if (Array.isArray(spec)) {
+				const fallbackLabel = spec.join(', ');
 				captured.push({
 					callType: 'mw.loader.load',
 					args: [ spec ],
 					isCss: false,
 					key: spec.join(','),
-					label: spec.join(', ')
+					label: activeName || fallbackLabel
 				});
 			}
 		}
@@ -229,7 +247,14 @@
 			capLog('capture: mw.loader.getScript', url);
 			try {
 				const u = String(url || '');
-				captured.push({ callType: 'mw.loader.getScript', args: [ u ], isCss: false, key: u, label: labelFromUrl(u) });
+				const fallbackLabel = labelFromUrl(u);
+				captured.push({
+					callType: 'mw.loader.getScript',
+					args: [ u ],
+					isCss: false,
+					key: u,
+					label: activeName || fallbackLabel
+				});
 			} catch {}
 			return Promise.resolve();
 		}
@@ -238,7 +263,13 @@
 			capLog('capture: importScript', title);
 			try {
 				const t = String(title || '');
-				captured.push({ callType: 'importScript', args: [ t ], isCss: false, key: t, label: t });
+				captured.push({
+					callType: 'importScript',
+					args: [ t ],
+					isCss: false,
+					key: t,
+					label: activeName || t
+				});
 			} catch {}
 		}
 
@@ -246,7 +277,13 @@
 			capLog('capture: importStylesheet', title);
 			try {
 				const t = String(title || '');
-				captured.push({ callType: 'importStylesheet', args: [ t ], isCss: true, key: t, label: t });
+				captured.push({
+					callType: 'importStylesheet',
+					args: [ t ],
+					isCss: true,
+					key: t,
+					label: activeName || t
+				});
 			} catch {}
 		}
 
@@ -254,7 +291,14 @@
 			capLog('capture: importStylesheetURI', u);
 			try {
 				const s = String(u || '');
-				captured.push({ callType: 'importStylesheetURI', args: [ s ], isCss: true, key: s, label: labelFromUrl(s) });
+				const fallbackLabel = labelFromUrl(s);
+				captured.push({
+					callType: 'importStylesheetURI',
+					args: [ s ],
+					isCss: true,
+					key: s,
+					label: activeName || fallbackLabel
+				});
 			} catch {}
 		}
 
@@ -274,9 +318,14 @@
 		try {
 			if (typeof window.importStylesheetURI === 'function') window.importStylesheetURI = patchedImportStylesheetURI;
 		} catch {}
-		try {
-			if (typeof runFn === 'function') runFn();
-		} catch {}
+		for (let i = 0; i < entries.length; i++) {
+			const entry = entries[i];
+			activeName = entry && typeof entry.name === 'string' ? entry.name.trim() : '';
+			try {
+				if (entry && typeof entry.fn === 'function') entry.fn();
+			} catch {}
+		}
+		activeName = '';
 
 		// restore
 		try {
@@ -295,26 +344,60 @@
 			if (ORIG.importStylesheetURI) window.importStylesheetURI = ORIG.importStylesheetURI;
 		} catch {}
 
-		// render
+		// accumulate and schedule single render so multiple fire() calls in one batch show all
 		const items = dedupe(captured);
+		for (let i = 0; i < items.length; i++) {
+			allCaptured.push(items[i]);
+		}
 		try {
-			window.__SM_LAST_CAPTURED = items;
-			capLog('capture: done, items=', items.length);
+			window.__SM_LAST_CAPTURED = allCaptured.slice();
+			capLog('capture: done, items=', items.length, 'total=', allCaptured.length);
 		} catch {}
-		renderCaptured(items);
+		scheduleRender();
 	}
 
 	function setupCaptureHooks() {
 		function norm(payload) {
-			if (typeof payload === 'function') return { fn: payload };
-			if (payload && typeof payload === 'object' && typeof payload.fn === 'function') return { fn: payload.fn };
+			if (typeof payload === 'function') {
+				return {
+					entries: [ { fn: payload, name: '' } ],
+					reset: false
+				};
+			}
+			if (payload && typeof payload === 'object' && Array.isArray(payload.items)) {
+				const entries = payload.items
+					.filter((item) => item && typeof item.fn === 'function')
+					.map((item) => ({
+						fn: item.fn,
+						name: typeof item.name === 'string' ? item.name : ''
+					}));
+				if (entries.length) {
+					return {
+						entries,
+						reset: true
+					};
+				}
+			}
+			if (payload && typeof payload === 'object' && typeof payload.fn === 'function') {
+				return {
+					entries: [
+						{
+							fn: payload.fn,
+							name: typeof payload.name === 'string' ? payload.name : ''
+						}
+					],
+					reset: false
+				};
+			}
 			return null;
 		}
 		try {
 			if (mw && mw.hook && typeof mw.hook === 'function') {
+				capLog('hook registered');
 				mw.hook('scriptManager.capture').add(function(payload) {
 					const p = norm(payload);
-					if (p) captureLoads(p.fn);
+					capLog('hook fire, entries=', p ? p.entries.length : 0);
+					if (p) captureLoads(p.entries, p.reset);
 				});
 			}
 		} catch {}
@@ -323,11 +406,17 @@
 				try {
 					const d = ev && ev.detail;
 					const p = norm(d);
-					if (p) captureLoads(p.fn);
+					if (p) captureLoads(p.entries, p.reset);
 				} catch {}
 			});
 		} catch {}
 	}
 
+	try {
+		window.__SM_CAPTURE_ACTIVE = true;
+	} catch {}
+	try {
+		window.__SM_CAPTURE_READY = true;
+	} catch {}
 	setupCaptureHooks();
 })();
