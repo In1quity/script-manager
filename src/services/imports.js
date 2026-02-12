@@ -234,7 +234,10 @@ export class Import {
 			if (this.type === 2 || !this.page) {
 				return null;
 			}
-			const host = this.type === 1 && this.wiki ? `${this.wiki}.org` : Import.getServerName();
+			let host = this.type === 1 && this.wiki ? `${this.wiki}.org` : Import.getServerName();
+			if (host === 'mediawiki.org') {
+				host = 'www.mediawiki.org';
+			}
 			const rawUrl = `//${host}/w/index.php?title=${encodeURIComponent(this.page)}&action=raw&ctype=text/javascript`;
 			const response = await fetch(rawUrl);
 			if (!response.ok) {

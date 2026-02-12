@@ -493,7 +493,11 @@ export function createVuePanel(
 					return `/wiki/${encodeURI(page)}`;
 				}
 				if (anImport.type === 1) {
-					return `//${anImport.wiki}.org/wiki/${encodeURI(page)}`;
+					let host = `${anImport.wiki}.org`;
+					if (host === 'mediawiki.org') {
+						host = 'www.mediawiki.org';
+					}
+					return `//${host}/wiki/${encodeURI(page)}`;
 				}
 				return anImport.url;
 			};
