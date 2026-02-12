@@ -160,15 +160,20 @@ export class Import {
 	}
 
 	toLoaderUrl(serverName) {
+		let url;
 		if (this.type === 2) {
-			return this.url;
+			url = this.url;
+		} else {
+			let host = this.type === 1 ? `${this.wiki}.org` : serverName;
+			if (host === 'mediawiki.org') {
+				host = 'www.mediawiki.org';
+			}
+			const pageTitle = this.page;
+			const isCss = /\.css$/i.test(String(pageTitle || ''));
+			const ctype = isCss ? 'text/css' : 'text/javascript';
+			url = `//${host}/w/index.php?title=${pageTitle}&action=raw&ctype=${ctype}`;
 		}
-
-		const host = this.type === 1 ? `${this.wiki}.org` : serverName;
-		const pageTitle = this.page;
-		const isCss = /\.css$/i.test(String(pageTitle || ''));
-		const ctype = isCss ? 'text/css' : 'text/javascript';
-		return `//${host}/w/index.php?title=${pageTitle}&action=raw&ctype=${ctype}`;
+		return url.replace(/\/\/mediawiki\.org\b/i, '//www.mediawiki.org');
 	}
 
 	toJs(serverName) {
