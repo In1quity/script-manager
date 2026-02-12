@@ -54,6 +54,8 @@
 	"settings-title": "Title of the settings dialog",
 	"settings-default-tab": "Label for selecting which tab should be opened by default in the main panel",
 	"settings-default-tab-description": "Description text for the default tab setting",
+	"settings-capture-heading": "Short heading for the script interceptor (capture) setting block",
+	"settings-userscript-load-caching-heading": "Short heading for the script load caching setting block",
 	"settings-capture-enabled": "Label for the setting that enables loading of the capture helper script",
 	"settings-capture-enabled-description": "Description text for the capture helper toggle in settings",
 	"settings-userscript-load-caching-enabled": "Label for setting that toggles insertion of User:SD0001/userscript-load-caching.min.js into global.js",

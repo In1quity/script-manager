@@ -57,6 +57,8 @@
 	"settings-title": "Settings",
 	"settings-default-tab": "Default tab",
 	"settings-default-tab-description": "Which tab to show when the panel opens",
+	"settings-capture-heading": "Script interceptor",
+	"settings-userscript-load-caching-heading": "Load caching",
 	"settings-capture-enabled": "Enable script interceptor",
 	"settings-capture-enabled-description": "Capture script loads and show them in the sidebar",
 	"settings-userscript-load-caching-enabled": "Enable script load caching via API",

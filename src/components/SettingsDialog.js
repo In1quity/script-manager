@@ -248,6 +248,7 @@ export function createSettingsDialog(
 						/>
 					</cdx-field>
 					<cdx-field>
+						<template #label><span v-text="SM_t('settings-capture-heading')"></span></template>
 						<template #description><span v-text="SM_t('settings-capture-enabled-description')"></span></template>
 						<cdx-checkbox
 							v-model="captureEnabled"
@@ -257,6 +258,7 @@ export function createSettingsDialog(
 						</cdx-checkbox>
 					</cdx-field>
 					<cdx-field>
+						<template #label><span v-text="SM_t('settings-userscript-load-caching-heading')"></span></template>
 						<template #description><span v-html="userscriptLoadCachingDescriptionHtml"></span></template>
 						<cdx-checkbox
 							v-model="userscriptLoadCachingEnabled"

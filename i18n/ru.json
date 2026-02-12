@@ -43,6 +43,8 @@
 	"settings-title": "Настройки",
 	"settings-default-tab": "Вкладка по умолчанию",
 	"settings-default-tab-description": "Какая вкладка будет открываться при запуске панели",
+	"settings-capture-heading": "Перехватчик скриптов",
+	"settings-userscript-load-caching-heading": "Кеширование загрузки",
 	"settings-capture-enabled": "Включить перехватчик скриптов",
 	"settings-capture-enabled-description": "Перехватывать загрузку скриптов и показывать их в боковой панели",
 	"settings-userscript-load-caching-enabled": "Включить кеширование загрузки скриптов через API",
