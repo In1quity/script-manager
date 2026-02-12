@@ -13,6 +13,7 @@ function mapCodexModules() {
 		CdxTextInput: codex.CdxTextInput,
 		CdxSelect: codex.CdxSelect,
 		CdxField: codex.CdxField,
+		CdxCheckbox: codex.CdxCheckbox,
 		CdxTabs: codex.CdxTabs,
 		CdxTab: codex.CdxTab,
 		CdxToggleButton: codex.CdxToggleButton

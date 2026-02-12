@@ -44,6 +44,11 @@
 	"panel-header": "Manage JavaScript and CSS loaded with your account",
 	"panel-quick-filter": "Search scripts or gadgets",
 	"panel-enabled-only": "Enabled only",
+	"settings-title": "Settings",
+	"settings-default-tab": "Default tab",
+	"settings-default-tab-description": "Which tab to show when the panel opens",
+	"settings-save": "Save",
+	"settings-saved": "Settings saved",
 
 	"gadgets-not-available": "No gadgets available or failed to load gadgets data.",
 

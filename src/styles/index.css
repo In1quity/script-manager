@@ -14,6 +14,54 @@
 	max-width: 65rem;
 }
 
+/* Custom header: row layout so title and gear/close stay on one line */
+.sm-cdx-dialog .cdx-dialog__header,
+.sm-cdx-dialog [class*="dialog__header"] {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	border-bottom: none;
+}
+
+.sm-dialog-header-title-wrap {
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+
+.sm-settings-btn.cdx-button,
+.sm-dialog-close-btn.cdx-button {
+	flex-shrink: 0;
+	min-width: 32px;
+	min-height: 32px;
+}
+
+.sm-dialog-close-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+}
+
+.sm-dialog-close-icon svg {
+	width: 20px;
+	height: 20px;
+}
+
+.sm-panel-gear-icon,
+.sm-gear-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 16px;
+	min-height: 16px;
+}
+
 /* Content Sections
    ========================================================================== */
 .sm-subtitle {
@@ -322,6 +370,22 @@
 	margin-top: 1.5rem;
 	display: flex;
 	justify-content: flex-end;
+}
+
+/* Settings Dialog */
+.sm-settings-dialog.cdx-dialog {
+	max-width: 32rem;
+}
+
+.sm-settings-content {
+	padding: 1rem 0;
+}
+
+.sm-settings-actions {
+	margin-top: 1rem;
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
 }
 
 /* Notification System

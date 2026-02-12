@@ -1,4 +1,5 @@
 import { showMoveDialog } from '@components/MoveDialog';
+import { showSettingsDialog } from '@components/SettingsDialog';
 import { DEFAULT_SKIN, SKINS } from '@constants/skins';
 import {
 	getEnabledGadgets,
@@ -25,7 +26,9 @@ import {
 } from '@services/importList';
 import { normalize, reloadAfterChange } from '@services/normalize';
 import { showNotification } from '@services/notification';
+import { getSetting, loadSettings } from '@services/settings';
 import { loadVueCodex } from '@utils/codex';
+import { renderIconInto } from '@utils/icons';
 import { createLogger } from '@utils/logger';
 import { canonicalizeUserNamespace } from '@utils/namespace';
 
@@ -50,6 +53,10 @@ function safeUnmount(app, root) {
 
 function getDefaultSkin() {
 	try {
+		const settingsDefaultTab = getSetting('defaultTab');
+		if (typeof settingsDefaultTab === 'string' && settingsDefaultTab) {
+			return settingsDefaultTab;
+		}
 		if (typeof window.SM_DEFAULT_SKIN === 'string' && window.SM_DEFAULT_SKIN) {
 			return window.SM_DEFAULT_SKIN;
 		}
@@ -71,8 +78,8 @@ function toPromise(value) {
 
 export function createPanel() {
 	const container = $('<div>').attr('id', 'sm-panel');
-	void loadVueCodex()
-		.then((libs) => {
+	void Promise.all([ loadVueCodex(), loadSettings() ])
+		.then(([ libs ]) => {
 			createVuePanel(
 				container,
 				libs.createApp,
@@ -246,6 +253,16 @@ export function createVuePanel(
 				{ name: 'common', label: 'common' },
 				...SKINS.filter((skin) => skin !== 'common' && skin !== 'global').map((skin) => ({ name: skin, label: skin }))
 			]);
+
+			const openSettingsDialog = () => {
+				showSettingsDialog((savedSettings) => {
+					const defaultTab = savedSettings?.defaultTab;
+					const validTabs = [ 'gadgets', 'all', ...SKINS ];
+					if (typeof defaultTab === 'string' && validTabs.includes(defaultTab)) {
+						selectedSkin.value = defaultTab;
+					}
+				});
+			};
 
 			const onPanelClose = () => {
 				dialogOpen.value = false;
@@ -460,6 +477,7 @@ export function createVuePanel(
 				getImportHumanUrl,
 				getImportDisplayName,
 				getImportSourceLabel,
+				openSettingsDialog,
 				SM_t: t,
 				onPanelClose
 			};
@@ -468,10 +486,31 @@ export function createVuePanel(
 			<cdx-dialog
 				class="sm-cdx-dialog"
 				v-model:open="dialogOpen"
-				:title="SM_t('script-name')"
-				:use-close-button="true"
 				@close="onPanelClose"
 			>
+				<template #header>
+					<div class="sm-dialog-header-title-wrap">
+						<h2 class="sm-dialog-title cdx-dialog__header__title" v-text="SM_t('script-name')"></h2>
+						<cdx-button
+							class="sm-settings-btn"
+							weight="quiet"
+							type="button"
+							:aria-label="SM_t('settings-title')"
+							@click.stop="openSettingsDialog()"
+						>
+							<span class="sm-gear-icon sm-panel-gear-icon"></span>
+						</cdx-button>
+					</div>
+					<cdx-button
+						class="sm-dialog-close-btn cdx-button--icon-only"
+						weight="quiet"
+						type="button"
+						:aria-label="SM_t('action-cancel')"
+						@click.stop="onPanelClose()"
+					>
+						<span class="sm-dialog-close-icon" aria-hidden="true"></span>
+					</cdx-button>
+				</template>
 				<div class="sm-subtitle" v-text="SM_t('panel-header')"></div>
 				<div class="sm-controls">
 					<div class="sm-search-wrap">
@@ -616,6 +655,19 @@ export function createVuePanel(
 			app.config.compilerOptions.delimiters = [ '[%', '%]' ];
 		}
 		app.mount(rootEl);
+		// Dialog header may be teleported to body; search in document
+		const scheduleIcons = () => {
+			const gear = document.querySelector('.sm-cdx-dialog .sm-panel-gear-icon');
+			if (gear) {
+				renderIconInto(gear, 'cdxIconSettings', 'currentColor', 16);
+			}
+			const closeBtn = document.querySelector('.sm-cdx-dialog .sm-dialog-close-icon');
+			if (closeBtn) {
+				renderIconInto(closeBtn, 'cdxIconClose', 'currentColor', 20);
+			}
+		};
+		(typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(scheduleIcons, 0);
+		setTimeout(scheduleIcons, 80);
 		return app;
 	} catch (error) {
 		logger.error('Error mounting panel', error);
