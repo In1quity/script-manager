@@ -59,6 +59,8 @@
 	"settings-default-tab-description": "Which tab to show when the panel opens",
 	"settings-capture-enabled": "Enable script interceptor",
 	"settings-capture-enabled-description": "Capture script loads and show them in the sidebar",
+	"settings-userscript-load-caching-enabled": "Enable script load caching via API",
+	"settings-userscript-load-caching-enabled-description": "Insert/remove code from [[:en:User:SD0001/Making user scripts load faster|userscript load caching via API]] at the top of global.js",
 	"settings-save": "Save",
 	"settings-saved": "Settings saved",
 	"label-captured-script": "Captured script",

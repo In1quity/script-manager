@@ -8,6 +8,73 @@ import { createLogger } from '@utils/logger';
 
 const logger = createLogger('component.settingsDialog');
 
+function escapeHtml(value) {
+	return String(value || '')
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+function encodeWikiPath(path) {
+	return String(path || '')
+		.split('/')
+		.map((part) => encodeURIComponent(part))
+		.join('/')
+		.replace(/%3A/gi, ':')
+		.replace(/%20/g, '_');
+}
+
+function resolveWikiLinkTarget(target) {
+	const clean = String(target || '').trim().replace(/^:/, '');
+	const interwikiMatch = /^([a-z-]+):(.*)$/.exec(clean);
+	if (interwikiMatch) {
+		const prefix = String(interwikiMatch[1] || '').toLowerCase();
+		const title = encodeWikiPath(interwikiMatch[2] || '');
+		if (prefix === 'en') {
+			return `https://en.wikipedia.org/wiki/${title}`;
+		}
+		if (prefix === 'mw') {
+			return `https://www.mediawiki.org/wiki/${title}`;
+		}
+		if (prefix === 'meta') {
+			return `https://meta.wikimedia.org/wiki/${title}`;
+		}
+	}
+
+	try {
+		if (mw?.util?.getUrl) {
+			return mw.util.getUrl(clean);
+		}
+	} catch {
+		// Ignore if mw.util is unavailable.
+	}
+
+	return `/wiki/${encodeWikiPath(clean)}`;
+}
+
+function renderInlineWikitext(value) {
+	const source = String(value || '');
+	const linkRgx = /\[\[([^[\]|]+?)(?:\|([^[\]]+?))?\]\]/g;
+	let lastIndex = 0;
+	let result = '';
+	let match;
+
+	while ((match = linkRgx.exec(source)) !== null) {
+		const [ full, target, label ] = match;
+		const index = match.index;
+		result += escapeHtml(source.slice(lastIndex, index));
+		const href = resolveWikiLinkTarget(target);
+		const text = label || target;
+		result += `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${escapeHtml(text)}</a>`;
+		lastIndex = index + full.length;
+	}
+
+	result += escapeHtml(source.slice(lastIndex));
+	return result;
+}
+
 function safeUnmount(app, root) {
 	try {
 		if (app && typeof app.unmount === 'function') {
@@ -108,6 +175,10 @@ export function createSettingsDialog(
 			const isSaving = ref(false);
 			const defaultTab = ref(currentSettings?.defaultTab || 'common');
 			const captureEnabled = ref(currentSettings?.captureEnabled === true);
+			const userscriptLoadCachingEnabled = ref(currentSettings?.userscriptLoadCachingEnabled === true);
+			const userscriptLoadCachingDescriptionHtml = ref(
+				renderInlineWikitext(t('settings-userscript-load-caching-enabled-description'))
+			);
 
 			const targetOptions = getDefaultTabOptions();
 
@@ -125,13 +196,15 @@ export function createSettingsDialog(
 					await saveSettings({
 						...(currentSettings || {}),
 						defaultTab: defaultTab.value,
-						captureEnabled: captureEnabled.value
+						captureEnabled: captureEnabled.value,
+						userscriptLoadCachingEnabled: userscriptLoadCachingEnabled.value
 					});
 					showNotification('settings-saved', 'success');
 					if (typeof onSaved === 'function') {
 						onSaved({
 							defaultTab: defaultTab.value,
-							captureEnabled: captureEnabled.value
+							captureEnabled: captureEnabled.value,
+							userscriptLoadCachingEnabled: userscriptLoadCachingEnabled.value
 						});
 					}
 					closeDialog();
@@ -148,6 +221,8 @@ export function createSettingsDialog(
 				isSaving,
 				defaultTab,
 				captureEnabled,
+				userscriptLoadCachingEnabled,
+				userscriptLoadCachingDescriptionHtml,
 				targetOptions,
 				closeDialog,
 				handleSave,
@@ -179,6 +254,15 @@ export function createSettingsDialog(
 							:disabled="isSaving"
 						>
 							<span v-text="SM_t('settings-capture-enabled')"></span>
+						</cdx-checkbox>
+					</cdx-field>
+					<cdx-field>
+						<template #description><span v-html="userscriptLoadCachingDescriptionHtml"></span></template>
+						<cdx-checkbox
+							v-model="userscriptLoadCachingEnabled"
+							:disabled="isSaving"
+						>
+							<span v-text="SM_t('settings-userscript-load-caching-enabled')"></span>
 						</cdx-checkbox>
 					</cdx-field>
 					<div class="sm-settings-actions">

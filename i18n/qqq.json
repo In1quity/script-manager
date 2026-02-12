@@ -56,6 +56,8 @@
 	"settings-default-tab-description": "Description text for the default tab setting",
 	"settings-capture-enabled": "Label for the setting that enables loading of the capture helper script",
 	"settings-capture-enabled-description": "Description text for the capture helper toggle in settings",
+	"settings-userscript-load-caching-enabled": "Label for setting that toggles insertion of User:SD0001/userscript-load-caching.min.js into global.js",
+	"settings-userscript-load-caching-enabled-description": "Description text for the setting that inserts/removes userscript load caching code in global.js. Supports wikilink markup ([[...]]).",
 	"settings-save": "Button text for saving settings in the settings dialog",
 	"settings-saved": "Success notification shown after settings are saved",
 	"label-captured-script": "Tooltip text for the visual indicator shown near captured scripts in the list",

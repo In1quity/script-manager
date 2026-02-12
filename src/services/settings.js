@@ -1,6 +1,8 @@
 import { DEFAULT_SKIN, SKINS } from '@constants/skins';
+import { SUMMARY_TAG } from '@constants/config';
 import { getApi, getMetaApi } from '@services/api';
 import { createLogger } from '@utils/logger';
+import { getWikitext } from '@utils/wikitext';
 
 const logger = createLogger('service.settings');
 
@@ -11,8 +13,21 @@ const SETTINGS_SCHEME = Object.freeze({
 });
 const DEFAULT_SETTINGS = Object.freeze({
 	defaultTab: DEFAULT_SKIN,
-	captureEnabled: false
+	captureEnabled: false,
+	userscriptLoadCachingEnabled: false
 });
+const USERSCRIPT_LOAD_CACHING_SOURCE_TITLE = 'User:SD0001/userscript-load-caching.min.js';
+const USERSCRIPT_LOAD_CACHING_PAGE_URL = 'https://en.wikipedia.org/wiki/User:SD0001/userscript-load-caching.min.js';
+const USERSCRIPT_LOAD_CACHING_START = '// SM-LOAD-CACHING-START';
+const USERSCRIPT_LOAD_CACHING_END = '// SM-LOAD-CACHING-END';
+const USERSCRIPT_LOAD_CACHING_START_RGX = /^\s*\/\/\s*SM-LOAD-CACHING-START\b/;
+const USERSCRIPT_LOAD_CACHING_END_RGX = /^\s*\/\/\s*SM-LOAD-CACHING-END\b/;
+const USERSCRIPT_LOAD_CACHING_SIGNATURE_RGXES = [
+	/SM-LOAD-CACHING-START/i,
+	/userscript-load-caching\.min\.js/i,
+	/Making[_ ]user[_ ]scripts[_ ]load[_ ]faster/i,
+	/Enable caching for resource loads/i
+];
 
 /** Valid values for defaultTab: gadgets, all, or any skin from SKINS */
 const DEFAULT_TAB_VALUES = [ 'gadgets', 'all', ...SKINS ];
@@ -29,6 +44,10 @@ function isValidCaptureEnabled(value) {
 	return typeof value === 'boolean';
 }
 
+function isValidUserscriptLoadCachingEnabled(value) {
+	return typeof value === 'boolean';
+}
+
 function normalizePartialSettings(value) {
 	const normalized = {};
 	if (value && typeof value === 'object') {
@@ -37,6 +56,9 @@ function normalizePartialSettings(value) {
 		}
 		if (isValidCaptureEnabled(value.captureEnabled)) {
 			normalized.captureEnabled = value.captureEnabled;
+		}
+		if (isValidUserscriptLoadCachingEnabled(value.userscriptLoadCachingEnabled)) {
+			normalized.userscriptLoadCachingEnabled = value.userscriptLoadCachingEnabled;
 		}
 	}
 	return normalized;
@@ -162,6 +184,140 @@ function syncGlobalCacheToLocal(api, globalRaw) {
 	});
 }
 
+function getGlobalJsTitle() {
+	try {
+		const userName = mw?.config?.get?.('wgUserName') || '';
+		return userName ? `User:${userName}/global.js` : null;
+	} catch {
+		return null;
+	}
+}
+
+function stripUserscriptLoadCachingBlock(text) {
+	const lines = String(text || '').split('\n');
+	const out = [];
+	let insideBlock = false;
+	lines.forEach((line) => {
+		if (!insideBlock && USERSCRIPT_LOAD_CACHING_START_RGX.test(line)) {
+			insideBlock = true;
+			return;
+		}
+		if (insideBlock && USERSCRIPT_LOAD_CACHING_END_RGX.test(line)) {
+			insideBlock = false;
+			return;
+		}
+		if (!insideBlock) {
+			out.push(line);
+		}
+	});
+	return out.join('\n');
+}
+
+function removeUserscriptLoadCachingSource(text, sourceCode) {
+	const base = String(text || '');
+	const code = String(sourceCode || '').trim();
+	if (!base || !code) {
+		return base;
+	}
+
+	let next = base;
+	// Try exact removal first (with and without surrounding newlines).
+	next = next.replace(code, '');
+	next = next.replace(`\n${code}\n`, '\n');
+	next = next.replace(`\r\n${code}\r\n`, '\r\n');
+	next = next.replace(`\n${code}`, '\n');
+	next = next.replace(`${code}\n`, '\n');
+
+	// Normalize accidental excessive blank lines left after removal.
+	next = next.replace(/\n{3,}/g, '\n\n').replace(/^\s*\n+/, '');
+	return next;
+}
+
+function buildUserscriptLoadCachingBlock(code) {
+	const safeCode = String(code || '').trimEnd();
+	return [
+		USERSCRIPT_LOAD_CACHING_START,
+		`// Source: ${USERSCRIPT_LOAD_CACHING_PAGE_URL}`,
+		safeCode,
+		USERSCRIPT_LOAD_CACHING_END
+	].join('\n');
+}
+
+async function fetchUserscriptLoadCachingCode() {
+	const response = await fetch(
+		'https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*' +
+			`&prop=revisions&rvprop=content&rvslots=main&titles=${encodeURIComponent(USERSCRIPT_LOAD_CACHING_SOURCE_TITLE)}`
+	);
+	if (!response.ok) {
+		throw new Error(`Failed to fetch load caching source: HTTP ${response.status}`);
+	}
+	const data = await response.json();
+	const code = data?.query?.pages?.[0]?.revisions?.[0]?.slots?.main?.content || '';
+	if (!String(code || '').trim()) {
+		throw new Error('Load caching script source is empty');
+	}
+	return String(code).trimEnd();
+}
+
+async function syncUserscriptLoadCachingInGlobalJs(enabled) {
+	const title = getGlobalJsTitle();
+	const metaApi = getMetaApi();
+	if (!title || !metaApi) {
+		throw new Error('Meta API or global.js title is unavailable');
+	}
+
+	const current = String((await getWikitext(metaApi, title)) || '');
+	let stripped = stripUserscriptLoadCachingBlock(current).replace(/^\s*\n+/, '');
+	let next = stripped;
+
+	if (enabled) {
+		const sourceCode = await fetchUserscriptLoadCachingCode();
+		const block = buildUserscriptLoadCachingBlock(sourceCode);
+		next = stripped ? `${block}\n\n${stripped}` : `${block}\n`;
+	} else {
+		// Backward compatibility: remove raw source even if it was inserted without SM markers.
+		try {
+			const sourceCode = await fetchUserscriptLoadCachingCode();
+			stripped = removeUserscriptLoadCachingSource(stripped, sourceCode).replace(/^\s*\n+/, '');
+			next = stripped;
+		} catch (error) {
+			logger.warn('Failed to fetch load caching source for unwrapped cleanup', error);
+		}
+	}
+
+	if (next === current) {
+		return false;
+	}
+
+	const actionText = enabled ? 'Enable userscript load caching via API' : 'Disable userscript load caching via API';
+	const summary = SUMMARY_TAG ? `${actionText} ${SUMMARY_TAG}` : actionText;
+	await metaApi.postWithEditToken({
+		action: 'edit',
+		title,
+		text: next,
+		summary,
+		formatversion: 2
+	});
+
+	return true;
+}
+
+async function detectUserscriptLoadCachingInGlobalJs() {
+	const title = getGlobalJsTitle();
+	const metaApi = getMetaApi();
+	if (!title || !metaApi) {
+		return null;
+	}
+	try {
+		const current = String((await getWikitext(metaApi, title)) || '');
+		const detected = USERSCRIPT_LOAD_CACHING_SIGNATURE_RGXES.some((rgx) => rgx.test(current));
+		return detected;
+	} catch (error) {
+		logger.warn('Failed to detect userscript load caching code in global.js', error);
+		return null;
+	}
+}
+
 export function getDefaultSettings() {
 	return { ...DEFAULT_SETTINGS };
 }
@@ -192,9 +348,10 @@ export function loadSettings(force = false) {
 	loadPromise = Promise.all([
 		Promise.resolve(readLocalRawSettings()),
 		readGlobalRawSettingsFromMeta(),
-		Promise.resolve(readLegacyRawSettings())
+		Promise.resolve(readLegacyRawSettings()),
+		detectUserscriptLoadCachingInGlobalJs()
 	])
-		.then(([ localRaw, globalRaw, legacyRaw ]) => {
+		.then(([ localRaw, globalRaw, legacyRaw, userscriptLoadCachingDetected ]) => {
 			const localSettings = localRaw ? pickLocalSettings(parseRawSettings(localRaw, 'local')) : {};
 			const globalSettings = globalRaw ? pickGlobalSettings(parseRawSettings(globalRaw, 'global')) : {};
 			if ((!localRaw || !globalRaw) && legacyRaw) {
@@ -207,6 +364,10 @@ export function loadSettings(force = false) {
 				}
 			}
 			settingsCache = normalizeSettings(Object.assign({}, globalSettings, localSettings));
+			if (typeof userscriptLoadCachingDetected === 'boolean') {
+				settingsCache.userscriptLoadCachingEnabled = userscriptLoadCachingDetected;
+
+			}
 			settingsLoaded = true;
 			// Keep in-memory mw.user.options cache aligned for current page runtime.
 			writeLocalRawSettings(JSON.stringify(localSettings));
@@ -227,6 +388,8 @@ export function loadSettings(force = false) {
 
 export function saveSettings(nextSettings) {
 	const normalized = normalizeSettings(nextSettings);
+	const prevUserscriptLoadCachingEnabled = settingsCache.userscriptLoadCachingEnabled === true;
+	const nextUserscriptLoadCachingEnabled = normalized.userscriptLoadCachingEnabled === true;
 	const localSettings = pickLocalSettings(normalized);
 	const globalSettings = pickGlobalSettings(normalized);
 	const localRaw = JSON.stringify(localSettings);
@@ -254,8 +417,12 @@ export function saveSettings(nextSettings) {
 			return saveOptionRaw(api, SETTINGS_OPTION_KEY, globalRaw);
 		});
 	const cacheSyncPromise = syncGlobalCacheToLocal(api, globalRaw);
+	const userscriptLoadCachingPromise =
+		prevUserscriptLoadCachingEnabled !== nextUserscriptLoadCachingEnabled ?
+			syncUserscriptLoadCachingInGlobalJs(nextUserscriptLoadCachingEnabled) :
+			Promise.resolve(false);
 
-	return Promise.all([ localSavePromise, globalSavePromise, cacheSyncPromise ]).then(() => {
+	return Promise.all([ localSavePromise, globalSavePromise, cacheSyncPromise, userscriptLoadCachingPromise ]).then(() => {
 		settingsCache = normalized;
 		settingsLoaded = true;
 		writeLocalRawSettings(localRaw);
