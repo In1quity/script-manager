@@ -2,6 +2,8 @@ import { getApi } from '@services/api';
 
 let gadgetsData = {};
 let userGadgetSettings = {};
+let enabledGadgets = {};
+let enabledGadgetsLoaded = false;
 let gadgetSectionOrder = [];
 let gadgetSectionLabels = {};
 let gadgetsLabel = 'Gadgets';
@@ -10,6 +12,7 @@ let loadGadgetsPromise = null;
 let loadSectionLabelsPromise = null;
 let loadGadgetsLabelPromise = null;
 let loadUserSettingsPromise = null;
+let loadEnabledGadgetsPromise = null;
 
 export async function loadGadgets() {
 	if (loadGadgetsPromise) {
@@ -21,13 +24,14 @@ export async function loadGadgets() {
 		return gadgetsData;
 	}
 
-	loadGadgetsPromise = api
-		.get({
+	loadGadgetsPromise = Promise.resolve(
+		api.get({
 			action: 'query',
 			list: 'gadgets',
 			gaprop: 'id|desc|metadata',
 			format: 'json'
 		})
+	)
 		.then((response) => {
 			const list = response?.query?.gadgets || [];
 			const nextData = {};
@@ -78,13 +82,14 @@ export async function loadGadgetsLabel() {
 		return gadgetsLabel;
 	}
 
-	loadGadgetsLabelPromise = api
-		.get({
+	loadGadgetsLabelPromise = Promise.resolve(
+		api.get({
 			action: 'query',
 			meta: 'allmessages',
 			ammessages: 'prefs-gadgets',
 			format: 'json'
 		})
+	)
 		.then((response) => {
 			const value = response?.query?.allmessages?.[0]?.['*'];
 			gadgetsLabel = value || 'Gadgets';
@@ -124,13 +129,14 @@ export async function loadSectionLabels() {
 	}
 
 	const keys = sections.map((section) => `gadget-section-${section}`);
-	loadSectionLabelsPromise = api
-		.get({
+	loadSectionLabelsPromise = Promise.resolve(
+		api.get({
 			action: 'query',
 			meta: 'allmessages',
 			ammessages: keys.join('|'),
 			format: 'json'
 		})
+	)
 		.then((response) => {
 			const out = {};
 			const items = response?.query?.allmessages || [];
@@ -189,12 +195,13 @@ export async function loadUserGadgetSettings() {
 		return userGadgetSettings;
 	}
 
-	loadUserSettingsPromise = api
-		.get({
+	loadUserSettingsPromise = Promise.resolve(
+		api.get({
 			action: 'query',
 			meta: 'userinfo',
 			uiprop: 'options'
 		})
+	)
 		.then((response) => {
 			const options = response?.query?.userinfo?.options || {};
 			const next = {};
@@ -217,6 +224,50 @@ export async function loadUserGadgetSettings() {
 	return loadUserSettingsPromise;
 }
 
+export async function loadEnabledGadgets() {
+	if (loadEnabledGadgetsPromise) {
+		return loadEnabledGadgetsPromise;
+	}
+
+	const api = getApi();
+	if (!api) {
+		enabledGadgetsLoaded = false;
+		return enabledGadgets;
+	}
+
+	loadEnabledGadgetsPromise = Promise.resolve(
+		api.get({
+			action: 'query',
+			list: 'gadgets',
+			gaprop: 'id',
+			gaenabledonly: true,
+			format: 'json'
+		})
+	)
+		.then((response) => {
+			const next = {};
+			const list = response?.query?.gadgets || [];
+			list.forEach((gadget) => {
+				if (gadget?.id) {
+					next[gadget.id] = true;
+				}
+			});
+			enabledGadgets = next;
+			enabledGadgetsLoaded = true;
+			return enabledGadgets;
+		})
+		.catch(() => {
+			enabledGadgets = {};
+			enabledGadgetsLoaded = false;
+			return enabledGadgets;
+		})
+		.finally(() => {
+			loadEnabledGadgetsPromise = null;
+		});
+
+	return loadEnabledGadgetsPromise;
+}
+
 export async function toggleGadget(gadgetName, enabled) {
 	const api = getApi();
 	if (!api || !gadgetName) {
@@ -229,6 +280,12 @@ export async function toggleGadget(gadgetName, enabled) {
 		optionvalue: enabled ? '1' : '0'
 	});
 	userGadgetSettings[`gadget-${gadgetName}`] = enabled ? '1' : '0';
+	enabledGadgetsLoaded = true;
+	if (enabled) {
+		enabledGadgets[gadgetName] = true;
+	} else {
+		delete enabledGadgets[gadgetName];
+	}
 	return true;
 }
 
@@ -238,6 +295,14 @@ export function getGadgetsData() {
 
 export function getUserGadgetSettings() {
 	return userGadgetSettings;
+}
+
+export function getEnabledGadgets() {
+	return enabledGadgets;
+}
+
+export function isEnabledGadgetsLoaded() {
+	return enabledGadgetsLoaded;
 }
 
 export function getGadgetsLabel() {

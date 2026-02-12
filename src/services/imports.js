@@ -116,14 +116,39 @@ export class Import {
 	getDescription(useWikitext = false) {
 		switch (this.type) {
 			case 0:
-				return useWikitext ? `[[${buildSummaryLinkTitle(this)}]]` : this.page;
+				return useWikitext ? `[[${buildSummaryLinkTitle(this)}]]` : this.getDisplayName();
 			case 1:
 				if (useWikitext) {
 					return `[[${buildSummaryLinkTitle(this)}]]`;
 				}
-				return translate('label-remote-url').replace('$1', this.page || '').replace('$2', this.wiki || '');
+				return this.getDisplayName();
 			default:
-				return this.url;
+				return this.getDisplayName();
+		}
+	}
+
+	getDisplayName() {
+		if (this.type === 2) {
+			return this.url || '';
+		}
+		return this.page || '';
+	}
+
+	getSourceLabel() {
+		if (this.type !== 1 || !this.wiki) {
+			return '';
+		}
+		return translate('label-loaded-from').replace('$1', this.wiki);
+	}
+
+	getKey() {
+		switch (this.type) {
+			case 0:
+				return `local:${this.target || 'common'}:${this.page || ''}`;
+			case 1:
+				return `remote:${this.target || 'common'}:${this.wiki || ''}:${this.page || ''}`;
+			default:
+				return `url:${this.target || 'common'}:${this.url || ''}`;
 		}
 	}
 
@@ -220,7 +245,7 @@ export class Import {
 			showNotification(
 				disabled ? 'notification-disable-success' : 'notification-enable-success',
 				'success',
-				this.getDescription()
+				this.getDisplayName()
 			);
 			return true;
 		})();
@@ -246,7 +271,7 @@ export class Import {
 
 			await this.install();
 			await old.uninstall();
-			showNotification('notification-move-success', 'success', this.getDescription());
+			showNotification('notification-move-success', 'success', this.getDisplayName());
 			return true;
 		})();
 	}

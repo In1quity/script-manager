@@ -134,6 +134,16 @@
 
 .script-info {
 	flex: 1;
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+}
+
+.script-source {
+	color: var(--color-subtle, #54595d);
+	font-size: 0.8125rem;
+	font-weight: normal;
 }
 
 .script-link {
@@ -294,8 +304,18 @@
 	padding: 1rem 0;
 }
 
-.sm-move-content p {
-	margin: 0.5rem 0;
+.sm-move-script-name {
+	margin-bottom: 0.75rem;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.sm-move-current-location {
+	margin: 0 0 0.75rem;
+}
+
+.sm-move-current-location-value {
+	margin-top: 0.25rem;
 }
 
 .sm-move-actions {

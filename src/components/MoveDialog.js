@@ -65,7 +65,7 @@ export function showMoveDialog(anImport, onDone) {
 				})
 				.catch((moveError) => {
 					logger.error('Fallback move failed', moveError);
-					showNotification('notification-move-error', 'error', anImport.getDescription());
+					showNotification('notification-move-error', 'error', anImport.getDisplayName());
 				})
 				.finally(() => {
 					container.remove();
@@ -118,7 +118,7 @@ export function createMoveDialog(
 					closeDialog();
 				} catch (error) {
 					logger.error('Move failed', error);
-					showNotification('notification-move-error', 'error', anImport.getDescription());
+					showNotification('notification-move-error', 'error', anImport.getDisplayName());
 				} finally {
 					isMoving.value = false;
 				}
@@ -131,7 +131,7 @@ export function createMoveDialog(
 				targetOptions,
 				handleMove,
 				closeDialog,
-				scriptName: anImport.getDescription(),
+				scriptName: (anImport.getDisplayName() || '').replace(/_/g, ' '),
 				currentTarget: anImport.target,
 				SM_t: t
 			};
@@ -139,12 +139,16 @@ export function createMoveDialog(
 		template: `
 			<cdx-dialog
 				v-model:open="dialogOpen"
-				:title="SM_t('dialog-move-title').replace('$1', scriptName)"
+				:title="SM_t('dialog-move-title')"
 				:use-close-button="true"
 				@close="closeDialog"
 			>
 				<div class="sm-move-content">
-					<p><strong><span v-text="SM_t('dialog-move-current-location')"></span></strong> <span v-text="currentTarget === 'global' ? SM_t('skin-global') : currentTarget"></span></p>
+					<div class="sm-move-script-name" v-text="scriptName"></div>
+					<div class="sm-move-current-location">
+						<strong><span v-text="SM_t('dialog-move-current-location')"></span></strong>
+						<div class="sm-move-current-location-value" v-text="currentTarget === 'global' ? SM_t('skin-global') : currentTarget"></div>
+					</div>
 					<cdx-field>
 						<template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>
 						<cdx-select

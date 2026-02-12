@@ -53,15 +53,22 @@ export async function loadI18n(lang, options = {}) {
 	const chain = getLanguageChain(requestedLanguage);
 	const merged = {};
 
+	const bundledEn = typeof SM_I18N_EN !== 'undefined' ? SM_I18N_EN : {};
+
 	for (const code of chain) {
 		try {
 			const dict = await fetchLanguage(code);
-			Object.assign(merged, dict);
 			if (code === 'en') {
-				STRINGS_EN = dict;
+				Object.assign(merged, bundledEn, dict);
+				STRINGS_EN = Object.assign({}, bundledEn, dict);
+			} else {
+				Object.assign(merged, dict);
 			}
 		} catch {
-			// Continue through fallback chain.
+			if (code === 'en') {
+				Object.assign(merged, bundledEn);
+				STRINGS_EN = Object.assign({}, bundledEn);
+			}
 		}
 	}
 

@@ -75,7 +75,7 @@
 	"security-warning": "Warning!$1\n\nAll user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump. Install this script?",
 
 	"label-backlink": "Backlink:",
-	"label-remote-url": "$1, loaded from $2",
+	"label-loaded-from": "loaded from $1",
 	"tooltip-manage-user-scripts": "Manage JavaScript and CSS loaded with your account",
 
 	"sidebar-link": "Script Manager",

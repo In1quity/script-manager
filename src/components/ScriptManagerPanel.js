@@ -1,11 +1,14 @@
 import { showMoveDialog } from '@components/MoveDialog';
 import { DEFAULT_SKIN, SKINS } from '@constants/skins';
 import {
+	getEnabledGadgets,
 	getGadgetsData,
 	getGadgetsLabel,
 	getGadgetSectionLabels,
 	getGadgetSectionOrder,
+	isEnabledGadgetsLoaded,
 	getUserGadgetSettings,
+	loadEnabledGadgets,
 	loadGadgets,
 	loadGadgetsLabel,
 	loadSectionLabels,
@@ -129,6 +132,8 @@ export function createVuePanel(
 			const gadgetSectionLabels = ref(Object.assign({}, getGadgetSectionLabels() || {}));
 			const gadgetsLabel = ref(getGadgetsLabel() || 'Gadgets');
 			const gadgetsReactive = ref(Object.assign({}, getGadgetsData() || {}));
+			const enabledGadgetsReactive = ref(Object.assign({}, getEnabledGadgets() || {}));
+			const enabledGadgetsLoaded = ref(isEnabledGadgetsLoaded());
 			const userGadgetSettingsReactive = ref(Object.assign({}, getUserGadgetSettings() || {}));
 			setImportsRef(importsReactive);
 
@@ -140,11 +145,19 @@ export function createVuePanel(
 				gadgetsReactive.value = Object.assign({}, getGadgetsData() || {});
 				gadgetSectionLabels.value = Object.assign({}, getGadgetSectionLabels() || {});
 				gadgetsLabel.value = getGadgetsLabel() || 'Gadgets';
+				enabledGadgetsReactive.value = Object.assign({}, getEnabledGadgets() || {});
+				enabledGadgetsLoaded.value = isEnabledGadgetsLoaded();
 				userGadgetSettingsReactive.value = Object.assign({}, getUserGadgetSettings() || {});
 			};
 
 			const ensureGadgetsReady = async () => {
-				await Promise.all([ loadGadgets(), loadSectionLabels(), loadGadgetsLabel(), loadUserGadgetSettings() ]);
+				await Promise.all([
+					loadGadgets(),
+					loadSectionLabels(),
+					loadGadgetsLabel(),
+					loadUserGadgetSettings(),
+					loadEnabledGadgets()
+				]);
 				updateGadgetsState();
 			};
 
@@ -213,7 +226,7 @@ export function createVuePanel(
 					}
 					if (filterText.value.trim()) {
 						targetImports = targetImports.filter((anImport) =>
-							String(anImport.getDescription() || '')
+							`${(anImport.getDisplayName() || '').replace(/_/g, ' ')} ${anImport.getSourceLabel()}`
 								.toLowerCase()
 								.includes(filterText.value.toLowerCase())
 						);
@@ -274,21 +287,21 @@ export function createVuePanel(
 			}
 
 			const handleUninstall = (anImport) => {
-				const scriptName = anImport.getDescription();
-				const key = `uninstall-${scriptName}`;
+				const importKey = anImport.getKey();
+				const key = `uninstall-${importKey}`;
 				setLoading(key, true);
 
-				const isRemoved = removedScripts.value.includes(scriptName);
+				const isRemoved = removedScripts.value.includes(importKey);
 				const action = isRemoved ? anImport.install() : anImport.uninstall();
 				void toPromise(action)
 					.then(() => {
 						if (isRemoved) {
-							const index = removedScripts.value.indexOf(scriptName);
+							const index = removedScripts.value.indexOf(importKey);
 							if (index > -1) {
 								removedScripts.value.splice(index, 1);
 							}
 						} else {
-							removedScripts.value.push(scriptName);
+							removedScripts.value.push(importKey);
 						}
 						reloadOnClose.value = true;
 						return refreshImportsView();
@@ -301,7 +314,7 @@ export function createVuePanel(
 						showNotification(
 							isRemoved ? 'notification-restore-error' : 'notification-uninstall-error',
 							'error',
-							anImport.getDescription()
+							anImport.getDisplayName()
 						);
 					})
 					.finally(() => {
@@ -310,7 +323,7 @@ export function createVuePanel(
 			};
 
 			const handleToggleDisabled = (anImport) => {
-				const key = `toggle-${anImport.getDescription()}`;
+				const key = `toggle-${anImport.getKey()}`;
 				setLoading(key, true);
 				void toPromise(anImport.toggleDisabled())
 					.then(() => {
@@ -367,6 +380,8 @@ export function createVuePanel(
 				setLoading(key, true);
 				void toPromise(toggleGadget(gadgetName, enabled))
 					.then(() => {
+						enabledGadgetsReactive.value = Object.assign({}, getEnabledGadgets() || {});
+						enabledGadgetsLoaded.value = isEnabledGadgetsLoaded();
 						userGadgetSettingsReactive.value = Object.assign({}, getUserGadgetSettings() || {});
 						showNotification(`Gadget ${gadgetName} ${enabled ? 'enabled' : 'disabled'}`, 'success');
 						reloadOnClose.value = true;
@@ -381,10 +396,15 @@ export function createVuePanel(
 			};
 
 			const isGadgetEnabled = (gadgetName) => {
+				if (enabledGadgetsLoaded.value) {
+					return Object.prototype.hasOwnProperty.call(enabledGadgetsReactive.value || {}, gadgetName);
+				}
+
 				const settings = userGadgetSettingsReactive.value || {};
 				const key = `gadget-${gadgetName}`;
 				if (Object.prototype.hasOwnProperty.call(settings, key)) {
-					return settings[key] === '1';
+					const value = settings[key];
+					return value === '1' || value === '' || value === 1 || value === true;
 				}
 				const gadget = gadgetsReactive.value?.[gadgetName];
 				return Boolean(gadget?.isDefault);
@@ -406,6 +426,14 @@ export function createVuePanel(
 					return `//${anImport.wiki}.org/wiki/${encodeURI(page)}`;
 				}
 				return anImport.url;
+			};
+
+			const getImportDisplayName = (anImport) => {
+				return (anImport.getDisplayName() || '').replace(/_/g, ' ');
+			};
+
+			const getImportSourceLabel = (anImport) => {
+				return anImport.getSourceLabel();
 			};
 
 			return {
@@ -430,6 +458,8 @@ export function createVuePanel(
 				isGadgetEnabled,
 				getSkinUrl,
 				getImportHumanUrl,
+				getImportDisplayName,
+				getImportSourceLabel,
 				SM_t: t,
 				onPanelClose
 			};
@@ -521,38 +551,39 @@ export function createVuePanel(
 								<div class="script-list">
 									<div
 										v-for="anImport in targetImports"
-										:key="anImport.getDescription()"
+										:key="anImport.getKey()"
 										class="script-item"
-										:class="{ disabled: anImport.disabled, 'script-item-removed': removedScripts.includes(anImport.getDescription()) }"
+										:class="{ disabled: anImport.disabled, 'script-item-removed': removedScripts.includes(anImport.getKey()) }"
 									>
 										<div class="script-info">
-											<a :href="getImportHumanUrl(anImport)" class="script-link" v-text="anImport.getDescription()"></a>
+											<a :href="getImportHumanUrl(anImport)" class="script-link" v-text="getImportDisplayName(anImport)"></a>
+											<span v-if="getImportSourceLabel(anImport)" class="script-source" v-text="getImportSourceLabel(anImport)"></span>
 										</div>
 										<div class="script-actions">
 											<cdx-button
 												weight="quiet"
 												size="small"
-												:disabled="loadingStates['toggle-' + anImport.getDescription()]"
+												:disabled="loadingStates['toggle-' + anImport.getKey()]"
 												@click="handleToggleDisabled(anImport)"
 											>
-												<span v-text="loadingStates['toggle-' + anImport.getDescription()] ? '...' : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
+												<span v-text="loadingStates['toggle-' + anImport.getKey()] ? '...' : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
 											</cdx-button>
 											<cdx-button
 												weight="quiet"
 												size="small"
-												:disabled="loadingStates['move-' + anImport.getDescription()]"
+												:disabled="loadingStates['move-' + anImport.getKey()]"
 												@click="handleMove(anImport)"
 											>
-												<span v-text="loadingStates['move-' + anImport.getDescription()] ? '...' : SM_t('action-move')"></span>
+												<span v-text="loadingStates['move-' + anImport.getKey()] ? '...' : SM_t('action-move')"></span>
 											</cdx-button>
 											<cdx-button
 												action="destructive"
 												weight="quiet"
 												size="small"
-												:disabled="loadingStates['uninstall-' + anImport.getDescription()]"
+												:disabled="loadingStates['uninstall-' + anImport.getKey()]"
 												@click="handleUninstall(anImport)"
 											>
-												<span v-text="loadingStates['uninstall-' + anImport.getDescription()] ? '...' : (removedScripts.includes(anImport.getDescription()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
+												<span v-text="loadingStates['uninstall-' + anImport.getKey()] ? '...' : (removedScripts.includes(anImport.getKey()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
 											</cdx-button>
 										</div>
 									</div>
