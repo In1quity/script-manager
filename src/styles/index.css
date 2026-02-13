@@ -356,6 +356,30 @@
 	margin-top: 0.5rem;
 }
 
+/* Install Dialog */
+.sm-install-dialog.cdx-dialog {
+	max-width: 34rem;
+}
+
+.sm-install-script-name {
+	margin: 0 0 0.25rem;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.sm-install-source {
+	margin: 0 0 0.75rem;
+	color: var(--color-subtle, #54595d);
+}
+
+.sm-install-warning {
+	margin-bottom: 0.75rem;
+}
+
+.sm-install-question {
+	margin: 0 0 1rem;
+}
+
 /* Move Dialog */
 #sm-move-dialog {
 	z-index: 1002;

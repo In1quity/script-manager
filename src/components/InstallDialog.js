@@ -53,7 +53,34 @@ function resetButtonBusy(buttonElement) {
 	}
 }
 
-export function showInstallDialog(scriptName, buttonElement) {
+function normalizeSourceWiki(value) {
+	return String(value || '')
+		.trim()
+		.replace(/^https?:\/\//i, '')
+		.replace(/\/.*$/, '')
+		.replace(/\.org$/i, '')
+		.replace(/^www\./i, '');
+}
+
+function resolveSourceWiki(dialogMeta) {
+	const fromMeta = normalizeSourceWiki(dialogMeta?.sourceWiki);
+	if (fromMeta) {
+		return fromMeta;
+	}
+	try {
+		return normalizeSourceWiki(mw?.config?.get('wgServerName') || '');
+	} catch {
+		return '';
+	}
+}
+
+function buildInstallConfirmText(scriptName, dialogMeta) {
+	const sourceWiki = resolveSourceWiki(dialogMeta);
+	const sourceLine = sourceWiki ? `${t('label-loaded-from').replace('$1', sourceWiki)}\n` : '';
+	return `${scriptName}\n${sourceLine}\n${t('dialog-install-warning')}\n\n${t('dialog-install-question')}`;
+}
+
+export function showInstallDialog(scriptName, buttonElement, dialogMeta = null) {
 	const container = $('<div>').attr('id', 'sm-install-dialog');
 	$('body').append(container);
 
@@ -81,15 +108,17 @@ export function showInstallDialog(scriptName, buttonElement) {
 					libs.ref,
 					libs.CdxDialog,
 					libs.CdxButton,
+					libs.CdxMessage,
 					libs.CdxSelect,
 					libs.CdxField,
 					scriptName,
-					buttonElement
+					buttonElement,
+					dialogMeta
 				)
 			)
 			.catch((error) => {
 				logger.error('Failed to open install dialog', error);
-				const okay = window.confirm(t('security-warning').replace('$1', scriptName));
+				const okay = window.confirm(buildInstallConfirmText(scriptName, dialogMeta));
 				if (!okay) {
 					resetButtonBusy(buttonElement);
 					return;
@@ -126,19 +155,27 @@ export function createInstallDialog(
 	ref,
 	CdxDialog,
 	CdxButton,
+	CdxMessage,
 	CdxSelect,
 	CdxField,
 	scriptName,
-	buttonElement
+	buttonElement,
+	dialogMeta
 ) {
 	let app = null;
 
 	const InstallDialog = defineComponent({
-		components: { CdxDialog, CdxButton, CdxSelect, CdxField },
+		components: { CdxDialog, CdxButton, CdxMessage, CdxSelect, CdxField },
 		setup() {
 			const dialogOpen = ref(true);
 			const selectedSkin = ref('common');
 			const isInstalling = ref(false);
+			const sourceWiki = ref(resolveSourceWiki(dialogMeta));
+			const sourceText = ref(
+				sourceWiki.value ? t('label-loaded-from').replace('$1', sourceWiki.value) : ''
+			);
+			const warningText = ref(t('dialog-install-warning'));
+			const questionText = ref(t('dialog-install-question'));
 
 			const skinOptions = SKINS.map((skin) => ({
 				label: skin === 'common' ? t('skin-common') : skin,
@@ -181,13 +218,17 @@ export function createInstallDialog(
 				handleInstall,
 				closeDialog,
 				scriptName,
+				sourceText,
+				warningText,
+				questionText,
 				SM_t: t
 			};
 		},
 		template: `
 			<cdx-dialog
 				v-model:open="dialogOpen"
-				:title="SM_t('dialog-install-title').replace('$1', scriptName)"
+				class="sm-install-dialog"
+				:title="SM_t('dialog-install-title')"
 				:use-close-button="true"
 				:default-action="{ label: SM_t('action-cancel') }"
 				:primary-action="{ label: isInstalling ? SM_t('action-install-progress') : SM_t('action-install'), actionType: 'progressive', disabled: isInstalling }"
@@ -195,7 +236,12 @@ export function createInstallDialog(
 				@close="closeDialog"
 				@primary="handleInstall"
 			>
-				<p v-text="SM_t('security-warning').replace('$1', scriptName)"></p>
+				<p class="sm-install-script-name" v-text="scriptName"></p>
+				<p v-if="sourceText" class="sm-install-source" v-text="sourceText"></p>
+				<cdx-message class="sm-install-warning" type="error" :allow-user-dismiss="false" :inline="false">
+					<span v-text="warningText"></span>
+				</cdx-message>
+				<p class="sm-install-question" v-text="questionText"></p>
 				<cdx-field>
 					<template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>
 					<cdx-select
@@ -215,6 +261,7 @@ export function createInstallDialog(
 		}
 		app.component('CdxDialog', CdxDialog);
 		app.component('CdxButton', CdxButton);
+		app.component('CdxMessage', CdxMessage);
 		app.component('CdxSelect', CdxSelect);
 		app.component('CdxField', CdxField);
 		app.mount(container[0] || container);

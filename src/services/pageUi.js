@@ -25,7 +25,37 @@ function getUserNamespaceName() {
 	}
 }
 
-export function makeLocalInstallClickHandler(scriptName) {
+function normalizeSourceWiki(value) {
+	return String(value || '')
+		.trim()
+		.replace(/^https?:\/\//i, '')
+		.replace(/\/.*$/, '')
+		.replace(/\.org$/i, '')
+		.replace(/^www\./i, '');
+}
+
+function getCurrentSourceWiki() {
+	try {
+		return normalizeSourceWiki(mw?.config?.get('wgServerName') || '');
+	} catch {
+		return '';
+	}
+}
+
+function extractSourceWikiFromUrl(url) {
+	const normalized = normalizeSourceWiki(url);
+	if (normalized) {
+		return normalized;
+	}
+	try {
+		const parsed = new URL(String(url || ''), window.location.href);
+		return normalizeSourceWiki(parsed.hostname || '');
+	} catch {
+		return '';
+	}
+}
+
+export function makeLocalInstallClickHandler(scriptName, dialogMeta = null) {
 	return function localInstallClickHandler() {
 		const $self = $(this);
 		const installText = t('action-install');
@@ -40,7 +70,7 @@ export function makeLocalInstallClickHandler(scriptName) {
 					$self.text(installText);
 				}
 			};
-			showInstallDialog(scriptName, adapter);
+			showInstallDialog(scriptName, adapter, dialogMeta);
 			return;
 		}
 
@@ -125,12 +155,13 @@ export function buildCurrentPageInstallElement() {
 	}
 
 	const fixedPageName = String(mw.config.get('wgPageName') || '').replace(/_/g, ' ');
+	const localDialogMeta = { sourceWiki: getCurrentSourceWiki() };
 	const installedTargets = getTargetsForScript(fixedPageName);
 	installElement.prepend(
 		$('<a>')
 			.attr('id', 'script-installer-main-install')
 			.text(installedTargets.length ? t('action-uninstall') : t('action-install'))
-			.click(makeLocalInstallClickHandler(fixedPageName))
+			.click(makeLocalInstallClickHandler(fixedPageName, localDialogMeta))
 	);
 
 	const firstTarget = installedTargets[0];
@@ -173,7 +204,7 @@ function injectInstallIndicator(fixedPageName) {
 
 		const host = $('<div id="sm-install-indicator-host"></div>');
 		$slot.append(host);
-		mountInstallButton(host[0], fixedPageName);
+		mountInstallButton(host[0], fixedPageName, { sourceWiki: getCurrentSourceWiki() });
 		return true;
 	} catch (error) {
 		logger.warn('Indicator injection failed', error);
@@ -189,20 +220,23 @@ function extractScriptNameFromSnippetText(text) {
 	for (let index = 0; index < lines.length; index++) {
 		const parsed = Import.fromJs(lines[index], 'common');
 		if (parsed?.page) {
-			return parsed.page;
+			return {
+				scriptName: parsed.page,
+				sourceWiki: normalizeSourceWiki(parsed.wiki || getCurrentSourceWiki())
+			};
 		}
 	}
 	return null;
 }
 
-function getSnippetScriptName(node) {
+function getSnippetInstallMeta(node) {
 	if (!node) {
 		return null;
 	}
 	try {
-		const direct = extractScriptNameFromSnippetText(node.textContent || '');
-		if (direct) {
-			return direct;
+		const meta = extractScriptNameFromSnippetText(node.textContent || '');
+		if (meta?.scriptName) {
+			return meta;
 		}
 	} catch {
 		// Ignore broken snippet nodes.
@@ -286,12 +320,13 @@ export function attachInstallLinks() {
 		if ($(this).find('a').length) {
 			return;
 		}
+		const localDialogMeta = { sourceWiki: getCurrentSourceWiki() };
 		const installedTargets = getTargetsForScript(scriptName);
 		$(this).append(
 			' | ',
 			$('<a>')
 				.text(installedTargets.length ? t('action-uninstall') : t('action-install'))
-				.click(makeLocalInstallClickHandler(scriptName))
+				.click(makeLocalInstallClickHandler(scriptName, localDialogMeta))
 		);
 	});
 
@@ -302,12 +337,14 @@ export function attachInstallLinks() {
 
 		const $table = $(this);
 		let scriptName = null;
+		let sourceWiki = '';
 
 		try {
 			const $data = $table.find('.userscript-install-data').first();
 			const mainSource = $data.attr('data-mainsource') || $data.data('mainsource');
 			if (mainSource) {
 				const source = String(mainSource);
+				sourceWiki = extractSourceWikiFromUrl(source);
 				let match;
 				if ((match = /[?&]title=([^&#]+)/i.exec(source))) {
 					scriptName = decodeURIComponent(match[1].replace(/\+/g, ' '));
@@ -362,12 +399,14 @@ export function attachInstallLinks() {
 
 		const host = $('<div class="sm-ibx-host"></div>');
 		$slot.append(host);
-		mountInstallButtonAfterImports(host[0], scriptName);
+		mountInstallButtonAfterImports(host[0], scriptName, {
+			sourceWiki: sourceWiki || getCurrentSourceWiki()
+		});
 	});
 
 	$('#mw-content-text .mw-highlight pre, #mw-content-text pre').each(function attachSnippetButtons() {
-		const scriptName = getSnippetScriptName(this);
-		if (!scriptName) {
+		const installMeta = getSnippetInstallMeta(this);
+		if (!installMeta?.scriptName) {
 			return;
 		}
 
@@ -379,6 +418,8 @@ export function attachInstallLinks() {
 
 		const host = $('<div class="sm-snippet-install-host"></div>');
 		$container.after(host);
-		mountInstallButtonAfterImports(host[0], scriptName);
+		mountInstallButtonAfterImports(host[0], installMeta.scriptName, {
+			sourceWiki: installMeta.sourceWiki || getCurrentSourceWiki()
+		});
 	});
 }

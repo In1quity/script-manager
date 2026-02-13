@@ -10,6 +10,7 @@ function mapCodexModules() {
 		watch: mw.loader.require('vue').watch,
 		CdxDialog: codex.CdxDialog,
 		CdxButton: codex.CdxButton,
+		CdxMessage: codex.CdxMessage,
 		CdxTextInput: codex.CdxTextInput,
 		CdxSelect: codex.CdxSelect,
 		CdxField: codex.CdxField,

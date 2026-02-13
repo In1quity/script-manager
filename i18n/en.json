@@ -38,7 +38,9 @@
 	"action-normalize-progress": "Standardizing imports...",
 	"action-normalize-completed": "Imports standardized",
 
-	"dialog-install-title": "Install $1",
+	"dialog-install-title": "Install script",
+	"dialog-install-warning": "All user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump.",
+	"dialog-install-question": "Install this script?",
 	"dialog-move-title": "Move script",
 	"dialog-move-current-location": "Current skin",
 	"dialog-move-to-skin": "Move to skin",

@@ -19,7 +19,7 @@ function getInitialInstallLabel(scriptName) {
 	}
 }
 
-export function mountInstallButton(hostElement, scriptName) {
+export function mountInstallButton(hostElement, scriptName, dialogMeta = null) {
 	if (!hostElement || !scriptName) {
 		return;
 	}
@@ -59,7 +59,7 @@ export function mountInstallButton(hostElement, scriptName) {
 							};
 
 							try {
-								showInstallDialog(scriptName, adapter);
+								showInstallDialog(scriptName, adapter, dialogMeta);
 							} catch (error) {
 								logger.error('showInstallDialog failed', error);
 								this.busy = false;
@@ -107,12 +107,12 @@ export function mountInstallButton(hostElement, scriptName) {
 		});
 }
 
-export function mountInstallButtonAfterImports(hostElement, scriptName) {
+export function mountInstallButtonAfterImports(hostElement, scriptName, dialogMeta = null) {
 	void ensureAllImports()
 		.catch((error) => {
 			logger.warn('ensureAllImports before mount failed', error);
 		})
 		.finally(() => {
-			mountInstallButton(hostElement, scriptName);
+			mountInstallButton(hostElement, scriptName, dialogMeta);
 		});
 }
