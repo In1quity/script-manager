@@ -98,6 +98,7 @@ npm install
 ## 📋 Features
 
 - **One-click install/uninstall** — manage user scripts, styles, and gadgets; install dialog shows script name, optional source wiki, and security warning.
+- **Pre-install load check** — before installing, the dialog scans the script for network loads and shows: notice for loads from the current wiki; warning for other Wikimedia hosts; error for non-Wikimedia hosts. If the script loads other Wikimedia scripts, a “Check loaded scripts” button runs a recursive scan (depth 3) and updates the warnings. Helps users see what the script may exchange data with.
 - **Install button on snippets** — on script doc pages, code blocks with `mw.loader.load`/`importScript` get an Install button below them.
 - **Target management** — move scripts between common, global, and skin-specific pages.
 - **Documentation link** — scripts can declare a doc page via `// Documentation: Title`, JSDoc `@documentation Title`, or `@see Title` (first 2000 chars).

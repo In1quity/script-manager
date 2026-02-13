@@ -54,7 +54,8 @@ async function loadSiteLanguage(siteLanguage, userLanguage) {
 
 export async function loadI18n(lang, options = {}) {
 	const requestedLanguage = String(lang || 'en').toLowerCase();
-	const chain = getLanguageChain(requestedLanguage);
+	// Merge from fallback to specific so the requested language wins on key collisions.
+	const chain = getLanguageChain(requestedLanguage).slice().reverse();
 	const merged = {};
 
 	const bundledEn = typeof SM_I18N_EN !== 'undefined' ? SM_I18N_EN : {};
