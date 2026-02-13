@@ -52,7 +52,7 @@ function buildCapturedLoadCall(anImport) {
 }
 
 function buildCaptureItem(anImport, captureName) {
-	const fallbackName = (anImport.getDisplayName() || '').replace(/_/g, ' ') || t('label-captured-script-fallback');
+	const fallbackName = (anImport.getDisplayName() || '').replace(/_/g, ' ') || t('label-captured-script');
 	return {
 		key: anImport.getKey(),
 		name: String(captureName || '').trim() || fallbackName,

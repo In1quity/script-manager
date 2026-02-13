@@ -6,8 +6,10 @@
 	"script-name": "Script Manager",
 	"script-name-short": "SM",
 
-	"skin-common": "common (applies to all skins)",
-	"skin-global": "global (applies to all wikis)",
+	"skin-common": "common",
+	"skin-common-tooltip": "(applies to all skins)",
+	"skin-global": "global",
+	"skin-global-tooltip": "(applies to all wikis)",
 	"skin-all": "Installed scripts",
 
 	"summary-install": "Installing $1",
@@ -68,7 +70,6 @@
 	"settings-save": "Save",
 	"settings-saved": "Settings saved",
 	"label-captured-script": "Captured script",
-	"label-captured-script-fallback": "Captured script",
 	"label-gadgets": "Gadgets",
 	"label-loading": "Loading",
 

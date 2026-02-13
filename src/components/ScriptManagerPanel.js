@@ -228,13 +228,15 @@ export function createVuePanel(
 				return result;
 			});
 
-			const skinTabs = computed(() => [
-				{ name: 'gadgets', label: gadgetsLabel.value || t('label-gadgets') },
-				{ name: 'all', label: t('skin-all') },
-				{ name: 'global', label: t('skin-global') },
-				{ name: 'common', label: t('skin-common') },
-				...SKINS.filter((skin) => skin !== 'common' && skin !== 'global').map((skin) => ({ name: skin, label: skin }))
-			]);
+			const skinTabs = computed(() => {
+				return [
+					{ name: 'gadgets', label: gadgetsLabel.value || t('label-gadgets') },
+					{ name: 'all', label: t('skin-all') },
+					{ name: 'global', label: t('skin-global') },
+					{ name: 'common', label: t('skin-common') },
+					...SKINS.filter((skin) => skin !== 'common' && skin !== 'global').map((skin) => ({ name: skin, label: skin }))
+				];
+			});
 
 			const openSettingsDialog = () => {
 				showSettingsDialog((savedSettings) => {
@@ -727,6 +729,47 @@ export function createVuePanel(
 			if (closeBtn) {
 				renderIconInto(closeBtn, 'cdxIconClose', 'currentColor', 20);
 			}
+			const tabTooltips = {
+				common: t('skin-common-tooltip', t('skin-common')),
+				global: t('skin-global-tooltip', t('skin-global'))
+			};
+			const compactLabels = {
+				common: t('skin-common').trim().toLowerCase(),
+				global: t('skin-global').trim().toLowerCase()
+			};
+			const tabElements = document.querySelectorAll(
+				'.sm-cdx-dialog .cdx-tabs [role="tab"], .sm-cdx-dialog .cdx-tabs button'
+			);
+			tabElements.forEach((tabEl) => {
+				if (!(tabEl instanceof HTMLElement) || tabEl.querySelector('.sm-tab-help-icon')) {
+					return;
+				}
+				const attrs = [
+					tabEl.id,
+					tabEl.getAttribute('name'),
+					tabEl.getAttribute('data-name'),
+					tabEl.getAttribute('aria-controls'),
+					tabEl.getAttribute('aria-labelledby')
+				]
+					.filter(Boolean)
+					.join(' ')
+					.toLowerCase();
+				const text = (tabEl.textContent || '').trim().toLowerCase();
+				const tabName = attrs.includes('global') || text === compactLabels.global
+					? 'global'
+					: attrs.includes('common') || text === compactLabels.common
+						? 'common'
+						: '';
+				if (!tabName || !tabTooltips[tabName]) {
+					return;
+				}
+				const iconHost = document.createElement('span');
+				iconHost.className = 'sm-tab-help-icon';
+				iconHost.setAttribute('title', tabTooltips[tabName]);
+				iconHost.setAttribute('aria-label', tabTooltips[tabName]);
+				tabEl.appendChild(iconHost);
+				renderIconInto(iconHost, 'cdxIconInfoFilled', 'currentColor', 12);
+			});
 		};
 		(typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(scheduleIcons, 0);
 		setTimeout(scheduleIcons, 80);
