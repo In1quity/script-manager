@@ -14,6 +14,9 @@
 
 	"summary-install": "Installing $1",
 	"summary-uninstall": "Uninstalling $1",
+	"summary-move-from": "Move $1 to $2",
+	"summary-move-to": "Move $1 from $2",
+	"summary-move-to-global": "Move $1 from $2 ($3)",
 	"summary-disable": "Disabling $1",
 	"summary-enable": "Enabling $1",
 	"summary-capture": "Capturing $1",

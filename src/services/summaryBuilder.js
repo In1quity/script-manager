@@ -48,7 +48,19 @@ export function buildSummaryLinkTitle(imp) {
 	}
 }
 
-export function getSummaryForTarget(target, summaryKey, description, strings = {}) {
+function applyReplacements(text, description, replacements = {}) {
+	let out = String(text || '').replace(/\$1/g, String(description || ''));
+	Object.keys(replacements).forEach((key) => {
+		out = out.replace(new RegExp(escapeReplacementKey(key), 'g'), String(replacements[key] || ''));
+	});
+	return out;
+}
+
+function escapeReplacementKey(key) {
+	return key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function getSummaryForTarget(target, summaryKey, description, strings = {}, replacements = {}) {
 	const fallbackStrings = strings.fallback || {};
 	const currentStrings = strings.current || {};
 	const siteStrings = strings.site || {};
@@ -59,19 +71,19 @@ export function getSummaryForTarget(target, summaryKey, description, strings = {
 		const serverName = getServerName();
 		const englishOnlyHost = /(^|\.)mediawiki\.org$/i.test(serverName) || /(^|\.)wikidata\.org$/i.test(serverName);
 		if (target === 'global' || englishOnlyHost) {
-			return withSummaryTag(messageFallback.replace('$1', details));
+			return withSummaryTag(applyReplacements(messageFallback, details, replacements));
 		}
 
 		if (Object.prototype.hasOwnProperty.call(siteStrings, summaryKey)) {
-			return withSummaryTag(String(siteStrings[summaryKey] || summaryKey).replace('$1', details));
+			return withSummaryTag(applyReplacements(String(siteStrings[summaryKey] || summaryKey), details, replacements));
 		}
 
 		if (Object.prototype.hasOwnProperty.call(currentStrings, summaryKey)) {
-			return withSummaryTag(String(currentStrings[summaryKey] || summaryKey).replace('$1', details));
+			return withSummaryTag(applyReplacements(String(currentStrings[summaryKey] || summaryKey), details, replacements));
 		}
 
-		return withSummaryTag(messageFallback.replace('$1', details));
+		return withSummaryTag(applyReplacements(messageFallback, details, replacements));
 	} catch {
-		return withSummaryTag(messageFallback.replace('$1', details));
+		return withSummaryTag(applyReplacements(messageFallback, details, replacements));
 	}
 }

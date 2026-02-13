@@ -306,12 +306,12 @@ export class Import {
 		return Array.from(indexes).sort((a, b) => a - b);
 	}
 
-	install() {
-		return this.updateInTarget('install');
+	install(options = {}) {
+		return this.updateInTarget('install', options);
 	}
 
-	uninstall() {
-		return this.updateInTarget('uninstall');
+	uninstall(options = {}) {
+		return this.updateInTarget('uninstall', options);
 	}
 
 	setDisabled(disabled) {
@@ -372,23 +372,28 @@ export class Import {
 			if (!newTarget || this.target === newTarget) {
 				return false;
 			}
+			const oldTarget = this.target;
 			const old = new Import({
 				page: this.page,
 				wiki: this.wiki,
 				url: this.url,
-				target: this.target,
+				target: oldTarget,
 				disabled: this.disabled
 			});
 			this.target = newTarget;
 
-			await this.install();
-			await old.uninstall();
+			const moveOptions = { moveFromTarget: oldTarget };
+			if (newTarget === 'global') {
+				moveOptions.moveSourceProject = getServerName();
+			}
+			await this.install(moveOptions);
+			await old.uninstall({ moveToTarget: newTarget });
 			showNotification('notification-move-success', 'success', this.getDisplayName());
 			return true;
 		})();
 	}
 
-	async updateInTarget(mode) {
+	async updateInTarget(mode, options = {}) {
 		const target = this.target || 'common';
 		const api = getApiForTarget(target);
 		if (!api) {
@@ -427,6 +432,23 @@ export class Import {
 			return false;
 		}
 
+		const isMoveInstall = mode === 'install' && options.moveFromTarget;
+		const isMoveUninstall = mode === 'uninstall' && options.moveToTarget;
+		const summaryKey = isMoveInstall
+			? (options.moveSourceProject ? 'summary-move-to-global' : 'summary-move-to')
+			: isMoveUninstall
+				? 'summary-move-from'
+				: mode === 'install'
+					? 'summary-install'
+					: 'summary-uninstall';
+		const replacements = isMoveInstall
+			? options.moveSourceProject
+				? { $2: options.moveFromTarget, $3: options.moveSourceProject }
+				: { $2: options.moveFromTarget }
+			: isMoveUninstall
+				? { $2: options.moveToTarget }
+				: {};
+
 		try {
 			await api.postWithEditToken({
 				action: 'edit',
@@ -434,9 +456,10 @@ export class Import {
 				text: next,
 				summary: getSummaryForTarget(
 					target,
-					mode === 'install' ? 'summary-install' : 'summary-uninstall',
+					summaryKey,
 					this.getDescription(true),
-					getStrings()
+					getStrings(),
+					replacements
 				),
 				formatversion: 2
 			});
