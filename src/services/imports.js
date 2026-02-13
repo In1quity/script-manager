@@ -22,6 +22,24 @@ function decodeSafe(value) {
 	}
 }
 
+function extractDocumentationReference(text) {
+	const source = String(text || '');
+	const patterns = [
+		/@documentation\s+([^\s*]+)/i,
+		/Documentation:\s*(\S+)/,
+		/@see\s+([^\s*]+)/i
+	];
+
+	for (const pattern of patterns) {
+		const match = pattern.exec(source);
+		if (match?.[1]) {
+			return match[1];
+		}
+	}
+
+	return null;
+}
+
 function getCaptureBlockRange(lines, lineIndex) {
 	let start = -1;
 	for (let i = lineIndex; i >= 0; i--) {
@@ -245,11 +263,11 @@ export class Import {
 			}
 			const text = await response.text();
 			const head = text.slice(0, 2000);
-			const match = /Documentation:\s*(\S+)/.exec(head);
-			if (!match || !match[1]) {
+			const docRef = extractDocumentationReference(head);
+			if (!docRef) {
 				return null;
 			}
-			return match[1];
+			return docRef;
 		} catch {
 			return null;
 		}

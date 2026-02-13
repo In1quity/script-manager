@@ -1,11 +1,13 @@
 /**
- * Script Manager
- * Based on [[en:User:Equazcion/ScriptInstaller]]
- * Adapted version of [[en:User:Enterprisey/script-installer]]
- * Refactoring and upgrade [[mw:User:Iniquity]]
- * Authors: Equazcion, Enterprisey, Iniquity
- * Licenses: (MIT OR CC-BY-SA-4.0)
- * Documentation: https://www.mediawiki.org/wiki/Script_Manager
+ * @file Script Manager loader
+ * @summary Bootstrap loader for Script Manager on MediaWiki pages.
+ * @description Based on [[en:User:Equazcion/ScriptInstaller]]; adapted [[en:User:Enterprisey/script-installer]];
+ * refactored and maintained by [[mw:User:Iniquity]].
+ * @author Equazcion
+ * @author Enterprisey
+ * @author Iniquity
+ * @license MIT OR CC-BY-SA-4.0
+ * @documentation https://www.mediawiki.org/wiki/Script_Manager
  */
 
 ;(function() {

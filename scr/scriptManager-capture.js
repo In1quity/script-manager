@@ -1,6 +1,12 @@
 /**
- * Script Manager capture helper (opt-in)
- * Provides script/style capture hooks and sidebar replay links.
+ * @file Script Manager capture helper
+ * @summary Capture runtime for opt-in script/style tracking and sidebar replay links.
+ * @description Shared helper used by Script Manager capture mode.
+ * @author Equazcion
+ * @author Enterprisey
+ * @author Iniquity
+ * @license MIT OR CC-BY-SA-4.0
+ * @documentation https://www.mediawiki.org/wiki/Script_Manager
  */
 
 ;(function() {

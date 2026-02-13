@@ -28,24 +28,36 @@ const resolveCaptureSource = () => {
 	return path.resolve(__dirname, 'scr', 'scriptManager-capture.js');
 };
 
+const stripLeadingDocComment = (source) => {
+	return String(source || '').replace(/^\s*\/\*\*[\s\S]*?\*\/\s*/, '');
+};
+
 export default defineConfig(({ command, mode }) => {
 	const isProd = command === 'build' && mode === 'production';
 	const isDev = command === 'serve' || mode === 'development';
 	const pkg = readJson('./package.json');
 	const enDict = readJson('./i18n/en.json');
 	const buildDate = new Date().toISOString().slice(0, 10);
+	const licenseTag = String(pkg.license || '')
+		.replace(/[()]/g, '')
+		.trim();
+	const repositoryTag = String(pkg?.repository?.url || '')
+		.replace(/\.git$/i, '')
+		.trim();
 
-	const banner = `/*
- * Script Manager - Wikimedia userscript installer
- *
- * @author ${pkg.author.name} (${pkg.author.url})
- * @license ${pkg.license}
- * @repository ${pkg.repository.url.replace('.git', '')}
+	const banner = `/**
+ * @file Script Manager
+ * @summary MediaWiki user script installer (loader, core, capture).
+ * @description Based on [[en:User:Equazcion/ScriptInstaller]]; adapted [[en:User:Enterprisey/script-installer]];
+ * refactored and maintained by [[mw:User:Iniquity]].
+ * @author Equazcion
+ * @author Enterprisey
+ * @author Iniquity
+ * @license ${licenseTag || 'MIT OR CC-BY-SA-4.0'}
+ * @documentation ${pkg.documentation}
+ * @repository ${repositoryTag || pkg.documentation}
  * @version ${pkg.version}
  * @buildDate ${buildDate}
- *
- * Built from source. All changes should be made in the repository.
- * For updates and documentation, visit: ${pkg.documentation}
  */`;
 
 	return {
@@ -120,7 +132,7 @@ export default defineConfig(({ command, mode }) => {
 						return;
 					}
 
-					const source = fs.readFileSync(loaderSource, 'utf8');
+					const source = stripLeadingDocComment(fs.readFileSync(loaderSource, 'utf8'));
 					this.emitFile({
 						type: 'asset',
 						fileName: 'scriptManager.js',
@@ -131,7 +143,7 @@ export default defineConfig(({ command, mode }) => {
 					if (!fs.existsSync(captureSource)) {
 						return;
 					}
-					const capture = fs.readFileSync(captureSource, 'utf8');
+					const capture = stripLeadingDocComment(fs.readFileSync(captureSource, 'utf8'));
 					this.emitFile({
 						type: 'asset',
 						fileName: 'scriptManager-capture.js',
