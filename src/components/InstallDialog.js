@@ -6,25 +6,11 @@ import { reloadAfterChange } from '@services/normalize';
 import { t } from '@services/i18n';
 import { loadVueCodex } from '@utils/codex';
 import { createLogger } from '@utils/logger';
+import { getCurrentSourceWiki, normalizeSourceWiki } from '@utils/mediawiki';
+import { runWithScriptLock } from '@utils/scriptLock';
+import { safeUnmount } from '@utils/vue';
 
 const logger = createLogger('component.installDialog');
-
-function safeUnmount(app, root) {
-	try {
-		if (app && typeof app.unmount === 'function') {
-			app.unmount();
-		}
-	} catch {
-		// Ignore unmount race conditions.
-	}
-	try {
-		if (root?.parentNode) {
-			root.parentNode.removeChild(root);
-		}
-	} catch {
-		// Ignore already removed roots.
-	}
-}
 
 function setButtonText(buttonElement, text) {
 	try {
@@ -53,25 +39,12 @@ function resetButtonBusy(buttonElement) {
 	}
 }
 
-function normalizeSourceWiki(value) {
-	return String(value || '')
-		.trim()
-		.replace(/^https?:\/\//i, '')
-		.replace(/\/.*$/, '')
-		.replace(/\.org$/i, '')
-		.replace(/^www\./i, '');
-}
-
 function resolveSourceWiki(dialogMeta) {
 	const fromMeta = normalizeSourceWiki(dialogMeta?.sourceWiki);
 	if (fromMeta) {
 		return fromMeta;
 	}
-	try {
-		return normalizeSourceWiki(mw?.config?.get('wgServerName') || '');
-	} catch {
-		return '';
-	}
+	return getCurrentSourceWiki();
 }
 
 function buildInstallConfirmText(scriptName, dialogMeta) {
@@ -124,7 +97,7 @@ export function showInstallDialog(scriptName, buttonElement, dialogMeta = null) 
 					return;
 				}
 				setButtonText(buttonElement, t('action-install-progress'));
-				void Promise.resolve(Import.ofLocal(scriptName, 'common').install())
+				void runWithScriptLock(scriptName, () => Promise.resolve(Import.ofLocal(scriptName, 'common').install()))
 					.then(() => {
 						setButtonText(buttonElement, t('action-uninstall'));
 						return refreshImportsView();
@@ -132,7 +105,9 @@ export function showInstallDialog(scriptName, buttonElement, dialogMeta = null) 
 					.then(() => {
 						reloadAfterChange();
 					})
-					.catch(() => {
+					.catch((installError) => {
+						logger.error('Fallback install failed', installError);
+						showNotification('notification-install-error', 'error', scriptName);
 						setButtonText(buttonElement, t('action-install'));
 						resetButtonBusy(buttonElement);
 					});
@@ -178,7 +153,7 @@ export function createInstallDialog(
 			const questionText = ref(t('dialog-install-question'));
 
 			const skinOptions = SKINS.map((skin) => ({
-				label: skin === 'common' ? t('skin-common') : skin,
+				label: skin === 'common' ? t('skin-common') : skin === 'global' ? t('skin-global') : skin,
 				value: skin
 			}));
 
@@ -195,7 +170,9 @@ export function createInstallDialog(
 				isInstalling.value = true;
 				setButtonText(buttonElement, t('action-install-progress'));
 				try {
-					await Promise.resolve(Import.ofLocal(scriptName, selectedSkin.value).install());
+					await runWithScriptLock(scriptName, () =>
+						Promise.resolve(Import.ofLocal(scriptName, selectedSkin.value).install())
+					);
 					setButtonText(buttonElement, t('action-uninstall'));
 					closeDialog();
 					await refreshImportsView();

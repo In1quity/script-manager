@@ -2,6 +2,7 @@ import { DEFAULT_SKIN, SKINS } from '@constants/skins';
 import { SUMMARY_TAG } from '@constants/config';
 import { getApi, getMetaApi } from '@services/api';
 import { createLogger } from '@utils/logger';
+import { fetchWithTimeout } from '@utils/network';
 import { getWikitext } from '@utils/wikitext';
 
 const logger = createLogger('service.settings');
@@ -244,7 +245,7 @@ function buildUserscriptLoadCachingBlock(code) {
 }
 
 async function fetchUserscriptLoadCachingCode() {
-	const response = await fetch(
+	const response = await fetchWithTimeout(
 		'https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*' +
 			`&prop=revisions&rvprop=content&rvslots=main&titles=${encodeURIComponent(USERSCRIPT_LOAD_CACHING_SOURCE_TITLE)}`
 	);
@@ -291,13 +292,18 @@ async function syncUserscriptLoadCachingInGlobalJs(enabled) {
 
 	const actionText = enabled ? 'Enable userscript load caching via API' : 'Disable userscript load caching via API';
 	const summary = SUMMARY_TAG ? `${actionText} ${SUMMARY_TAG}` : actionText;
-	await metaApi.postWithEditToken({
-		action: 'edit',
-		title,
-		text: next,
-		summary,
-		formatversion: 2
-	});
+	try {
+		await metaApi.postWithEditToken({
+			action: 'edit',
+			title,
+			text: next,
+			summary,
+			formatversion: 2
+		});
+	} catch (error) {
+		logger.error('Failed to update userscript load caching in global.js', error);
+		throw error;
+	}
 
 	return true;
 }
@@ -318,11 +324,7 @@ async function detectUserscriptLoadCachingInGlobalJs() {
 	}
 }
 
-export function getDefaultSettings() {
-	return { ...DEFAULT_SETTINGS };
-}
-
-export function getSettings() {
+function getSettings() {
 	return { ...settingsCache };
 }
 
@@ -331,10 +333,6 @@ export function getSetting(key, fallback = null) {
 		return fallback;
 	}
 	return settingsCache[key];
-}
-
-export function isSettingsLoaded() {
-	return settingsLoaded;
 }
 
 export function loadSettings(force = false) {
@@ -429,12 +427,4 @@ export function saveSettings(nextSettings) {
 		writeLegacyRawSettings(globalRaw);
 		return getSettings();
 	});
-}
-
-export function setSetting(key, value) {
-	const next = {
-		...settingsCache,
-		[key]: value
-	};
-	return saveSettings(next);
 }

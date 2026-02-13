@@ -2,14 +2,13 @@ import { showInstallDialog } from '@components/InstallDialog';
 import { Import } from '@services/imports';
 import { ensureAllImports, getTargetsForScript, refreshImportsView } from '@services/importList';
 import { t } from '@services/i18n';
+import { showNotification } from '@services/notification';
+import { uniques } from '@utils/array';
 import { loadVueCodex } from '@utils/codex';
 import { createLogger } from '@utils/logger';
+import { runWithScriptLock } from '@utils/scriptLock';
 
 const logger = createLogger('component.installButton');
-
-function uniques(array) {
-	return array.filter((item, index) => index === array.indexOf(item));
-}
 
 function getInitialInstallLabel(scriptName) {
 	try {
@@ -29,32 +28,26 @@ export function mountInstallButton(hostElement, scriptName, dialogMeta = null) {
 
 	void loadVueCodex()
 		.then((libs) => {
-			const app = libs.createApp({
-				data() {
-					return {
-						label: initialLabel,
-						busy: false
-					};
-				},
-				computed: {
-					actionType() {
-						return this.label === t('action-install') ? 'progressive' : 'destructive';
-					}
-				},
-				methods: {
-					onClick() {
-						if (this.busy) {
+			const { defineComponent, ref, computed } = libs;
+			const InstallButton = defineComponent({
+				setup() {
+					const label = ref(initialLabel);
+					const busy = ref(false);
+					const actionType = computed(() => (label.value === t('action-install') ? 'progressive' : 'destructive'));
+
+					const onClick = () => {
+						if (busy.value) {
 							return;
 						}
-						this.busy = true;
+						busy.value = true;
 
-						if (this.label === t('action-install')) {
+						if (label.value === t('action-install')) {
 							const adapter = {
 								text: (text) => {
-									this.label = String(text);
+									label.value = String(text);
 								},
 								resetBusy: () => {
-									this.busy = false;
+									busy.value = false;
 								}
 							};
 
@@ -62,32 +55,43 @@ export function mountInstallButton(hostElement, scriptName, dialogMeta = null) {
 								showInstallDialog(scriptName, adapter, dialogMeta);
 							} catch (error) {
 								logger.error('showInstallDialog failed', error);
-								this.busy = false;
+								busy.value = false;
 							}
 							return;
 						}
 
-						this.label = t('action-uninstall-progress');
+						label.value = t('action-uninstall-progress');
 						const targets = uniques(getTargetsForScript(scriptName));
-						Promise.all(
-							targets.map((target) => Promise.resolve(Import.ofLocal(scriptName, target).uninstall()))
-						)
-							.then(() => refreshImportsView())
+						runWithScriptLock(scriptName, async () => {
+							await Promise.all(
+								targets.map((target) => Promise.resolve(Import.ofLocal(scriptName, target).uninstall()))
+							);
+							await refreshImportsView();
+						})
 							.then(() => {
-								this.label = t('action-install');
+								label.value = t('action-install');
 							})
 							.catch((error) => {
 								logger.error('Uninstall from button failed', error);
-								this.label = t('action-uninstall');
+								showNotification('notification-uninstall-error', 'error', scriptName);
+								label.value = t('action-uninstall');
 							})
 							.finally(() => {
-								this.busy = false;
+								busy.value = false;
 							});
-					}
+					};
+
+					return {
+						label,
+						busy,
+						actionType,
+						onClick
+					};
 				},
 				template:
 					'<CdxButton :action="actionType" weight="primary" :disabled="busy" @click="onClick"><span v-text="label"></span></CdxButton>'
 			});
+			const app = libs.createApp(InstallButton);
 
 			if (app?.config?.compilerOptions) {
 				app.config.compilerOptions.delimiters = [ '[%', '%]' ];

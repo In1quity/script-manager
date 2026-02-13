@@ -3,57 +3,29 @@ import { showInstallDialog } from '@components/InstallDialog';
 import { mountInstallButton, mountInstallButtonAfterImports } from '@components/InstallButton';
 import { createPanel } from '@components/ScriptManagerPanel';
 import { SKINS } from '@constants/skins';
-import { SM_MEDIAWIKI_NAMESPACE_NUMBER, SM_USER_NAMESPACE_NUMBER } from '@constants/config';
+import {
+	SM_INSTALL_INDICATOR_RETRY_DELAY_MS,
+	SM_MEDIAWIKI_NAMESPACE_NUMBER,
+	SM_USER_NAMESPACE_NUMBER
+} from '@constants/config';
 import { getImportList, getTargetsForScript, refreshImportsView } from '@services/importList';
 import { Import } from '@services/imports';
 import { reloadAfterChange } from '@services/normalize';
 import { t } from '@services/i18n';
+import { showNotification } from '@services/notification';
+import { uniques } from '@utils/array';
 import { renderIconInto } from '@utils/icons';
 import { createLogger } from '@utils/logger';
+import {
+	extractSourceWikiFromUrl,
+	getCurrentSourceWiki,
+	getUserNamespaceName,
+	normalizeSourceWiki
+} from '@utils/mediawiki';
+import { runWithScriptLock } from '@utils/scriptLock';
+import { decodeSafe } from '@utils/url';
 
 const logger = createLogger('pageUi');
-
-function uniques(array) {
-	return array.filter((item, index) => index === array.indexOf(item));
-}
-
-function getUserNamespaceName() {
-	try {
-		return mw?.config?.get('wgFormattedNamespaces')?.[2] || 'User';
-	} catch {
-		return 'User';
-	}
-}
-
-function normalizeSourceWiki(value) {
-	return String(value || '')
-		.trim()
-		.replace(/^https?:\/\//i, '')
-		.replace(/\/.*$/, '')
-		.replace(/\.org$/i, '')
-		.replace(/^www\./i, '');
-}
-
-function getCurrentSourceWiki() {
-	try {
-		return normalizeSourceWiki(mw?.config?.get('wgServerName') || '');
-	} catch {
-		return '';
-	}
-}
-
-function extractSourceWikiFromUrl(url) {
-	const normalized = normalizeSourceWiki(url);
-	if (normalized) {
-		return normalized;
-	}
-	try {
-		const parsed = new URL(String(url || ''), window.location.href);
-		return normalizeSourceWiki(parsed.hostname || '');
-	} catch {
-		return '';
-	}
-}
 
 export function makeLocalInstallClickHandler(scriptName, dialogMeta = null) {
 	return function localInstallClickHandler() {
@@ -76,7 +48,9 @@ export function makeLocalInstallClickHandler(scriptName, dialogMeta = null) {
 
 		$self.text(t('action-uninstall-progress'));
 		const targets = getTargetsForScript(scriptName);
-		void Promise.all(uniques(targets).map((target) => Promise.resolve(Import.ofLocal(scriptName, target).uninstall())))
+		void runWithScriptLock(scriptName, () =>
+			Promise.all(uniques(targets).map((target) => Promise.resolve(Import.ofLocal(scriptName, target).uninstall())))
+		)
 			.then(() => refreshImportsView())
 			.then(() => {
 				$self.text(installText);
@@ -84,6 +58,7 @@ export function makeLocalInstallClickHandler(scriptName, dialogMeta = null) {
 			})
 			.catch((error) => {
 				logger.error('Local uninstall failed', error);
+				showNotification('notification-uninstall-error', 'error', scriptName);
 				$self.text(uninstallText);
 			});
 	};
@@ -299,7 +274,7 @@ export function showUi() {
 	if (!injectInstallIndicator(fixedPageName)) {
 		setTimeout(() => {
 			injectInstallIndicator(fixedPageName);
-		}, 100);
+		}, SM_INSTALL_INDICATOR_RETRY_DELAY_MS);
 	}
 
 	try {
@@ -347,9 +322,9 @@ export function attachInstallLinks() {
 				sourceWiki = extractSourceWikiFromUrl(source);
 				let match;
 				if ((match = /[?&]title=([^&#]+)/i.exec(source))) {
-					scriptName = decodeURIComponent(match[1].replace(/\+/g, ' '));
+					scriptName = decodeSafe(match[1].replace(/\+/g, ' '));
 				} else if ((match = /\/wiki\/([^?#]+)/i.exec(source))) {
-					scriptName = decodeURIComponent(match[1]).replace(/_/g, ' ');
+					scriptName = decodeSafe(match[1]).replace(/_/g, ' ');
 				} else if (/^User:/i.test(source)) {
 					scriptName = source;
 				}

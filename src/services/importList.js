@@ -1,24 +1,18 @@
+import { CAPTURE_BLOCK_END_RGX, CAPTURE_BLOCK_START_RGX, CAPTURE_NAME_LINE_RGX } from '@constants/capture';
 import { DEFAULT_SKIN, SKINS } from '@constants/skins';
 import { getApi, getApiForTarget } from '@services/api';
 import { Import } from '@services/imports';
 import { createLogger } from '@utils/logger';
+import { getUserNamespaceName } from '@utils/mediawiki';
+import { extractWikitextFromResponse } from '@utils/wikitext';
 
 const logger = createLogger('importList');
 const importsByTarget = Object.create(null);
 const importsLoadedTargets = Object.create(null);
 let importsRef = null;
 let buildImportListPromise = null;
-const CAPTURE_BLOCK_START_RGX = /^\s*\/\/\s*SM-CAPTURE-START\b/;
-const CAPTURE_BLOCK_END_RGX = /^\s*\/\/\s*SM-CAPTURE-END\b/;
-const CAPTURE_NAME_LINE_RGX = /name:\s*("(?:\\.|[^"])*")\s*,?\s*$/;
-
-function getLocalUserNamespaceName() {
-	try {
-		return mw?.config?.get('wgFormattedNamespaces')?.[2] || 'User';
-	} catch {
-		return 'User';
-	}
-}
+let queuedBuildAll = false;
+const queuedBuildTargets = new Set();
 
 function getFullTarget(target = DEFAULT_SKIN) {
 	const cleanTarget = target || DEFAULT_SKIN;
@@ -26,21 +20,7 @@ function getFullTarget(target = DEFAULT_SKIN) {
 	if (cleanTarget === 'global') {
 		return `User:${userName}/global.js`;
 	}
-	return `${getLocalUserNamespaceName()}:${userName}/${cleanTarget}.js`;
-}
-
-function extractWikitextFromResponse(response) {
-	const fromFormatVersion2 = response?.query?.pages?.[0]?.revisions?.[0]?.slots?.main?.content;
-	if (typeof fromFormatVersion2 === 'string') {
-		return fromFormatVersion2;
-	}
-
-	const pagesObject = response?.query?.pages;
-	if (!pagesObject || typeof pagesObject !== 'object') {
-		return '';
-	}
-	const firstPage = Object.values(pagesObject)[0];
-	return firstPage?.revisions?.[0]?.slots?.main?.['*'] || '';
+	return `${getUserNamespaceName()}:${userName}/${cleanTarget}.js`;
 }
 
 function getTargetFromTitle(pageTitle) {
@@ -186,6 +166,22 @@ function syncImportsRef() {
 	}
 }
 
+function queueBuildRequest(targets) {
+	if (!Array.isArray(targets) || !targets.length) {
+		queuedBuildAll = true;
+		queuedBuildTargets.clear();
+		return;
+	}
+	if (queuedBuildAll) {
+		return;
+	}
+	targets.forEach((target) => {
+		if (target) {
+			queuedBuildTargets.add(target);
+		}
+	});
+}
+
 export function getImportsRef() {
 	return importsRef;
 }
@@ -197,6 +193,7 @@ export function setImportsRef(refValue) {
 
 export async function buildImportList(targets) {
 	if (buildImportListPromise) {
+		queueBuildRequest(targets);
 		return buildImportListPromise;
 	}
 
@@ -236,7 +233,14 @@ export async function buildImportList(targets) {
 	try {
 		return await buildImportListPromise;
 	} finally {
+		const shouldBuildAll = queuedBuildAll;
+		const followUpTargets = shouldBuildAll ? [] : Array.from(queuedBuildTargets);
+		queuedBuildAll = false;
+		queuedBuildTargets.clear();
 		buildImportListPromise = null;
+		if (shouldBuildAll || followUpTargets.length) {
+			await buildImportList(shouldBuildAll ? undefined : followUpTargets);
+		}
 	}
 }
 

@@ -1,26 +1,26 @@
+import {
+	CAPTURE_BLOCK_END_RGX,
+	CAPTURE_BLOCK_START_RGX,
+	CAPTURE_ITEM_END_RGX,
+	CAPTURE_ITEM_START_RGX
+} from '@constants/capture';
+import { SM_DOC_REFERENCE_SCAN_LIMIT } from '@constants/config';
 import { getApiForTarget } from '@services/api';
 import { getStrings, t as translate } from '@services/i18n';
 import { showNotification } from '@services/notification';
 import { buildSummaryLinkTitle, getSummaryForTarget } from '@services/summaryBuilder';
 import { escapeForJsComment, escapeForJsString, escapeForRegex, unescapeForJsString } from '@utils/escape';
+import { createLogger } from '@utils/logger';
+import { getServerName, getUserName, normalizeMediaWikiHost } from '@utils/mediawiki';
+import { fetchWithTimeout } from '@utils/network';
+import { decodeSafe } from '@utils/url';
 import { getWikitext } from '@utils/wikitext';
 
 const URL_RGX = /^(?:https?:)?\/\/(.+?)\.org\/w\/index\.php\?.*?title=(.+?(?:&|$))/;
 const IMPORT_RGX = /^\s*(\/\/)?\s*importScript\s*\(\s*(['"])\s*(.+?)\s*\2\s*\)\s*;?/;
 const LOADER_RGX =
 	/^\s*(\/\/)?\s*mw\s*\.\s*loader\s*\.\s*load\s*\(\s*(['"])\s*(.+?)\s*\2\s*(?:,\s*(['"])\s*(?:text\/css|application\/css|text\/javascript|application\/javascript)\s*\4\s*)?\)\s*;?/;
-const CAPTURE_BLOCK_START_RGX = /^\s*\/\/\s*SM-CAPTURE-START\b/;
-const CAPTURE_BLOCK_END_RGX = /^\s*\/\/\s*SM-CAPTURE-END\b/;
-const CAPTURE_ITEM_START_RGX = /^\s*\/\/\s*SM-CAPTURE-ITEM-START\b/;
-const CAPTURE_ITEM_END_RGX = /^\s*\/\/\s*SM-CAPTURE-ITEM-END\b/;
-
-function decodeSafe(value) {
-	try {
-		return decodeURIComponent(String(value || '').replace(/&$/, ''));
-	} catch {
-		return String(value || '');
-	}
-}
+const logger = createLogger('service.imports');
 
 function extractDocumentationReference(text) {
 	const source = String(text || '');
@@ -157,19 +157,11 @@ export class Import {
 	}
 
 	static getUserName() {
-		try {
-			return mw?.config?.get('wgUserName') || '';
-		} catch {
-			return '';
-		}
+		return getUserName();
 	}
 
 	static getServerName() {
-		try {
-			return mw?.config?.get('wgServerName') || '';
-		} catch {
-			return '';
-		}
+		return getServerName();
 	}
 
 	static getTargetTitle(target) {
@@ -182,10 +174,7 @@ export class Import {
 		if (this.type === 2) {
 			url = this.url;
 		} else {
-			let host = this.type === 1 ? `${this.wiki}.org` : serverName;
-			if (host === 'mediawiki.org') {
-				host = 'www.mediawiki.org';
-			}
+			const host = normalizeMediaWikiHost(this.type === 1 ? `${this.wiki}.org` : serverName);
 			const pageTitle = this.page;
 			const isCss = /\.css$/i.test(String(pageTitle || ''));
 			const ctype = isCss ? 'text/css' : 'text/javascript';
@@ -252,23 +241,21 @@ export class Import {
 			if (this.type === 2 || !this.page) {
 				return null;
 			}
-			let host = this.type === 1 && this.wiki ? `${this.wiki}.org` : Import.getServerName();
-			if (host === 'mediawiki.org') {
-				host = 'www.mediawiki.org';
-			}
+			const host = normalizeMediaWikiHost(this.type === 1 && this.wiki ? `${this.wiki}.org` : Import.getServerName());
 			const rawUrl = `//${host}/w/index.php?title=${encodeURIComponent(this.page)}&action=raw&ctype=text/javascript`;
-			const response = await fetch(rawUrl);
+			const response = await fetchWithTimeout(rawUrl);
 			if (!response.ok) {
 				return null;
 			}
 			const text = await response.text();
-			const head = text.slice(0, 2000);
+			const head = text.slice(0, SM_DOC_REFERENCE_SCAN_LIMIT);
 			const docRef = extractDocumentationReference(head);
 			if (!docRef) {
 				return null;
 			}
 			return docRef;
-		} catch {
+		} catch (error) {
+			logger.warn('Failed to resolve documentation interwiki', error);
 			return null;
 		}
 	}
@@ -320,6 +307,9 @@ export class Import {
 		return (async () => {
 			const target = this.target || 'common';
 			const targetApi = getApiForTarget(target);
+			if (!targetApi) {
+				throw new Error(`API is unavailable for target "${target}"`);
+			}
 			const title = Import.getTargetTitle(target);
 			const current = await getWikitext(targetApi, title);
 			const lines = String(current || '').split('\n');
@@ -336,18 +326,23 @@ export class Import {
 			});
 
 			this.disabled = Boolean(disabled);
-			await targetApi.postWithEditToken({
-				action: 'edit',
-				title,
-				text: lines.join('\n'),
-				summary: getSummaryForTarget(
-					target,
-					disabled ? 'summary-disable' : 'summary-enable',
-					this.getDescription(true),
-					getStrings()
-				),
-				formatversion: 2
-			});
+			try {
+				await targetApi.postWithEditToken({
+					action: 'edit',
+					title,
+					text: lines.join('\n'),
+					summary: getSummaryForTarget(
+						target,
+						disabled ? 'summary-disable' : 'summary-enable',
+						this.getDescription(true),
+						getStrings()
+					),
+					formatversion: 2
+				});
+			} catch (error) {
+				logger.error('Failed to persist disabled state', error);
+				throw error;
+			}
 			showNotification(
 				disabled ? 'notification-disable-success' : 'notification-enable-success',
 				'success',
@@ -385,6 +380,9 @@ export class Import {
 	async updateInTarget(mode) {
 		const target = this.target || 'common';
 		const api = getApiForTarget(target);
+		if (!api) {
+			throw new Error(`API is unavailable for target "${target}"`);
+		}
 		const title = Import.getTargetTitle(target);
 		const current = await getWikitext(api, title);
 		const line = this.toJs(mw.config.get('wgServerName'));
@@ -418,18 +416,23 @@ export class Import {
 			return false;
 		}
 
-		await api.postWithEditToken({
-			action: 'edit',
-			title,
-			text: next,
-			summary: getSummaryForTarget(
-				target,
-				mode === 'install' ? 'summary-install' : 'summary-uninstall',
-				this.getDescription(true),
-				getStrings()
-			),
-			formatversion: 2
-		});
+		try {
+			await api.postWithEditToken({
+				action: 'edit',
+				title,
+				text: next,
+				summary: getSummaryForTarget(
+					target,
+					mode === 'install' ? 'summary-install' : 'summary-uninstall',
+					this.getDescription(true),
+					getStrings()
+				),
+				formatversion: 2
+			});
+		} catch (error) {
+			logger.error(`Failed to ${mode} import`, error);
+			throw error;
+		}
 
 		return true;
 	}

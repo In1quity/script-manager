@@ -1,4 +1,6 @@
 import { getApi } from '@services/api';
+import { t } from '@services/i18n';
+import { createLogger } from '@utils/logger';
 
 let gadgetsData = {};
 let userGadgetSettings = {};
@@ -6,13 +8,14 @@ let enabledGadgets = {};
 let enabledGadgetsLoaded = false;
 let gadgetSectionOrder = [];
 let gadgetSectionLabels = {};
-let gadgetsLabel = 'Gadgets';
+let gadgetsLabel = t('label-gadgets', 'Gadgets');
 
 let loadGadgetsPromise = null;
 let loadSectionLabelsPromise = null;
 let loadGadgetsLabelPromise = null;
 let loadUserSettingsPromise = null;
 let loadEnabledGadgetsPromise = null;
+const logger = createLogger('service.gadgets');
 
 export async function loadGadgets() {
 	if (loadGadgetsPromise) {
@@ -60,7 +63,8 @@ export async function loadGadgets() {
 			gadgetSectionOrder = Object.keys(sectionMap);
 			return gadgetsData;
 		})
-		.catch(() => {
+		.catch((error) => {
+			logger.warn('Failed to load gadgets list', error);
 			gadgetsData = {};
 			gadgetSectionOrder = [];
 			return gadgetsData;
@@ -92,11 +96,12 @@ export async function loadGadgetsLabel() {
 	)
 		.then((response) => {
 			const value = response?.query?.allmessages?.[0]?.['*'];
-			gadgetsLabel = value || 'Gadgets';
+			gadgetsLabel = value || t('label-gadgets', 'Gadgets');
 			return gadgetsLabel;
 		})
-		.catch(() => {
-			gadgetsLabel = 'Gadgets';
+		.catch((error) => {
+			logger.warn('Failed to load gadgets tab label', error);
+			gadgetsLabel = t('label-gadgets', 'Gadgets');
 			return gadgetsLabel;
 		})
 		.finally(() => {
@@ -156,7 +161,8 @@ export async function loadSectionLabels() {
 			gadgetSectionLabels = out;
 			return gadgetSectionLabels;
 		})
-		.catch(() => {
+		.catch((error) => {
+			logger.warn('Failed to load gadget section labels', error);
 			const fallback = {};
 			sections.forEach((section) => {
 				fallback[section] = section.charAt(0).toUpperCase() + section.slice(1);
@@ -169,20 +175,6 @@ export async function loadSectionLabels() {
 		});
 
 	return loadSectionLabelsPromise;
-}
-
-export function applyGadgetLabels(sectionLabels = {}, tabLabel = gadgetsLabel) {
-	gadgetSectionLabels = {
-		...gadgetSectionLabels,
-		...(sectionLabels || {})
-	};
-	if (tabLabel) {
-		gadgetsLabel = tabLabel;
-	}
-	return {
-		sectionLabels: gadgetSectionLabels,
-		label: gadgetsLabel
-	};
 }
 
 export async function loadUserGadgetSettings() {
@@ -213,7 +205,8 @@ export async function loadUserGadgetSettings() {
 			userGadgetSettings = next;
 			return userGadgetSettings;
 		})
-		.catch(() => {
+		.catch((error) => {
+			logger.warn('Failed to load user gadget settings', error);
 			userGadgetSettings = {};
 			return userGadgetSettings;
 		})
@@ -256,7 +249,8 @@ export async function loadEnabledGadgets() {
 			enabledGadgetsLoaded = true;
 			return enabledGadgets;
 		})
-		.catch(() => {
+		.catch((error) => {
+			logger.warn('Failed to load enabled gadgets', error);
 			enabledGadgets = {};
 			enabledGadgetsLoaded = false;
 			return enabledGadgets;

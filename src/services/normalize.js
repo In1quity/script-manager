@@ -9,12 +9,6 @@ import { urlToInterwiki } from '@utils/interwiki';
 
 const logger = createLogger('normalize');
 
-export function normalizeImports(imports) {
-	const list = Array.isArray(imports) ? imports.slice() : [];
-	list.sort((a, b) => String(a?.page || '').localeCompare(String(b?.page || '')));
-	return list;
-}
-
 export async function normalize(target) {
 	try {
 		const wikitext = String((await getWikitextForTarget(target)) || '');
@@ -54,13 +48,22 @@ export async function normalize(target) {
 		}
 
 		const summary = getSummaryForTarget(target, 'summary-normalize', '', getStrings());
-		await getApiForTarget(target).postWithEditToken({
-			action: 'edit',
-			title: Import.getTargetTitle(target),
-			summary,
-			text: nextText,
-			formatversion: 2
-		});
+		const api = getApiForTarget(target);
+		if (!api) {
+			throw new Error(`API is unavailable for target "${target}"`);
+		}
+		try {
+			await api.postWithEditToken({
+				action: 'edit',
+				title: Import.getTargetTitle(target),
+				summary,
+				text: nextText,
+				formatversion: 2
+			});
+		} catch (error) {
+			logger.error('Failed to persist normalized imports', error);
+			throw error;
+		}
 
 		showNotification('notification-normalize-success', 'success');
 		return true;

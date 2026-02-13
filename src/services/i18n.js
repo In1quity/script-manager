@@ -1,10 +1,13 @@
 import languageFallbacks from '../../data/languageFallbacks.json';
+import { createLogger } from '@utils/logger';
+import { fetchWithTimeout } from '@utils/network';
 
 const STRINGS = {};
 let STRINGS_EN = typeof SM_I18N_EN !== 'undefined' ? SM_I18N_EN : {};
 let STRINGS_SITE = {};
 let ACTIVE_LANGUAGE = 'en';
 let ACTIVE_SITE_LANGUAGE = 'en';
+const logger = createLogger('service.i18n');
 
 function getLanguageChain(lang) {
 	const code = String(lang || 'en').toLowerCase();
@@ -24,7 +27,7 @@ function getLanguageChain(lang) {
 async function fetchLanguage(lang) {
 	const base =
 		window.ScriptManagerI18nBaseUrl || 'https://gitlab-content.toolforge.org/iniquity/script-manager/-/raw/main/i18n';
-	const response = await fetch(`${base}/${lang}.json`);
+	const response = await fetchWithTimeout(`${base}/${lang}.json`);
 	if (!response.ok) {
 		throw new Error(`Failed to load i18n: ${lang}`);
 	}
@@ -41,7 +44,8 @@ async function loadSiteLanguage(siteLanguage, userLanguage) {
 
 	try {
 		STRINGS_SITE = await fetchLanguage(cleanSiteLanguage);
-	} catch {
+	} catch (error) {
+		logger.warn(`Failed to load site language "${cleanSiteLanguage}"`, error);
 		STRINGS_SITE = {};
 	}
 
@@ -64,7 +68,8 @@ export async function loadI18n(lang, options = {}) {
 			} else {
 				Object.assign(merged, dict);
 			}
-		} catch {
+		} catch (error) {
+			logger.warn(`Failed to load language "${code}"`, error);
 			if (code === 'en') {
 				Object.assign(merged, bundledEn);
 				STRINGS_EN = Object.assign({}, bundledEn);

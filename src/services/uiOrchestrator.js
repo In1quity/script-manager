@@ -1,16 +1,4 @@
-function toPromise(callbackOrPromise) {
-	try {
-		if (!callbackOrPromise) {
-			return Promise.resolve();
-		}
-		if (typeof callbackOrPromise.then === 'function') {
-			return callbackOrPromise;
-		}
-		return Promise.resolve(callbackOrPromise);
-	} catch {
-		return Promise.resolve();
-	}
-}
+import { toPromise } from '@utils/promise';
 
 export function createUiOrchestrator(options = {}) {
 	const settings = {

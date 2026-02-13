@@ -1,3 +1,5 @@
+import { decodeSafe } from '@utils/url';
+
 const PROJECT_MAP = {
 	wiktionary: 'wikt',
 	wikibooks: 'b',
@@ -70,7 +72,7 @@ export function urlToInterwiki(url) {
 			return null;
 		}
 
-		return `${prefix}:${decodeURIComponent(title).replace(/_/g, ' ')}`;
+		return `${prefix}:${decodeSafe(title).replace(/_/g, ' ')}`;
 	} catch {
 		return null;
 	}

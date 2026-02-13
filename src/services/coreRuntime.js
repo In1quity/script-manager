@@ -56,7 +56,3 @@ export async function initCoreUi(context) {
 	await uiOrchestrator.bootstrap();
 	context.state.uiOrchestrator = uiOrchestrator;
 }
-
-export async function startCoreRuntime(context) {
-	return initCoreUi(context);
-}

@@ -4,25 +4,9 @@ import { showNotification } from '@services/notification';
 import { t } from '@services/i18n';
 import { loadVueCodex } from '@utils/codex';
 import { createLogger } from '@utils/logger';
+import { safeUnmount } from '@utils/vue';
 
 const logger = createLogger('component.moveDialog');
-
-function safeUnmount(app, root) {
-	try {
-		if (app && typeof app.unmount === 'function') {
-			app.unmount();
-		}
-	} catch {
-		// Ignore unmount race conditions.
-	}
-	try {
-		if (root?.parentNode) {
-			root.parentNode.removeChild(root);
-		}
-	} catch {
-		// Ignore already removed roots.
-	}
-}
 
 export function showMoveDialog(anImport, onDone) {
 	const container = $('<div>').attr('id', 'sm-move-dialog');
@@ -95,7 +79,7 @@ export function createMoveDialog(
 			const isMoving = ref(false);
 
 			const targetOptions = SKINS.filter((skin) => skin !== anImport.target).map((skin) => ({
-				label: skin === 'global' ? t('skin-global') : skin,
+				label: skin === 'common' ? t('skin-common') : skin === 'global' ? t('skin-global') : skin,
 				value: skin
 			}));
 
@@ -147,7 +131,7 @@ export function createMoveDialog(
 					<div class="sm-move-script-name" v-text="scriptName"></div>
 					<div class="sm-move-current-location">
 						<strong><span v-text="SM_t('dialog-move-current-location')"></span></strong>
-						<div class="sm-move-current-location-value" v-text="currentTarget === 'global' ? SM_t('skin-global') : currentTarget"></div>
+						<div class="sm-move-current-location-value" v-text="currentTarget === 'global' ? SM_t('skin-global') : currentTarget === 'common' ? SM_t('skin-common') : currentTarget"></div>
 					</div>
 					<cdx-field>
 						<template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>

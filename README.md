@@ -1,6 +1,16 @@
 # Script Manager
 
-A MediaWiki user script management system for managing and installing gadgets across different wikis.
+A MediaWiki user script management system for managing and installing gadgets across different wikis. Full documentation: [Script Manager on mediawiki.org](https://www.mediawiki.org/wiki/Script_Manager).
+
+### Install (all Wikimedia wikis)
+
+Add to your **global.js on Meta**:
+
+```javascript
+mw.loader.load( 'https://www.mediawiki.org/w/index.php?title=User:Iniquity/scriptManager.js&action=raw&ctype=text/javascript' ); // [[mw:Script Manager]]
+```
+
+The loader fetches the core from mediawiki.org; open “Script Manager” in the toolbox to manage scripts and gadgets.
 
 ## 📁 Project Structure
 
@@ -17,10 +27,12 @@ A MediaWiki user script management system for managing and installing gadgets ac
 │   ├── constants/               # Runtime constants
 │   └── styles/                  # Style entry points
 ├── scr/
-│   └── scriptManager.js         # Loader and initialization
+│   ├── scriptManager.js         # Loader and initialization
+│   └── scriptManager-capture.js # Capture wrapper (copied to dist with banner)
 ├── dist/                        # Build output artifacts
-│   ├── scriptManager-core.js
-│   └── scriptManager.js
+│   ├── scriptManager-core.js   # Bundled Vue/Codex runtime
+│   ├── scriptManager.js        # Loader (from scr/)
+│   └── scriptManager-capture.js # Capture script (from scr/)
 ├── i18n/                        # Internationalization files
 │   ├── en.json                  # English translations
 │   └── ru.json                  # Russian translations
@@ -85,11 +97,14 @@ npm install
 
 ## 📋 Features
 
-- Multi-language support with automatic fallback
-- Cross-wiki gadget management
-- User-friendly interface
-- MediaWiki API integration
-- Responsive design
+- **One-click install/uninstall** — manage user scripts, styles, and gadgets; install dialog shows script name, optional source wiki, and security warning.
+- **Install button on snippets** — on script doc pages, code blocks with `mw.loader.load`/`importScript` get an Install button below them.
+- **Target management** — move scripts between common, global, and skin-specific pages.
+- **Documentation link** — scripts can declare a doc page via `// Documentation: Title`, JSDoc `@documentation Title`, or `@see Title` (first 2000 chars).
+- **Gadgets panel** — enable/disable gadgets with live state and section grouping.
+- **Script capture** — wrap selected scripts for quick access in the sidebar; capture button visible when “Enable script interceptor” is on or script is captured.
+- **Settings** — default tab (per wiki), script interceptor (global), load caching (per global.js); short headings for each group.
+- Multi-language support with automatic fallback; Vue 3 + Codex UI; multi-skin support (Vector 2022, Vector, Minerva, Monobook, Timeless).
 
 ## 🔧 Configuration
 
@@ -113,7 +128,7 @@ Configuration is in `stylelint.config.js`. It validates CSS in `src/`.
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT OR CC-BY-SA-4.0 — see [LICENSE](LICENSE) and `package.json` for details.
 
 ## 🔄 Repository Information
 

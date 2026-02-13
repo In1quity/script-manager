@@ -5,6 +5,7 @@ import { showNotification } from '@services/notification';
 import { loadSettings, saveSettings } from '@services/settings';
 import { loadVueCodex } from '@utils/codex';
 import { createLogger } from '@utils/logger';
+import { safeUnmount } from '@utils/vue';
 
 const logger = createLogger('component.settingsDialog');
 
@@ -75,26 +76,9 @@ function renderInlineWikitext(value) {
 	return result;
 }
 
-function safeUnmount(app, root) {
-	try {
-		if (app && typeof app.unmount === 'function') {
-			app.unmount();
-		}
-	} catch {
-		// Ignore unmount race conditions.
-	}
-	try {
-		if (root?.parentNode) {
-			root.parentNode.removeChild(root);
-		}
-	} catch {
-		// Ignore already removed roots.
-	}
-}
-
 function getDefaultTabLabel(value) {
 	if (value === 'gadgets') {
-		return getGadgetsLabel() || 'Gadgets';
+		return getGadgetsLabel() || t('label-gadgets');
 	}
 	if (value === 'all') {
 		return t('skin-all');

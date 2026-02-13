@@ -12,6 +12,15 @@ export async function getWikitext(api, title) {
 }
 
 export function extractWikitextFromResponse(response) {
-	const page = response?.query?.pages?.[0];
-	return page?.revisions?.[0]?.slots?.main?.content || '';
+	const fromFormatVersion2 = response?.query?.pages?.[0]?.revisions?.[0]?.slots?.main?.content;
+	if (typeof fromFormatVersion2 === 'string') {
+		return fromFormatVersion2;
+	}
+
+	const pagesObject = response?.query?.pages;
+	if (!pagesObject || typeof pagesObject !== 'object') {
+		return '';
+	}
+	const firstPage = Object.values(pagesObject)[0];
+	return firstPage?.revisions?.[0]?.slots?.main?.['*'] || '';
 }

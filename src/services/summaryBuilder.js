@@ -1,17 +1,10 @@
 import { SUMMARY_TAG } from '@constants/config';
 import { getCurrentWikiFragment, getProjectPrefix, getTargetWikiFragment } from '@utils/interwiki';
+import { getServerName } from '@utils/mediawiki';
 
 function withSummaryTag(text) {
 	const base = String(text || '');
 	return SUMMARY_TAG ? `${base} ${SUMMARY_TAG}` : base;
-}
-
-function getServerName() {
-	try {
-		return mw?.config?.get('wgServerName') || '';
-	} catch {
-		return '';
-	}
 }
 
 export function buildSummaryLinkTitle(imp) {

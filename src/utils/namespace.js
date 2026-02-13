@@ -1,5 +1,3 @@
-import { SM_USER_NAMESPACE_NUMBER } from '@constants/config';
-
 export function canonicalizeUserNamespace(pageTitle) {
 	const title = String(pageTitle || '').trim();
 	if (!title) {
@@ -22,8 +20,4 @@ export function canonicalizeUserNamespace(pageTitle) {
 	}
 
 	return title;
-}
-
-export function isUserNamespace(namespaceNumber) {
-	return Number(namespaceNumber) === SM_USER_NAMESPACE_NUMBER;
 }

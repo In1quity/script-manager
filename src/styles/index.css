@@ -238,11 +238,6 @@
 	min-width: auto;
 }
 
-.normalize-wrapper {
-	margin-left: 0.5rem;
-	font-weight: normal;
-}
-
 /* Gadgets Components
    ========================================================================== */
 .gadgets-section {
@@ -532,19 +527,6 @@ td.sm-ibx {
 	border: 1px solid var(--border-color-error, #f54739);
 	border-radius: 4px;
 	text-align: center;
-}
-
-/* Debug Information */
-.debug-info {
-	padding: 0.5rem;
-	background-color: var(--background-color-progressive-subtle, #f1f4fd);
-	color: var(--color-progressive, #36c);
-	border: 1px solid var(--border-color-progressive, #6485d1);
-	border-radius: 4px;
-	margin: 0.5rem 0;
-	font-family: monospace;
-	font-size: 0.8em;
-	white-space: pre-wrap;
 }
 
 .sm-enabled-toggle {

@@ -32,26 +32,12 @@ import { getSetting, loadSettings } from '@services/settings';
 import { loadVueCodex } from '@utils/codex';
 import { renderIconInto } from '@utils/icons';
 import { createLogger } from '@utils/logger';
+import { getServerName, getUserName, normalizeMediaWikiHost } from '@utils/mediawiki';
 import { canonicalizeUserNamespace } from '@utils/namespace';
+import { toPromise } from '@utils/promise';
+import { safeUnmount } from '@utils/vue';
 
 const logger = createLogger('component.scriptManagerPanel');
-
-function safeUnmount(app, root) {
-	try {
-		if (app && typeof app.unmount === 'function') {
-			app.unmount();
-		}
-	} catch {
-		// Ignore unmount race conditions.
-	}
-	try {
-		if (root?.parentNode) {
-			root.parentNode.removeChild(root);
-		}
-	} catch {
-		// Ignore already removed roots.
-	}
-}
 
 function getDefaultSkin() {
 	try {
@@ -69,13 +55,6 @@ function getDefaultSkin() {
 		// Ignore runtime global read errors.
 	}
 	return DEFAULT_SKIN;
-}
-
-function toPromise(value) {
-	if (value && typeof value.then === 'function') {
-		return value;
-	}
-	return Promise.resolve(value);
 }
 
 export function createPanel() {
@@ -101,7 +80,7 @@ export function createPanel() {
 		})
 		.catch((error) => {
 			logger.error('Failed to load Vue/Codex for panel', error);
-			container.html('<div class="error">Failed to load interface. Please refresh the page.</div>');
+			container.html(`<div class="error">${t('error-load-interface')}</div>`);
 		});
 	return container;
 }
@@ -140,7 +119,7 @@ export function createVuePanel(
 			const normalizeCompleted = ref(false);
 			const importsReactive = ref(Object.assign({}, getImportList()));
 			const gadgetSectionLabels = ref(Object.assign({}, getGadgetSectionLabels() || {}));
-			const gadgetsLabel = ref(getGadgetsLabel() || 'Gadgets');
+			const gadgetsLabel = ref(getGadgetsLabel() || t('label-gadgets'));
 			const gadgetsReactive = ref(Object.assign({}, getGadgetsData() || {}));
 			const enabledGadgetsReactive = ref(Object.assign({}, getEnabledGadgets() || {}));
 			const enabledGadgetsLoaded = ref(isEnabledGadgetsLoaded());
@@ -154,7 +133,7 @@ export function createVuePanel(
 			const updateGadgetsState = () => {
 				gadgetsReactive.value = Object.assign({}, getGadgetsData() || {});
 				gadgetSectionLabels.value = Object.assign({}, getGadgetSectionLabels() || {});
-				gadgetsLabel.value = getGadgetsLabel() || 'Gadgets';
+				gadgetsLabel.value = getGadgetsLabel() || t('label-gadgets');
 				enabledGadgetsReactive.value = Object.assign({}, getEnabledGadgets() || {});
 				enabledGadgetsLoaded.value = isEnabledGadgetsLoaded();
 				userGadgetSettingsReactive.value = Object.assign({}, getUserGadgetSettings() || {});
@@ -250,10 +229,10 @@ export function createVuePanel(
 			});
 
 			const skinTabs = computed(() => [
-				{ name: 'gadgets', label: gadgetsLabel.value || 'Gadgets' },
+				{ name: 'gadgets', label: gadgetsLabel.value || t('label-gadgets') },
 				{ name: 'all', label: t('skin-all') },
-				{ name: 'global', label: 'global' },
-				{ name: 'common', label: 'common' },
+				{ name: 'global', label: t('skin-global') },
+				{ name: 'common', label: t('skin-common') },
 				...SKINS.filter((skin) => skin !== 'common' && skin !== 'global').map((skin) => ({ name: skin, label: skin }))
 			]);
 
@@ -457,12 +436,12 @@ export function createVuePanel(
 						enabledGadgetsReactive.value = Object.assign({}, getEnabledGadgets() || {});
 						enabledGadgetsLoaded.value = isEnabledGadgetsLoaded();
 						userGadgetSettingsReactive.value = Object.assign({}, getUserGadgetSettings() || {});
-						showNotification(`Gadget ${gadgetName} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+						showNotification(enabled ? 'notification-gadget-enabled' : 'notification-gadget-disabled', 'success', gadgetName);
 						reloadOnClose.value = true;
 					})
 					.catch((error) => {
 						logger.error('toggle gadget failed', error);
-						showNotification('Failed to toggle gadget', 'error');
+						showNotification('notification-gadget-toggle-error', 'error');
 					})
 					.finally(() => {
 						setLoading(key, false);
@@ -485,10 +464,12 @@ export function createVuePanel(
 			};
 
 			const getSkinUrl = (skinName) => {
+				const userName = getUserName();
 				if (skinName === 'global') {
-					return `https://meta.wikimedia.org/wiki/User:${mw.config.get('wgUserName')}/global.js`;
+					return `https://meta.wikimedia.org/wiki/User:${userName}/global.js`;
 				}
-				return `https://${mw.config.get('wgServerName')}/wiki/User:${mw.config.get('wgUserName')}/${skinName}.js`;
+				const host = normalizeMediaWikiHost(getServerName());
+				return `https://${host}/wiki/User:${userName}/${skinName}.js`;
 			};
 
 			const getImportHumanUrl = (anImport) => {
@@ -497,10 +478,7 @@ export function createVuePanel(
 					return `/wiki/${encodeURI(page)}`;
 				}
 				if (anImport.type === 1) {
-					let host = `${anImport.wiki}.org`;
-					if (host === 'mediawiki.org') {
-						host = 'www.mediawiki.org';
-					}
+					const host = normalizeMediaWikiHost(`${anImport.wiki}.org`);
 					return `//${host}/wiki/${encodeURI(page)}`;
 				}
 				return anImport.url;
@@ -605,7 +583,7 @@ export function createVuePanel(
 
 				<div class="sm-scroll">
 					<div v-if="!isSelectedTargetLoaded" class="sm-tpl-loading">
-						<div class="cdx-progress-indicator"><div class="cdx-progress-indicator__indicator"><progress class="cdx-progress-indicator__indicator__progress" aria-label="Loading"></progress></div></div>
+						<div class="cdx-progress-indicator"><div class="cdx-progress-indicator__indicator"><progress class="cdx-progress-indicator__indicator__progress" :aria-label="SM_t('label-loading')"></progress></div></div>
 					</div>
 					<template v-else>
 						<template v-if="selectedSkin === 'gadgets'">

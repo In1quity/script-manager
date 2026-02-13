@@ -1,3 +1,15 @@
+import {
+	CAPTURE_BLOCK_END,
+	CAPTURE_BLOCK_END_RGX,
+	CAPTURE_BLOCK_START,
+	CAPTURE_BLOCK_START_RGX,
+	CAPTURE_ITEM_END,
+	CAPTURE_ITEM_END_RGX,
+	CAPTURE_ITEM_START,
+	CAPTURE_ITEM_START_RGX,
+	CAPTURE_KEY_LINE_RGX,
+	CAPTURE_NAME_LINE_RGX
+} from '@constants/capture';
 import { getApiForTarget } from '@services/api';
 import { getStrings, t } from '@services/i18n';
 import { showNotification } from '@services/notification';
@@ -5,38 +17,13 @@ import { getSummaryForTarget } from '@services/summaryBuilder';
 import { loadVueCodex } from '@utils/codex';
 import { escapeForJsString } from '@utils/escape';
 import { createLogger } from '@utils/logger';
+import { getServerName, getUserName } from '@utils/mediawiki';
+import { safeUnmount } from '@utils/vue';
 import { getWikitext } from '@utils/wikitext';
 
 const logger = createLogger('component.captureDialog');
 const CAPTURE_FALLBACK_DELAY_MS = 5000;
-const CAPTURE_BLOCK_START = '// SM-CAPTURE-START';
-const CAPTURE_BLOCK_END = '// SM-CAPTURE-END';
-const CAPTURE_ITEM_START = '// SM-CAPTURE-ITEM-START';
-const CAPTURE_ITEM_END = '// SM-CAPTURE-ITEM-END';
-const CAPTURE_BLOCK_START_RGX = /^\s*\/\/\s*SM-CAPTURE-START\b/;
-const CAPTURE_BLOCK_END_RGX = /^\s*\/\/\s*SM-CAPTURE-END\b/;
-const CAPTURE_ITEM_START_RGX = /^\s*\/\/\s*SM-CAPTURE-ITEM-START\b/;
-const CAPTURE_ITEM_END_RGX = /^\s*\/\/\s*SM-CAPTURE-ITEM-END\b/;
-const CAPTURE_KEY_LINE_RGX = /key:\s*("(?:\\.|[^"])*")\s*,?\s*$/;
-const CAPTURE_NAME_LINE_RGX = /name:\s*("(?:\\.|[^"])*")\s*,?\s*$/;
 const LOADER_LOAD_LINE_RGX = /(mw\s*\.\s*loader\s*\.\s*load\s*\(.*\)\s*;)\s*$/;
-
-function safeUnmount(app, root) {
-	try {
-		if (app && typeof app.unmount === 'function') {
-			app.unmount();
-		}
-	} catch {
-		// Ignore unmount race conditions.
-	}
-	try {
-		if (root?.parentNode) {
-			root.parentNode.removeChild(root);
-		}
-	} catch {
-		// Ignore already removed roots.
-	}
-}
 
 function parseJsonStringToken(token, fallback = '') {
 	try {
@@ -57,7 +44,7 @@ function extractLoadCall(line) {
 }
 
 function buildCapturedLoadCall(anImport) {
-	const serverName = mw?.config?.get?.('wgServerName') || '';
+	const serverName = getServerName();
 	const loaderUrl = anImport.toLoaderUrl(serverName);
 	const isCss = /\.css($|[?#])/i.test(String(loaderUrl || ''));
 	const typeArg = isCss ? ", 'text/css'" : '';
@@ -65,7 +52,7 @@ function buildCapturedLoadCall(anImport) {
 }
 
 function buildCaptureItem(anImport, captureName) {
-	const fallbackName = (anImport.getDisplayName() || '').replace(/_/g, ' ') || 'Captured script';
+	const fallbackName = (anImport.getDisplayName() || '').replace(/_/g, ' ') || t('label-captured-script-fallback');
 	return {
 		key: anImport.getKey(),
 		name: String(captureName || '').trim() || fallbackName,
@@ -232,7 +219,7 @@ function getTargetTitle(anImport, target) {
 	if (typeof staticResolver === 'function') {
 		return staticResolver(target);
 	}
-	const userName = mw?.config?.get?.('wgUserName') || '';
+	const userName = getUserName();
 	return `User:${userName}/${target}.js`;
 }
 
@@ -271,13 +258,18 @@ async function saveCaptureState(anImport, summaryKey, nextText) {
 		throw new Error(`API is unavailable for target "${target}"`);
 	}
 	const title = getTargetTitle(anImport, target);
-	await api.postWithEditToken({
-		action: 'edit',
-		title,
-		text: nextText,
-		summary: getSummaryForTarget(target, summaryKey, anImport.getDescription(true), getStrings()),
-		formatversion: 2
-	});
+	try {
+		await api.postWithEditToken({
+			action: 'edit',
+			title,
+			text: nextText,
+			summary: getSummaryForTarget(target, summaryKey, anImport.getDescription(true), getStrings()),
+			formatversion: 2
+		});
+	} catch (error) {
+		logger.error(`Failed to save capture state (${summaryKey})`, error);
+		throw error;
+	}
 }
 
 function isSameCaptureItem(item, key, normalizedLoadCall) {

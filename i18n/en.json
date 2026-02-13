@@ -68,8 +68,14 @@
 	"settings-save": "Save",
 	"settings-saved": "Settings saved",
 	"label-captured-script": "Captured script",
+	"label-captured-script-fallback": "Captured script",
+	"label-gadgets": "Gadgets",
+	"label-loading": "Loading",
 
 	"gadgets-not-available": "No gadgets available or failed to load gadgets data.",
+	"notification-gadget-enabled": "Gadget $1 enabled",
+	"notification-gadget-disabled": "Gadget $1 disabled",
+	"notification-gadget-toggle-error": "Failed to toggle gadget",
 
 	"notification-install-success": "Script $1 installed successfully",
 	"notification-uninstall-success": "Script $1 uninstalled successfully",
@@ -99,6 +105,8 @@
 	"error-install-via-preferences": "Install via preferences",
 	"error-temp-warning": "Installation of non-User, non-MediaWiki protected pages is temporary and may be removed in the future.",
 	"error-bad-page": "Page is not User: or MediaWiki: and is unprotected",
+	"error-load-interface": "Failed to load interface. Please refresh the page.",
+	"error-bootstrap-failed": "Script Manager failed to initialize. Check console for details.",
 
 	"security-warning": "Warning!$1\n\nAll user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump. Install this script?",
 
