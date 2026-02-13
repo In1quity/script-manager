@@ -23,6 +23,7 @@ import {
 	ensureAllImports,
 	ensureImportsForTarget,
 	getImportList,
+	hasTargetNonImportCode,
 	refreshImportsView,
 	setImportsRef
 } from '@services/importList';
@@ -74,6 +75,7 @@ export function createPanel() {
 				libs.CdxTextInput,
 				libs.CdxSelect,
 				libs.CdxField,
+				libs.CdxMessage,
 				libs.CdxTabs,
 				libs.CdxTab,
 				libs.CdxToggleButton
@@ -98,6 +100,7 @@ export function createVuePanel(
 	CdxTextInput,
 	CdxSelect,
 	CdxField,
+	CdxMessage,
 	CdxTabs,
 	CdxTab,
 	CdxToggleButton
@@ -106,7 +109,7 @@ export function createVuePanel(
 	let app = null;
 
 	const ScriptManager = defineComponent({
-		components: { CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxTabs, CdxTab, CdxToggleButton },
+		components: { CdxDialog, CdxButton, CdxTextInput, CdxSelect, CdxField, CdxMessage, CdxTabs, CdxTab, CdxToggleButton },
 		setup() {
 			const dialogOpen = ref(true);
 			const filterText = ref('');
@@ -227,6 +230,27 @@ export function createVuePanel(
 				});
 
 				return result;
+			});
+
+			const scriptEmptyStateMessage = computed(() => {
+				if (selectedSkin.value === 'gadgets' || !isSelectedTargetLoaded.value) {
+					return '';
+				}
+
+				const hasVisibleImports = Object.keys(filteredImports.value || {}).some((targetName) => targetName !== 'gadgets');
+				if (hasVisibleImports) {
+					return '';
+				}
+
+				if (selectedSkin.value === 'all') {
+					const targets = Object.keys(importsReactive.value || {});
+					const hasAnyCode = targets.some((targetName) => hasTargetNonImportCode(targetName));
+					return hasAnyCode ? t('panel-no-script-imports-with-code') : t('panel-no-script-imports');
+				}
+
+				return hasTargetNonImportCode(selectedSkin.value)
+					? t('panel-no-script-imports-with-code')
+					: t('panel-no-script-imports');
 			});
 
 			const skinTabs = computed(() => {
@@ -509,6 +533,7 @@ export function createVuePanel(
 				skinTabs,
 				isSelectedTargetLoaded,
 				filteredImports,
+				scriptEmptyStateMessage,
 				loadingStates,
 				removedScripts,
 				gadgetSectionLabels,
@@ -626,74 +651,81 @@ export function createVuePanel(
 							</div>
 						</template>
 						<template v-else>
-							<div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
-								<h3>
-									<template v-if="targetName === 'common'">
-										<a :href="getSkinUrl(targetName)" target="_blank" v-text="getSkinLabel(targetName, true)"></a>
-									</template>
-									<template v-else-if="targetName === 'global'">
-										<a :href="getSkinUrl(targetName)" target="_blank" v-text="getSkinLabel(targetName, true)"></a>
-									</template>
-									<template v-else>
-										<a :href="getSkinUrl(targetName)" target="_blank" v-text="targetName"></a>
-									</template>
-								</h3>
-								<div class="script-list">
-									<div
-										v-for="anImport in targetImports"
-										:key="anImport.getKey()"
-										class="script-item"
-										:class="{ disabled: anImport.disabled, 'script-item-removed': removedScripts.includes(anImport.getKey()) }"
-									>
-										<div class="script-info">
-											<a :href="getImportHumanUrl(anImport)" class="script-link" v-text="getImportDisplayName(anImport)"></a>
-											<span
-												v-if="anImport.captured"
-												class="sm-captured-indicator"
-												:title="SM_t('label-captured-script')"
-												:aria-label="SM_t('label-captured-script')"
-											></span>
-											<span v-if="getImportSourceLabel(anImport)" class="script-source" v-text="getImportSourceLabel(anImport)"></span>
-										</div>
-										<div class="script-actions">
-											<cdx-button
-												weight="quiet"
-												size="small"
-												:disabled="loadingStates['toggle-' + anImport.getKey()]"
-												@click="handleToggleDisabled(anImport)"
-											>
-												<span v-text="loadingStates['toggle-' + anImport.getKey()] ? '...' : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
-											</cdx-button>
-											<cdx-button
-												weight="quiet"
-												size="small"
-												:disabled="loadingStates['move-' + anImport.getKey()]"
-												@click="handleMove(anImport)"
-											>
-												<span v-text="loadingStates['move-' + anImport.getKey()] ? '...' : SM_t('action-move')"></span>
-											</cdx-button>
-											<cdx-button
-												v-if="anImport.captured || captureEnabled"
-												weight="quiet"
-												size="small"
-												:disabled="removedScripts.includes(anImport.getKey()) || loadingStates['capture-' + anImport.getKey()]"
-												@click="handleCapture(anImport)"
-											>
-												<span v-text="loadingStates['capture-' + anImport.getKey()] ? (anImport.captured ? SM_t('action-decapture-progress') : SM_t('action-capture-progress')) : (anImport.captured ? SM_t('action-decapture') : SM_t('action-capture'))"></span>
-											</cdx-button>
-											<cdx-button
-												action="destructive"
-												weight="quiet"
-												size="small"
-												:disabled="loadingStates['uninstall-' + anImport.getKey()]"
-												@click="handleUninstall(anImport)"
-											>
-												<span v-text="loadingStates['uninstall-' + anImport.getKey()] ? '...' : (removedScripts.includes(anImport.getKey()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
-											</cdx-button>
+							<div v-if="scriptEmptyStateMessage" class="sm-empty-state">
+								<cdx-message type="notice" :allow-user-dismiss="false" :inline="false">
+									<span v-text="scriptEmptyStateMessage"></span>
+								</cdx-message>
+							</div>
+							<template v-else>
+								<div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
+									<h3>
+										<template v-if="targetName === 'common'">
+											<a :href="getSkinUrl(targetName)" target="_blank" v-text="getSkinLabel(targetName, true)"></a>
+										</template>
+										<template v-else-if="targetName === 'global'">
+											<a :href="getSkinUrl(targetName)" target="_blank" v-text="getSkinLabel(targetName, true)"></a>
+										</template>
+										<template v-else>
+											<a :href="getSkinUrl(targetName)" target="_blank" v-text="targetName"></a>
+										</template>
+									</h3>
+									<div class="script-list">
+										<div
+											v-for="anImport in targetImports"
+											:key="anImport.getKey()"
+											class="script-item"
+											:class="{ disabled: anImport.disabled, 'script-item-removed': removedScripts.includes(anImport.getKey()) }"
+										>
+											<div class="script-info">
+												<a :href="getImportHumanUrl(anImport)" class="script-link" v-text="getImportDisplayName(anImport)"></a>
+												<span
+													v-if="anImport.captured"
+													class="sm-captured-indicator"
+													:title="SM_t('label-captured-script')"
+													:aria-label="SM_t('label-captured-script')"
+												></span>
+												<span v-if="getImportSourceLabel(anImport)" class="script-source" v-text="getImportSourceLabel(anImport)"></span>
+											</div>
+											<div class="script-actions">
+												<cdx-button
+													weight="quiet"
+													size="small"
+													:disabled="loadingStates['toggle-' + anImport.getKey()]"
+													@click="handleToggleDisabled(anImport)"
+												>
+													<span v-text="loadingStates['toggle-' + anImport.getKey()] ? '...' : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
+												</cdx-button>
+												<cdx-button
+													weight="quiet"
+													size="small"
+													:disabled="loadingStates['move-' + anImport.getKey()]"
+													@click="handleMove(anImport)"
+												>
+													<span v-text="loadingStates['move-' + anImport.getKey()] ? '...' : SM_t('action-move')"></span>
+												</cdx-button>
+												<cdx-button
+													v-if="anImport.captured || captureEnabled"
+													weight="quiet"
+													size="small"
+													:disabled="removedScripts.includes(anImport.getKey()) || loadingStates['capture-' + anImport.getKey()]"
+													@click="handleCapture(anImport)"
+												>
+													<span v-text="loadingStates['capture-' + anImport.getKey()] ? (anImport.captured ? SM_t('action-decapture-progress') : SM_t('action-capture-progress')) : (anImport.captured ? SM_t('action-decapture') : SM_t('action-capture'))"></span>
+												</cdx-button>
+												<cdx-button
+													action="destructive"
+													weight="quiet"
+													size="small"
+													:disabled="loadingStates['uninstall-' + anImport.getKey()]"
+													@click="handleUninstall(anImport)"
+												>
+													<span v-text="loadingStates['uninstall-' + anImport.getKey()] ? '...' : (removedScripts.includes(anImport.getKey()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
+												</cdx-button>
+											</div>
 										</div>
 									</div>
 								</div>
-							</div>
+							</template>
 						</template>
 					</template>
 				</div>

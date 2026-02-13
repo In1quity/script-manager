@@ -9,6 +9,7 @@ import { extractWikitextFromResponse } from '@utils/wikitext';
 const logger = createLogger('importList');
 const importsByTarget = Object.create(null);
 const importsLoadedTargets = Object.create(null);
+const nonImportCodeByTarget = Object.create(null);
 let importsRef = null;
 let buildImportListPromise = null;
 let queuedBuildAll = false;
@@ -74,6 +75,42 @@ function parseImportsFromWikitext(text, target) {
 	}
 
 	return imports;
+}
+
+function hasNonImportCode(text, target) {
+	const lines = String(text || '').split('\n');
+	let inBlockComment = false;
+
+	for (const line of lines) {
+		const trimmed = String(line || '').trim();
+		if (!trimmed) {
+			continue;
+		}
+		if (CAPTURE_BLOCK_START_RGX.test(line) || CAPTURE_BLOCK_END_RGX.test(line) || CAPTURE_NAME_LINE_RGX.test(line)) {
+			continue;
+		}
+		if (Import.fromJs(line, target)) {
+			continue;
+		}
+		if (inBlockComment) {
+			if (trimmed.includes('*/')) {
+				inBlockComment = false;
+			}
+			continue;
+		}
+		if (trimmed.startsWith('/*')) {
+			if (!trimmed.includes('*/')) {
+				inBlockComment = true;
+			}
+			continue;
+		}
+		if (trimmed.startsWith('//')) {
+			continue;
+		}
+		return true;
+	}
+
+	return false;
 }
 
 export async function getWikitextForTarget(target) {
@@ -208,6 +245,7 @@ export async function buildImportList(targets) {
 
 			results.forEach(({ target, text }) => {
 				importsByTarget[target] = parseImportsFromWikitext(text, target);
+				nonImportCodeByTarget[target] = hasNonImportCode(text, target);
 				importsLoadedTargets[target] = true;
 			});
 			syncImportsRef();
@@ -219,11 +257,15 @@ export async function buildImportList(targets) {
 
 		Object.keys(wikitexts).forEach((target) => {
 			nextImports[target] = parseImportsFromWikitext(wikitexts[target], target);
+			nonImportCodeByTarget[target] = hasNonImportCode(wikitexts[target], target);
 			importsLoadedTargets[target] = true;
 		});
 
 		Object.keys(importsByTarget).forEach((key) => {
 			delete importsByTarget[key];
+		});
+		Object.keys(nonImportCodeByTarget).forEach((key) => {
+			delete nonImportCodeByTarget[key];
 		});
 		Object.assign(importsByTarget, nextImports);
 		syncImportsRef();
@@ -263,6 +305,10 @@ export async function ensureAllImports() {
 
 export function getImportList() {
 	return importsByTarget;
+}
+
+export function hasTargetNonImportCode(target) {
+	return Boolean(nonImportCodeByTarget[target]);
 }
 
 export function getTargetsForScript(scriptName) {

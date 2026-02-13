@@ -58,6 +58,8 @@
 	"panel-header": "Manage JavaScript and CSS loaded with your account",
 	"panel-quick-filter": "Search scripts or gadgets",
 	"panel-enabled-only": "Enabled only",
+	"panel-no-script-imports": "No script imports found for this target.",
+	"panel-no-script-imports-with-code": "No script imports found, but this page contains custom code.",
 	"settings-title": "Settings",
 	"settings-default-tab": "Default tab",
 	"settings-default-tab-description": "Which tab to show when the panel opens",

@@ -55,6 +55,8 @@
 	"panel-header": "Header text for the main script management panel",
 	"panel-quick-filter": "Placeholder text for search field filtering scripts and gadgets",
 	"panel-enabled-only": "Label for checkbox to show only enabled scripts",
+	"panel-no-script-imports": "Message shown in script tabs when no importScript/mw.loader.load entries are found",
+	"panel-no-script-imports-with-code": "Message shown in script tabs when no managed imports are found but the target page contains other custom code",
 	"settings-title": "Title of the settings dialog",
 	"settings-default-tab": "Label for selecting which tab should be opened by default in the main panel",
 	"settings-default-tab-description": "Description text for the default tab setting",
