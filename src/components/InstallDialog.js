@@ -7,6 +7,7 @@ import { t } from '@services/i18n';
 import { loadVueCodex } from '@utils/codex';
 import { createLogger } from '@utils/logger';
 import { getCurrentSourceWiki, normalizeSourceWiki } from '@utils/mediawiki';
+import { getSkinLabel } from '@utils/skinLabels';
 import { runWithScriptLock } from '@utils/scriptLock';
 import { safeUnmount } from '@utils/vue';
 
@@ -153,7 +154,7 @@ export function createInstallDialog(
 			const questionText = ref(t('dialog-install-question'));
 
 			const skinOptions = SKINS.map((skin) => ({
-				label: skin === 'common' ? t('skin-common') : skin === 'global' ? t('skin-global') : skin,
+				label: getSkinLabel(skin, true),
 				value: skin
 			}));
 

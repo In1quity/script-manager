@@ -4,6 +4,7 @@ import { showNotification } from '@services/notification';
 import { t } from '@services/i18n';
 import { loadVueCodex } from '@utils/codex';
 import { createLogger } from '@utils/logger';
+import { getSkinLabel } from '@utils/skinLabels';
 import { safeUnmount } from '@utils/vue';
 
 const logger = createLogger('component.moveDialog');
@@ -79,7 +80,7 @@ export function createMoveDialog(
 			const isMoving = ref(false);
 
 			const targetOptions = SKINS.filter((skin) => skin !== anImport.target).map((skin) => ({
-				label: skin === 'common' ? t('skin-common') : skin === 'global' ? t('skin-global') : skin,
+				label: getSkinLabel(skin, true),
 				value: skin
 			}));
 
@@ -113,6 +114,7 @@ export function createMoveDialog(
 				selectedTarget,
 				isMoving,
 				targetOptions,
+				getSkinLabel,
 				handleMove,
 				closeDialog,
 				scriptName: (anImport.getDisplayName() || '').replace(/_/g, ' '),
@@ -131,7 +133,7 @@ export function createMoveDialog(
 					<div class="sm-move-script-name" v-text="scriptName"></div>
 					<div class="sm-move-current-location">
 						<strong><span v-text="SM_t('dialog-move-current-location')"></span></strong>
-						<div class="sm-move-current-location-value" v-text="currentTarget === 'global' ? SM_t('skin-global') : currentTarget === 'common' ? SM_t('skin-common') : currentTarget"></div>
+						<div class="sm-move-current-location-value" v-text="currentTarget === 'global' || currentTarget === 'common' ? getSkinLabel(currentTarget, true) : currentTarget"></div>
 					</div>
 					<cdx-field>
 						<template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>

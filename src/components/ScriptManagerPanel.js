@@ -35,6 +35,7 @@ import { createLogger } from '@utils/logger';
 import { getServerName, getUserName, normalizeMediaWikiHost } from '@utils/mediawiki';
 import { canonicalizeUserNamespace } from '@utils/namespace';
 import { toPromise } from '@utils/promise';
+import { getSkinLabel, getSkinTooltip } from '@utils/skinLabels';
 import { safeUnmount } from '@utils/vue';
 
 const logger = createLogger('component.scriptManagerPanel');
@@ -232,8 +233,8 @@ export function createVuePanel(
 				return [
 					{ name: 'gadgets', label: gadgetsLabel.value || t('label-gadgets') },
 					{ name: 'all', label: t('skin-all') },
-					{ name: 'global', label: t('skin-global') },
-					{ name: 'common', label: t('skin-common') },
+					{ name: 'global', label: getSkinLabel('global') },
+					{ name: 'common', label: getSkinLabel('common') },
 					...SKINS.filter((skin) => skin !== 'common' && skin !== 'global').map((skin) => ({ name: skin, label: skin }))
 				];
 			});
@@ -523,6 +524,7 @@ export function createVuePanel(
 				handleGadgetToggle,
 				isGadgetEnabled,
 				getSkinUrl,
+				getSkinLabel,
 				getImportHumanUrl,
 				getImportDisplayName,
 				getImportSourceLabel,
@@ -627,10 +629,10 @@ export function createVuePanel(
 							<div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
 								<h3>
 									<template v-if="targetName === 'common'">
-										<a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skin-common')"></a>
+										<a :href="getSkinUrl(targetName)" target="_blank" v-text="getSkinLabel(targetName, true)"></a>
 									</template>
 									<template v-else-if="targetName === 'global'">
-										<a :href="getSkinUrl(targetName)" target="_blank" v-text="SM_t('skin-global')"></a>
+										<a :href="getSkinUrl(targetName)" target="_blank" v-text="getSkinLabel(targetName, true)"></a>
 									</template>
 									<template v-else>
 										<a :href="getSkinUrl(targetName)" target="_blank" v-text="targetName"></a>
@@ -730,12 +732,12 @@ export function createVuePanel(
 				renderIconInto(closeBtn, 'cdxIconClose', 'currentColor', 20);
 			}
 			const tabTooltips = {
-				common: t('skin-common-tooltip', t('skin-common')),
-				global: t('skin-global-tooltip', t('skin-global'))
+				common: getSkinTooltip('common'),
+				global: getSkinTooltip('global')
 			};
 			const compactLabels = {
-				common: t('skin-common').trim().toLowerCase(),
-				global: t('skin-global').trim().toLowerCase()
+				common: getSkinLabel('common').trim().toLowerCase(),
+				global: getSkinLabel('global').trim().toLowerCase()
 			};
 			const tabElements = document.querySelectorAll(
 				'.sm-cdx-dialog .cdx-tabs [role="tab"], .sm-cdx-dialog .cdx-tabs button'

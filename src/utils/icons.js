@@ -21,9 +21,29 @@ export function loadCodexIconViaApi(iconName) {
 			let raw = null;
 			if (Array.isArray(codexIcons)) {
 				const item = codexIcons[0] || null;
-				raw = item && (item.icon || item.svg || item.value || null);
+				raw =
+					item &&
+					(
+						item.icon ||
+						item.svg ||
+						item.value ||
+						item.default ||
+						(typeof item.langCodeMap === 'object' && item.langCodeMap && Object.values(item.langCodeMap).find((v) => typeof v === 'string')) ||
+						null
+					);
 			} else if (codexIcons && typeof codexIcons === 'object') {
-				raw = codexIcons[iconName] || null;
+				const item = codexIcons[iconName] || null;
+				if (typeof item === 'string') {
+					raw = item;
+				} else if (item && typeof item === 'object') {
+					raw =
+						item.icon ||
+						item.svg ||
+						item.value ||
+						item.default ||
+						(typeof item.langCodeMap === 'object' && item.langCodeMap && Object.values(item.langCodeMap).find((v) => typeof v === 'string')) ||
+						null;
+				}
 			}
 			try {
 				if (typeof raw === 'string') {

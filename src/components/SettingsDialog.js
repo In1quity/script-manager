@@ -5,6 +5,7 @@ import { showNotification } from '@services/notification';
 import { loadSettings, saveSettings } from '@services/settings';
 import { loadVueCodex } from '@utils/codex';
 import { createLogger } from '@utils/logger';
+import { getSkinLabel } from '@utils/skinLabels';
 import { safeUnmount } from '@utils/vue';
 
 const logger = createLogger('component.settingsDialog');
@@ -84,10 +85,10 @@ function getDefaultTabLabel(value) {
 		return t('skin-all');
 	}
 	if (value === 'common') {
-		return t('skin-common');
+		return getSkinLabel('common', true);
 	}
 	if (value === 'global') {
-		return t('skin-global');
+		return getSkinLabel('global', true);
 	}
 	return value;
 }
