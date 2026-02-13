@@ -352,6 +352,10 @@
 	font-weight: bold;
 }
 
+.sm-snippet-install-host {
+	margin-top: 0.5rem;
+}
+
 /* Move Dialog */
 #sm-move-dialog {
 	z-index: 1002;

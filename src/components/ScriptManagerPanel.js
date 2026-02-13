@@ -131,6 +131,7 @@ export function createVuePanel(
 			const dialogOpen = ref(true);
 			const filterText = ref('');
 			const selectedSkin = ref(getDefaultSkin());
+			const captureEnabled = ref(getSetting('captureEnabled') === true);
 			const enabledOnly = ref(false);
 			const loadingStates = ref({});
 			const removedScripts = ref([]);
@@ -263,7 +264,8 @@ export function createVuePanel(
 					if (typeof defaultTab === 'string' && validTabs.includes(defaultTab)) {
 						selectedSkin.value = defaultTab;
 					}
-					if (savedSettings?.captureEnabled === true) {
+					captureEnabled.value = savedSettings?.captureEnabled === true;
+					if (captureEnabled.value) {
 						void ensureCaptureRuntimeLoaded().catch((error) => {
 							logger.warn('capture runtime load failed after settings save', error);
 						});
@@ -380,8 +382,10 @@ export function createVuePanel(
 				if (loadingStates.value[key]) {
 					return;
 				}
-				const captureEnabled = getSetting('captureEnabled') === true;
-				const ensureCaptureReady = captureEnabled
+				if (!anImport?.captured && captureEnabled.value !== true) {
+					return;
+				}
+				const ensureCaptureReady = captureEnabled.value
 					? ensureCaptureRuntimeLoaded().catch((error) => {
 						logger.warn('capture runtime preload failed', error);
 					})
@@ -510,7 +514,7 @@ export function createVuePanel(
 				return anImport.getSourceLabel();
 			};
 
-			if (getSetting('captureEnabled') === true) {
+			if (captureEnabled.value) {
 				void ensureCaptureRuntimeLoaded().catch((error) => {
 					logger.warn('capture runtime load on panel init failed', error);
 				});
@@ -520,6 +524,7 @@ export function createVuePanel(
 				dialogOpen,
 				filterText,
 				selectedSkin,
+				captureEnabled,
 				skinTabs,
 				isSelectedTargetLoaded,
 				filteredImports,
@@ -686,6 +691,7 @@ export function createVuePanel(
 												<span v-text="loadingStates['move-' + anImport.getKey()] ? '...' : SM_t('action-move')"></span>
 											</cdx-button>
 											<cdx-button
+												v-if="anImport.captured || captureEnabled"
 												weight="quiet"
 												size="small"
 												:disabled="removedScripts.includes(anImport.getKey()) || loadingStates['capture-' + anImport.getKey()]"

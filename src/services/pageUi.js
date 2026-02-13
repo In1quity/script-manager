@@ -181,6 +181,35 @@ function injectInstallIndicator(fixedPageName) {
 	}
 }
 
+function extractScriptNameFromSnippetText(text) {
+	const lines = String(text || '')
+		.split('\n')
+		.map((line) => String(line || '').trim())
+		.filter(Boolean);
+	for (let index = 0; index < lines.length; index++) {
+		const parsed = Import.fromJs(lines[index], 'common');
+		if (parsed?.page) {
+			return parsed.page;
+		}
+	}
+	return null;
+}
+
+function getSnippetScriptName(node) {
+	if (!node) {
+		return null;
+	}
+	try {
+		const direct = extractScriptNameFromSnippetText(node.textContent || '');
+		if (direct) {
+			return direct;
+		}
+	} catch {
+		// Ignore broken snippet nodes.
+	}
+	return null;
+}
+
 export function showUi() {
 	if (document.getElementById('sm-top-container')) {
 		return;
@@ -243,6 +272,7 @@ export function showUi() {
 		mw.hook('wikipage.content').add(() => {
 			setTimeout(() => {
 				injectInstallIndicator(fixedPageName);
+				attachInstallLinks();
 			}, 0);
 		});
 	} catch {
@@ -332,6 +362,23 @@ export function attachInstallLinks() {
 
 		const host = $('<div class="sm-ibx-host"></div>');
 		$slot.append(host);
+		mountInstallButtonAfterImports(host[0], scriptName);
+	});
+
+	$('#mw-content-text .mw-highlight pre, #mw-content-text pre').each(function attachSnippetButtons() {
+		const scriptName = getSnippetScriptName(this);
+		if (!scriptName) {
+			return;
+		}
+
+		const container = this.closest('.mw-highlight') || this;
+		const $container = $(container);
+		if ($container.next('.sm-snippet-install-host').length) {
+			return;
+		}
+
+		const host = $('<div class="sm-snippet-install-host"></div>');
+		$container.after(host);
 		mountInstallButtonAfterImports(host[0], scriptName);
 	});
 }

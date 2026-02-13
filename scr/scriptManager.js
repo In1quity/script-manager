@@ -213,10 +213,23 @@
 	}
 
 	function shouldAutoload() {
-		if (NS <= 0) return false;
 		if (jsPage) return true;
 		if (document.getElementsByClassName('scriptInstallerLink').length) return true;
 		if (document.querySelector('table.infobox-user-script')) return true;
+		try {
+			const snippetNodes = document.querySelectorAll('#mw-content-text .mw-highlight pre, #mw-content-text pre');
+			const limit = Math.min(snippetNodes.length, 25);
+			for (let index = 0; index < limit; index++) {
+				const text = (snippetNodes[index] && snippetNodes[index].textContent) || '';
+				if (
+					/(?:mw\s*\.\s*loader\s*\.\s*load|importScript)\s*\(/i.test(text) &&
+					/(?:title=|User:)/i.test(text)
+				) {
+					return true;
+				}
+			}
+		} catch {}
+		if (NS <= 0) return false;
 		return false;
 	}
 
