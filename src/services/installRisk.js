@@ -228,18 +228,6 @@ function extractExternalUrlsFromScriptSource(scriptSourceText) {
 	return Array.from(urls);
 }
 
-function extractExternalHostsFromScriptSource(scriptSourceText) {
-	const urls = extractExternalUrlsFromScriptSource(scriptSourceText);
-	const hosts = new Set();
-	urls.forEach((url) => {
-		const host = toNormalizedHost(url);
-		if (host) {
-			hosts.add(host);
-		}
-	});
-	return Array.from(hosts);
-}
-
 function normalizeWikiScriptTitle(rawTitle) {
 	const candidate = String(rawTitle || '').trim();
 	if (!candidate) {
@@ -309,13 +297,28 @@ async function fetchScriptSourceTextFromHost(scriptName, sourceHostValue) {
 export async function detectExternalLoadHosts(scriptName, sourceWikiValue) {
 	const currentHost = normalizeMediaWikiHost(getServerName()).toLowerCase();
 	const scriptSourceText = await fetchScriptSourceText(scriptName, sourceWikiValue);
-	const hosts = extractExternalHostsFromScriptSource(scriptSourceText);
-	const externalHosts = hosts.filter((host) => host && host !== currentHost);
+	const urls = extractExternalUrlsFromScriptSource(scriptSourceText);
+	const hosts = new Set();
+	const wikimediaScriptRefKeys = new Set();
+	urls.forEach((rawUrl) => {
+		const host = toNormalizedHost(rawUrl);
+		if (host) {
+			hosts.add(host);
+		}
+		const scriptRef = resolveWikimediaScriptReference(rawUrl);
+		if (scriptRef) {
+			wikimediaScriptRefKeys.add(toScriptKey(scriptRef.host, scriptRef.title));
+		}
+	});
+	const currentWikiHosts = Array.from(hosts).filter((host) => host && host === currentHost);
+	const externalHosts = Array.from(hosts).filter((host) => host && host !== currentHost);
 	const wikimediaHosts = externalHosts.filter((host) => isWikimediaHost(host));
 	const nonWikimediaHosts = externalHosts.filter((host) => !isWikimediaHost(host));
 	return {
+		currentWikiHosts: Array.from(new Set(currentWikiHosts)).sort(),
 		wikimediaHosts: Array.from(new Set(wikimediaHosts)).sort(),
-		nonWikimediaHosts: Array.from(new Set(nonWikimediaHosts)).sort()
+		nonWikimediaHosts: Array.from(new Set(nonWikimediaHosts)).sort(),
+		hasWikimediaScriptReferences: wikimediaScriptRefKeys.size > 0
 	};
 }
 
@@ -335,6 +338,7 @@ export async function detectExternalLoadHostsDeep(scriptName, sourceWikiValue, o
 	const queue = [ { host: sourceHost, title: startTitle, depth: 0 } ];
 	const visitedScriptKeys = new Set([ toScriptKey(sourceHost, startTitle) ]);
 	const externalHosts = new Set();
+	const currentWikiHostsDeep = new Set();
 	let scannedScripts = 0;
 
 	while (queue.length && scannedScripts < maxScripts) {
@@ -352,8 +356,12 @@ export async function detectExternalLoadHostsDeep(scriptName, sourceWikiValue, o
 		const urls = extractExternalUrlsFromScriptSource(scriptSourceText);
 		urls.forEach((rawUrl) => {
 			const host = toNormalizedHost(rawUrl);
-			if (host && host !== currentHost) {
-				externalHosts.add(host);
+			if (host) {
+				if (host === currentHost) {
+					currentWikiHostsDeep.add(host);
+				} else {
+					externalHosts.add(host);
+				}
 			}
 			if (currentScript.depth >= maxDepth) {
 				return;
@@ -379,6 +387,7 @@ export async function detectExternalLoadHostsDeep(scriptName, sourceWikiValue, o
 	const wikimediaHosts = hosts.filter((host) => isWikimediaHost(host));
 	const nonWikimediaHosts = hosts.filter((host) => !isWikimediaHost(host));
 	return {
+		currentWikiHosts: Array.from(currentWikiHostsDeep).sort(),
 		wikimediaHosts: Array.from(new Set(wikimediaHosts)).sort(),
 		nonWikimediaHosts: Array.from(new Set(nonWikimediaHosts)).sort(),
 		scannedScripts,

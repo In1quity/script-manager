@@ -81,6 +81,7 @@ export function showInstallDialog(scriptName, buttonElement, dialogMeta = null) 
 					libs.createApp,
 					libs.defineComponent,
 					libs.ref,
+					libs.watch,
 					libs.CdxDialog,
 					libs.CdxButton,
 					libs.CdxMessage,
@@ -130,6 +131,7 @@ export function createInstallDialog(
 	createApp,
 	defineComponent,
 	ref,
+	watch,
 	CdxDialog,
 	CdxButton,
 	CdxMessage,
@@ -141,10 +143,20 @@ export function createInstallDialog(
 ) {
 	let app = null;
 
+	const onDialogClosed = () => {
+		resetButtonBusy(buttonElement);
+		safeUnmount(app, container[0]);
+	};
+
 	const InstallDialog = defineComponent({
 		components: { CdxDialog, CdxButton, CdxMessage, CdxSelect, CdxField },
 		setup() {
 			const dialogOpen = ref(true);
+			watch(dialogOpen, (open) => {
+				if (!open) {
+					onDialogClosed();
+				}
+			});
 			const selectedSkin = ref('common');
 			const isInstalling = ref(false);
 			const sourceWiki = ref(resolveSourceWiki(dialogMeta));
@@ -153,6 +165,7 @@ export function createInstallDialog(
 			);
 			const warningText = ref(t('dialog-install-warning'));
 			const questionText = ref(t('dialog-install-question'));
+			const externalCurrentWikiText = ref('');
 			const externalWikimediaWarningText = ref('');
 			const externalNonWikimediaWarningText = ref('');
 			const canDeepCheckExternalLoads = ref(false);
@@ -163,14 +176,25 @@ export function createInstallDialog(
 				value: skin
 			}));
 
-			const applyExternalLoadWarningState = ({ wikimediaHosts, nonWikimediaHosts }) => {
+			const applyExternalLoadWarningState = ({
+				currentWikiHosts = [],
+				wikimediaHosts,
+				nonWikimediaHosts,
+				hasWikimediaScriptReferences = false
+			}) => {
+				externalCurrentWikiText.value = currentWikiHosts.length
+					? t('dialog-install-current-wiki-loads').replace('$1', currentWikiHosts.join(', '))
+					: '';
 				externalWikimediaWarningText.value = wikimediaHosts.length
 					? t('dialog-install-external-wikimedia-warning').replace('$1', wikimediaHosts.join(', '))
 					: '';
 				externalNonWikimediaWarningText.value = nonWikimediaHosts.length
 					? t('dialog-install-external-nonwikimedia-warning').replace('$1', nonWikimediaHosts.join(', '))
 					: '';
-				canDeepCheckExternalLoads.value = wikimediaHosts.length > 0;
+				canDeepCheckExternalLoads.value =
+					wikimediaHosts.length > 0 ||
+					Boolean(hasWikimediaScriptReferences) ||
+					canDeepCheckExternalLoads.value;
 			};
 
 			const updateExternalLoadWarning = async () => {
@@ -179,6 +203,7 @@ export function createInstallDialog(
 					applyExternalLoadWarningState(result);
 				} catch (error) {
 					logger.warn('external load check failed', error);
+					externalCurrentWikiText.value = '';
 					externalWikimediaWarningText.value = '';
 					externalNonWikimediaWarningText.value = '';
 					canDeepCheckExternalLoads.value = false;
@@ -206,8 +231,6 @@ export function createInstallDialog(
 
 			const closeDialog = () => {
 				dialogOpen.value = false;
-				safeUnmount(app, container[0]);
-				resetButtonBusy(buttonElement);
 			};
 
 			const handleInstall = async () => {
@@ -239,6 +262,7 @@ export function createInstallDialog(
 				selectedSkin,
 				isInstalling,
 				skinOptions,
+				externalCurrentWikiText,
 				externalWikimediaWarningText,
 				externalNonWikimediaWarningText,
 				canDeepCheckExternalLoads,
@@ -271,6 +295,15 @@ export function createInstallDialog(
 					<span v-text="warningText"></span>
 				</cdx-message>
 				<cdx-message
+					v-if="externalCurrentWikiText"
+					class="sm-install-external-warning"
+					type="notice"
+					:allow-user-dismiss="false"
+					:inline="false"
+				>
+					<span v-text="externalCurrentWikiText"></span>
+				</cdx-message>
+				<cdx-message
 					v-if="externalWikimediaWarningText"
 					class="sm-install-external-warning"
 					type="warning"
@@ -291,7 +324,7 @@ export function createInstallDialog(
 				<cdx-button
 					v-if="canDeepCheckExternalLoads"
 					class="sm-install-deep-check-button"
-					weight="quiet"
+					weight="normal"
 					:disabled="isInstalling || isCheckingExternalLoads"
 					@click="handleDeepExternalLoadCheck"
 				>

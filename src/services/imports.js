@@ -263,9 +263,17 @@ export class Import {
 	getLineNums(targetWikitext) {
 		const quoted = (text) => new RegExp(`(['"])${escapeForRegex(text)}\\1`);
 		let toFind = null;
+		let titleInUrlPattern = null;
 
 		if (this.type === 0) {
 			toFind = quoted(escapeForJsString(this.page));
+			const page = String(this.page || '').trim();
+			if (page) {
+				// mw.loader.load('//host/...?title=PAGE&...') or title= encoded; line may start with "// " when disabled
+				titleInUrlPattern = new RegExp(
+					`title=${escapeForRegex(page)}([&\\s]|$)|title=${escapeForRegex(encodeURIComponent(page))}([&\\s]|$)`
+				);
+			}
 		} else if (this.type === 1) {
 			const pageName = String(this.page || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 			toFind = new RegExp(pageName);
@@ -273,14 +281,17 @@ export class Import {
 			toFind = quoted(escapeForJsString(this.url));
 		}
 
-		if (!toFind) {
+		if (!toFind && !titleInUrlPattern) {
 			return [];
 		}
+
+		const lineMatches = (line) =>
+			(toFind && toFind.test(line)) || (titleInUrlPattern && titleInUrlPattern.test(line));
 
 		const lines = String(targetWikitext || '').split('\n');
 		const indexes = new Set();
 		for (let index = 0; index < lines.length; index++) {
-			if (toFind.test(lines[index])) {
+			if (lineMatches(lines[index])) {
 				const itemRange = getCaptureItemRange(lines, index);
 				const blockRange = itemRange || getCaptureBlockRange(lines, index);
 				if (blockRange) {

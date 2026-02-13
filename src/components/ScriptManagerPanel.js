@@ -641,7 +641,7 @@ export function createVuePanel(
 														:disabled="loadingStates['gadget-' + gadgetName]"
 														@click="handleGadgetToggle(gadgetName, !isGadgetEnabled(gadgetName))"
 													>
-														<span v-text="loadingStates['gadget-' + gadgetName] ? '...' : (isGadgetEnabled(gadgetName) ? SM_t('action-disable') : SM_t('action-enable'))"></span>
+														<span v-text="loadingStates['gadget-' + gadgetName] ? (isGadgetEnabled(gadgetName) ? SM_t('action-disable-progress') : SM_t('action-enable-progress')) : (isGadgetEnabled(gadgetName) ? SM_t('action-disable') : SM_t('action-enable'))"></span>
 													</cdx-button>
 												</div>
 											</div>
@@ -693,7 +693,7 @@ export function createVuePanel(
 													:disabled="loadingStates['toggle-' + anImport.getKey()]"
 													@click="handleToggleDisabled(anImport)"
 												>
-													<span v-text="loadingStates['toggle-' + anImport.getKey()] ? '...' : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
+													<span v-text="loadingStates['toggle-' + anImport.getKey()] ? (anImport.disabled ? SM_t('action-enable-progress') : SM_t('action-disable-progress')) : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
 												</cdx-button>
 												<cdx-button
 													weight="quiet"
@@ -701,7 +701,7 @@ export function createVuePanel(
 													:disabled="loadingStates['move-' + anImport.getKey()]"
 													@click="handleMove(anImport)"
 												>
-													<span v-text="loadingStates['move-' + anImport.getKey()] ? '...' : SM_t('action-move')"></span>
+													<span v-text="loadingStates['move-' + anImport.getKey()] ? SM_t('action-move-progress') : SM_t('action-move')"></span>
 												</cdx-button>
 												<cdx-button
 													v-if="anImport.captured || captureEnabled"
@@ -719,7 +719,7 @@ export function createVuePanel(
 													:disabled="loadingStates['uninstall-' + anImport.getKey()]"
 													@click="handleUninstall(anImport)"
 												>
-													<span v-text="loadingStates['uninstall-' + anImport.getKey()] ? '...' : (removedScripts.includes(anImport.getKey()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
+													<span v-text="loadingStates['uninstall-' + anImport.getKey()] ? (removedScripts.includes(anImport.getKey()) ? SM_t('action-install-progress') : SM_t('action-uninstall-progress')) : (removedScripts.includes(anImport.getKey()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
 												</cdx-button>
 											</div>
 										</div>
