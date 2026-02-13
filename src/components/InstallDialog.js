@@ -332,7 +332,7 @@ export function createInstallDialog(
 				</cdx-button>
 				<p class="sm-install-question" v-text="questionText"></p>
 				<cdx-field>
-					<template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>
+					<template #label><span v-text="SM_t('dialog-install-to-skin')"></span></template>
 					<cdx-select
 						v-model:selected="selectedSkin"
 						:menu-items="skinOptions"

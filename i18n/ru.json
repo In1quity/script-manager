@@ -48,6 +48,7 @@
 	"dialog-install-external-wikimedia-warning": "Похоже, скрипт обменивается данными с другими сайтами Викимедиа: $1.",
 	"dialog-install-external-nonwikimedia-warning": "Внимание: скрипт обменивается данными со сторонними сайтами (не Викимедиа): $1.",
 	"dialog-install-question": "Установить этот скрипт?",
+	"dialog-install-to-skin": "Установить в тему",
 	"dialog-move-title": "Переместить скрипт",
 	"dialog-move-current-location": "Текущая тема",
 	"dialog-move-to-skin": "Переместить в тему",

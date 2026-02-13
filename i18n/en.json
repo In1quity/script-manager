@@ -51,6 +51,7 @@
 	"dialog-install-external-wikimedia-warning": "This script appears to exchange data with other Wikimedia sites: $1.",
 	"dialog-install-external-nonwikimedia-warning": "Warning: this script appears to exchange data with non-Wikimedia sites: $1.",
 	"dialog-install-question": "Install this script?",
+	"dialog-install-to-skin": "Install to skin",
 	"dialog-move-title": "Move script",
 	"dialog-move-current-location": "Current skin",
 	"dialog-move-to-skin": "Move to skin",
