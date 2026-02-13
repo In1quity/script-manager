@@ -321,9 +321,9 @@ export function createVuePanel(
 			const handleUninstall = (anImport) => {
 				const importKey = anImport.getKey();
 				const key = `uninstall-${importKey}`;
-				setLoading(key, true);
-
 				const isRemoved = removedScripts.value.includes(importKey);
+				setLoading(key, isRemoved ? 'restoring' : 'uninstalling');
+
 				const action = isRemoved ? anImport.install() : anImport.uninstall();
 				void toPromise(action)
 					.then(() => {
@@ -356,7 +356,7 @@ export function createVuePanel(
 
 			const handleToggleDisabled = (anImport) => {
 				const key = `toggle-${anImport.getKey()}`;
-				setLoading(key, true);
+				setLoading(key, anImport.disabled ? 'enabling' : 'disabling');
 				void toPromise(anImport.toggleDisabled())
 					.then(() => {
 						reloadOnClose.value = true;
@@ -693,7 +693,7 @@ export function createVuePanel(
 													:disabled="loadingStates['toggle-' + anImport.getKey()]"
 													@click="handleToggleDisabled(anImport)"
 												>
-													<span v-text="loadingStates['toggle-' + anImport.getKey()] ? (anImport.disabled ? SM_t('action-enable-progress') : SM_t('action-disable-progress')) : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
+													<span v-text="loadingStates['toggle-' + anImport.getKey()] === 'enabling' ? SM_t('action-enable-progress') : loadingStates['toggle-' + anImport.getKey()] === 'disabling' ? SM_t('action-disable-progress') : (anImport.disabled ? SM_t('action-enable') : SM_t('action-disable'))"></span>
 												</cdx-button>
 												<cdx-button
 													weight="quiet"
@@ -719,7 +719,7 @@ export function createVuePanel(
 													:disabled="loadingStates['uninstall-' + anImport.getKey()]"
 													@click="handleUninstall(anImport)"
 												>
-													<span v-text="loadingStates['uninstall-' + anImport.getKey()] ? (removedScripts.includes(anImport.getKey()) ? SM_t('action-install-progress') : SM_t('action-uninstall-progress')) : (removedScripts.includes(anImport.getKey()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
+													<span v-text="loadingStates['uninstall-' + anImport.getKey()] === 'restoring' ? SM_t('action-install-progress') : loadingStates['uninstall-' + anImport.getKey()] === 'uninstalling' ? SM_t('action-uninstall-progress') : (removedScripts.includes(anImport.getKey()) ? SM_t('action-restore') : SM_t('action-uninstall'))"></span>
 												</cdx-button>
 											</div>
 										</div>
