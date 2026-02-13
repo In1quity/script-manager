@@ -392,6 +392,14 @@
 	margin-bottom: 0.75rem;
 }
 
+.sm-install-external-warning {
+	margin-bottom: 0.75rem;
+}
+
+.sm-install-deep-check-button {
+	margin: 0 0 0.75rem;
+}
+
 .sm-install-question {
 	margin: 0 0 1rem;
 }

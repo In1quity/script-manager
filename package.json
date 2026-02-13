@@ -1,6 +1,6 @@
 {
 	"name": "Script Manager",
-	"version": "1.4.1",
+	"version": "1.5.0",
 	"description": "Script Manager Core - MediaWiki user script management",
 	"main": "scriptManager.js",
 	"browser": "scriptManager.js",

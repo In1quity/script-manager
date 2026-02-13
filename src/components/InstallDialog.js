@@ -2,6 +2,7 @@ import { SKINS } from '@constants/skins';
 import { Import } from '@services/imports';
 import { showNotification } from '@services/notification';
 import { refreshImportsView } from '@services/importList';
+import { detectExternalLoadHosts, detectExternalLoadHostsDeep } from '@services/installRisk';
 import { reloadAfterChange } from '@services/normalize';
 import { t } from '@services/i18n';
 import { loadVueCodex } from '@utils/codex';
@@ -152,11 +153,56 @@ export function createInstallDialog(
 			);
 			const warningText = ref(t('dialog-install-warning'));
 			const questionText = ref(t('dialog-install-question'));
+			const externalWikimediaWarningText = ref('');
+			const externalNonWikimediaWarningText = ref('');
+			const canDeepCheckExternalLoads = ref(false);
+			const isCheckingExternalLoads = ref(false);
 
 			const skinOptions = SKINS.map((skin) => ({
 				label: getSkinLabel(skin, true),
 				value: skin
 			}));
+
+			const applyExternalLoadWarningState = ({ wikimediaHosts, nonWikimediaHosts }) => {
+				externalWikimediaWarningText.value = wikimediaHosts.length
+					? t('dialog-install-external-wikimedia-warning').replace('$1', wikimediaHosts.join(', '))
+					: '';
+				externalNonWikimediaWarningText.value = nonWikimediaHosts.length
+					? t('dialog-install-external-nonwikimedia-warning').replace('$1', nonWikimediaHosts.join(', '))
+					: '';
+				canDeepCheckExternalLoads.value = wikimediaHosts.length > 0;
+			};
+
+			const updateExternalLoadWarning = async () => {
+				try {
+					const result = await detectExternalLoadHosts(scriptName, dialogMeta?.sourceWiki);
+					applyExternalLoadWarningState(result);
+				} catch (error) {
+					logger.warn('external load check failed', error);
+					externalWikimediaWarningText.value = '';
+					externalNonWikimediaWarningText.value = '';
+					canDeepCheckExternalLoads.value = false;
+				}
+			};
+			void updateExternalLoadWarning();
+
+			const handleDeepExternalLoadCheck = async () => {
+				if (isCheckingExternalLoads.value || isInstalling.value) {
+					return;
+				}
+				isCheckingExternalLoads.value = true;
+				try {
+					const deepResult = await detectExternalLoadHostsDeep(scriptName, dialogMeta?.sourceWiki, {
+						maxDepth: 3
+					});
+					applyExternalLoadWarningState(deepResult);
+				} catch (error) {
+					logger.warn('deep external load check failed', error);
+					showNotification('notification-general-error', 'error');
+				} finally {
+					isCheckingExternalLoads.value = false;
+				}
+			};
 
 			const closeDialog = () => {
 				dialogOpen.value = false;
@@ -193,7 +239,12 @@ export function createInstallDialog(
 				selectedSkin,
 				isInstalling,
 				skinOptions,
+				externalWikimediaWarningText,
+				externalNonWikimediaWarningText,
+				canDeepCheckExternalLoads,
+				isCheckingExternalLoads,
 				handleInstall,
+				handleDeepExternalLoadCheck,
 				closeDialog,
 				scriptName,
 				sourceText,
@@ -216,9 +267,36 @@ export function createInstallDialog(
 			>
 				<p class="sm-install-script-name" v-text="scriptName"></p>
 				<p v-if="sourceText" class="sm-install-source" v-text="sourceText"></p>
-				<cdx-message class="sm-install-warning" type="error" :allow-user-dismiss="false" :inline="false">
+				<cdx-message class="sm-install-warning" type="warning" :allow-user-dismiss="false" :inline="false">
 					<span v-text="warningText"></span>
 				</cdx-message>
+				<cdx-message
+					v-if="externalWikimediaWarningText"
+					class="sm-install-external-warning"
+					type="warning"
+					:allow-user-dismiss="false"
+					:inline="false"
+				>
+					<span v-text="externalWikimediaWarningText"></span>
+				</cdx-message>
+				<cdx-message
+					v-if="externalNonWikimediaWarningText"
+					class="sm-install-external-warning"
+					type="error"
+					:allow-user-dismiss="false"
+					:inline="false"
+				>
+					<span v-text="externalNonWikimediaWarningText"></span>
+				</cdx-message>
+				<cdx-button
+					v-if="canDeepCheckExternalLoads"
+					class="sm-install-deep-check-button"
+					weight="quiet"
+					:disabled="isInstalling || isCheckingExternalLoads"
+					@click="handleDeepExternalLoadCheck"
+				>
+					<span v-text="isCheckingExternalLoads ? SM_t('action-check-loaded-scripts-progress') : SM_t('action-check-loaded-scripts')"></span>
+				</cdx-button>
 				<p class="sm-install-question" v-text="questionText"></p>
 				<cdx-field>
 					<template #label><span v-text="SM_t('dialog-move-to-skin')"></span></template>

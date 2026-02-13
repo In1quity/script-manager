@@ -39,9 +39,13 @@
 	"action-normalize": "Standardize imports",
 	"action-normalize-progress": "Standardizing imports...",
 	"action-normalize-completed": "Imports standardized",
+	"action-check-loaded-scripts": "Check loaded scripts",
+	"action-check-loaded-scripts-progress": "Checking loaded scripts...",
 
 	"dialog-install-title": "Install script",
 	"dialog-install-warning": "All user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump.",
+	"dialog-install-external-wikimedia-warning": "This script appears to exchange data with other Wikimedia sites: $1.",
+	"dialog-install-external-nonwikimedia-warning": "Warning: this script appears to exchange data with non-Wikimedia sites: $1.",
 	"dialog-install-question": "Install this script?",
 	"dialog-move-title": "Move script",
 	"dialog-move-current-location": "Current skin",
