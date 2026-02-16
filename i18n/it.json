@@ -1,13 +1,19 @@
 {
 	"@metadata": {
 		"authors": [
+			"Asteralee",
+			"Beta16",
 			"Giorgx12"
 		]
 	},
 	"script-name": "Gestore di Script",
 	"script-name-short": "SM",
+	"skin-common": "comune",
+	"skin-global": "globale",
 	"summary-install": "Installazione di $1",
 	"summary-uninstall": "Disinstallazione di $1",
+	"summary-move-from": "Sposta $1 da $2",
+	"summary-move-to": "Sposta $1 da $2",
 	"summary-disable": "Disabilitazione di $1",
 	"summary-enable": "Abilitazione di $1",
 	"action-install": "Installa",
@@ -22,10 +28,16 @@
 	"action-move-progress": "Spostamento...",
 	"action-restore": "Ripristina",
 	"action-cancel": "Cancella",
-	"action-normalize": "Normalizza",
-	"action-normalize-progress": "Normalizzazione...",
-	"action-normalize-completed": "Normalizzato",
-	"dialog-install-title": "Installa $1",
-	"dialog-move-title": "Muovi lo script $1",
-	"dialog-move-current-location": "Posizione attuale:"
+	"action-normalize": "Standardizza le importazioni",
+	"action-normalize-progress": "Standardizzazione delle importazioni...",
+	"action-normalize-completed": "Importazioni standardizzate",
+	"dialog-install-title": "Installa script",
+	"dialog-move-title": "Sposta script",
+	"dialog-move-current-location": "Tema attuale",
+	"dialog-move-button": "Sposta script",
+	"settings-title": "Impostazioni",
+	"settings-save": "Salva",
+	"label-gadgets": "Accessori",
+	"label-loading": "Caricamento",
+	"notification-normalize-success": "Importazioni standardizzate correttamente"
 }
