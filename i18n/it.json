@@ -14,6 +14,7 @@
 	"summary-uninstall": "Disinstallazione di $1",
 	"summary-move-from": "Sposta $1 da $2",
 	"summary-move-to": "Sposta $1 da $2",
+	"summary-move-to-global": "Sposta $1 da $2 ($3)",
 	"summary-disable": "Disabilitazione di $1",
 	"summary-enable": "Abilitazione di $1",
 	"action-install": "Installa",
