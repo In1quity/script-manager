@@ -1,7 +1,8 @@
 {
 	"@metadata": {
 		"authors": [
-			"Largestone"
+			"Largestone",
+			"RhAnish"
 		]
 	},
 	"script-name": "スクリプトマネージャー",
@@ -26,6 +27,8 @@
 	"dialog-move-current-location": "現在の位置:",
 	"dialog-move-button": "スクリプトを移動",
 	"dialog-move-progress": "移動中...",
+	"settings-save": "保存",
+	"label-loading": "読み込み中…",
 	"error-cannot-install": "インストールできません",
 	"error-not-javascript": "JavaScriptではありません",
 	"sidebar-link": "スクリプトマネージャー",
