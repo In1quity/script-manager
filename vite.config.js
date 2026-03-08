@@ -32,20 +32,15 @@ const stripLeadingDocComment = (source) => {
 	return String(source || '').replace(/^\s*\/\*\*[\s\S]*?\*\/\s*/, '');
 };
 
-export default defineConfig(({ command, mode }) => {
-	const isProd = command === 'build' && mode === 'production';
-	const isDev = command === 'serve' || mode === 'development';
-	const pkg = readJson('./package.json');
-	const enDict = readJson('./i18n/en.json');
-	const buildDate = new Date().toISOString().slice(0, 10);
-	const licenseTag = String(pkg.license || '')
+const buildBanner = (packageData, buildDateValue) => {
+	const buildDate = buildDateValue || new Date().toISOString().slice(0, 10);
+	const licenseTag = String(packageData?.license || '')
 		.replace(/[()]/g, '')
 		.trim();
-	const repositoryTag = String(pkg?.repository?.url || '')
+	const repositoryTag = String(packageData?.repository?.url || '')
 		.replace(/\.git$/i, '')
 		.trim();
-
-	const banner = `/**
+	return `/**
  * @file Script Manager
  * @summary MediaWiki user script installer (loader, core, capture).
  * @description Based on [[en:User:Equazcion/ScriptInstaller]]; adapted [[en:User:Enterprisey/script-installer]];
@@ -54,11 +49,20 @@ export default defineConfig(({ command, mode }) => {
  * @author Enterprisey
  * @author Iniquity
  * @license ${licenseTag || 'MIT OR CC-BY-SA-4.0'}
- * @documentation ${pkg.documentation}
- * @repository ${repositoryTag || pkg.documentation}
- * @version ${pkg.version}
+ * @documentation ${packageData.documentation}
+ * @repository ${repositoryTag || packageData.documentation}
+ * @version ${packageData.version}
  * @buildDate ${buildDate}
  */`;
+};
+
+export default defineConfig(({ command, mode }) => {
+	const isProd = command === 'build' && mode === 'production';
+	const isDev = command === 'serve' || mode === 'development';
+	const pkg = readJson('./package.json');
+	const enDict = readJson('./i18n/en.json');
+	const buildDate = new Date().toISOString().slice(0, 10);
+	const banner = buildBanner(pkg, buildDate);
 
 	return {
 		envPrefix: [ 'VITE_', 'SM_' ],
@@ -116,9 +120,11 @@ export default defineConfig(({ command, mode }) => {
 				apply: 'build',
 				enforce: 'post',
 				generateBundle(_options, bundle) {
+					const pkgNow = readJson('./package.json');
+					const bannerNow = buildBanner(pkgNow);
 					for (const [ fileName, chunk ] of Object.entries(bundle)) {
 						if (chunk.type === 'chunk' && fileName.endsWith('.js')) {
-							chunk.code = `${banner}\n${chunk.code}\n`;
+							chunk.code = `${bannerNow}\n${chunk.code}\n`;
 						}
 					}
 				}
