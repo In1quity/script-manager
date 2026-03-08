@@ -16,7 +16,7 @@ import { fetchWithTimeout } from '@utils/network';
 import { decodeSafe } from '@utils/url';
 import { getWikitext } from '@utils/wikitext';
 
-const URL_RGX = /^(?:https?:)?\/\/(.+?)\.org\/w\/index\.php\?.*?title=(.+?(?:&|$))/;
+const URL_RGX = /^(?:https?:)?\/\/(.+?)\.org\/w\/index\.php\?(?:.*?&)?title=([^&#]+)/;
 const IMPORT_RGX = /^\s*(\/\/)?\s*importScript\s*\(\s*(['"])\s*(.+?)\s*\2\s*\)\s*;?/;
 const LOADER_RGX =
 	/^\s*(\/\/)?\s*mw\s*\.\s*loader\s*\.\s*load\s*\(\s*(['"])\s*(.+?)\s*\2\s*(?:,\s*(['"])\s*(?:text\/css|application\/css|text\/javascript|application\/javascript)\s*\4\s*)?\)\s*;?/;
