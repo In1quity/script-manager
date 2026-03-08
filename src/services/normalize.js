@@ -18,13 +18,14 @@ export async function normalize(target) {
 		const importIndexes = [];
 
 		for (let index = 0; index < lines.length; index++) {
-			const anImport = Import.fromJs(lines[index], target);
+			const line = lines[index];
+			const anImport = Import.fromJs(line, target);
 			if (anImport) {
 				importsToResolve.push(anImport);
 				importIndexes.push(index);
 				continue;
 			}
-			nextLines[index] = lines[index];
+			nextLines[index] = line;
 		}
 
 		await Promise.allSettled(
@@ -39,7 +40,9 @@ export async function normalize(target) {
 		const serverName = mw?.config?.get('wgServerName') || '';
 		for (let index = 0; index < importsToResolve.length; index++) {
 			const lineIndex = importIndexes[index];
-			nextLines[lineIndex] = importsToResolve[index].toJs(serverName);
+			const originalLine = lines[lineIndex];
+			const leadingWhitespace = (String(originalLine ?? '').match(/^\s*/) || [ '' ])[0];
+			nextLines[lineIndex] = leadingWhitespace + importsToResolve[index].toJs(serverName);
 		}
 
 		const nextText = nextLines.join('\n');
