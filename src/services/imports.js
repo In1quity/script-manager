@@ -40,6 +40,55 @@ function extractDocumentationReference(text) {
 	return null;
 }
 
+function extractRevisionContent(apiData) {
+	const page = Array.isArray(apiData?.query?.pages) ? apiData.query.pages[0] : null;
+	const revision = page?.revisions?.[0];
+	const byContent = revision?.content;
+	if (typeof byContent === 'string' && byContent) {
+		return byContent;
+	}
+	const bySlot = revision?.slots?.main?.content;
+	if (typeof bySlot === 'string' && bySlot) {
+		return bySlot;
+	}
+	const byLegacy = revision?.['*'];
+	if (typeof byLegacy === 'string' && byLegacy) {
+		return byLegacy;
+	}
+	return '';
+}
+
+async function fetchScriptHead(host, pageTitle) {
+	const apiUrl = `https://${host}/w/api.php`;
+	try {
+		if (mw?.ForeignApi) {
+			const foreignApi = new mw.ForeignApi(apiUrl, {
+				anonymous: true
+			});
+			const data = await foreignApi.get({
+				action: 'query',
+				prop: 'revisions',
+				rvprop: 'content',
+				rvslots: 'main',
+				titles: pageTitle,
+				format: 'json',
+				formatversion: 2
+			});
+			return String(extractRevisionContent(data) || '').slice(0, SM_DOC_REFERENCE_SCAN_LIMIT);
+		}
+	} catch (error) {
+		logger.debug('ForeignApi script fetch failed, trying fetch fallback', error);
+	}
+
+	const apiFetchUrl = `${apiUrl}?action=query&prop=revisions&rvprop=content&rvslots=main&titles=${encodeURIComponent(pageTitle)}&format=json&formatversion=2&origin=*`;
+	const apiResponse = await fetchWithTimeout(apiFetchUrl);
+	if (!apiResponse.ok) {
+		return '';
+	}
+	const apiData = await apiResponse.json();
+	return String(extractRevisionContent(apiData) || '').slice(0, SM_DOC_REFERENCE_SCAN_LIMIT);
+}
+
 function getCaptureBlockRange(lines, lineIndex) {
 	let start = -1;
 	for (let i = lineIndex; i >= 0; i--) {
@@ -242,13 +291,10 @@ export class Import {
 				return null;
 			}
 			const host = normalizeMediaWikiHost(this.type === 1 && this.wiki ? `${this.wiki}.org` : Import.getServerName());
-			const rawUrl = `//${host}/w/index.php?title=${encodeURIComponent(this.page)}&action=raw&ctype=text/javascript`;
-			const response = await fetchWithTimeout(rawUrl);
-			if (!response.ok) {
+			const head = await fetchScriptHead(host, this.page);
+			if (!head) {
 				return null;
 			}
-			const text = await response.text();
-			const head = text.slice(0, SM_DOC_REFERENCE_SCAN_LIMIT);
 			const docRef = extractDocumentationReference(head);
 			if (!docRef) {
 				return null;

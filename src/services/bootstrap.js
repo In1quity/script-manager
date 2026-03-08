@@ -10,8 +10,9 @@ import { showNotification } from './notification.js';
  * Effective UI language: URL uselang overrides user preference so the core matches what the user sees.
  * @param {import('./runtimeContext').ScriptManagerContext} context
  * @returns {string|undefined} Language code from uselang, or undefined to use wgUserLanguage.
+ * @internal
  */
-function getEffectiveUserLanguage(context) {
+export function getEffectiveUserLanguage(context) {
 	try {
 		const search = context.runtime.window?.location?.search;
 		if (!search) return undefined;
@@ -23,8 +24,11 @@ function getEffectiveUserLanguage(context) {
 	}
 }
 
-/** @param {string|undefined|null} code */
-function normalizeLangCode(code) {
+/**
+ * @param {string|undefined|null} code
+ * @internal
+ */
+export function normalizeLangCode(code) {
 	if (code === undefined || code === null || typeof code !== 'string') return undefined;
 	const trimmed = code.trim().toLowerCase();
 	if (!trimmed) return undefined;
