@@ -27,7 +27,7 @@ function getLanguageChain(lang) {
 async function fetchLanguage(lang) {
 	const base =
 		window.ScriptManagerI18nBaseUrl || 'https://gitlab-content.toolforge.org/iniquity/script-manager/-/raw/main/i18n';
-	const response = await fetchWithTimeout(`${base}/${lang}.json`);
+	const response = await fetchWithTimeout(`${base}/${lang}.json?mime=application/json`);
 	if (!response.ok) {
 		throw new Error(`Failed to load i18n: ${lang}`);
 	}

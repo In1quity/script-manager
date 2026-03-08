@@ -125,6 +125,8 @@
 			if (!cached || !cached.data || typeof cached.ts !== 'number') return null;
 			if (Date.now() - cached.ts > SIDEBAR_I18N_CACHE_TTL) return null;
 			if (cached.lang && cached.lang !== lang) return null;
+			if (cached.resolvedLang && cached.resolvedLang !== lang) return null;
+			if (cached.resolvedLang === undefined && lang !== 'en') return null;
 			if (!cached.data.label || !cached.data.title) return null;
 			return cached.data;
 		} catch {
@@ -137,10 +139,11 @@
 		return readCacheByKey(cacheKey, lang) || readCacheByKey(SIDEBAR_I18N_LEGACY_CACHE_KEY, lang);
 	}
 
-	function writeSidebarMessagesCache(lang, data) {
+	function writeSidebarMessagesCache(lang, data, resolvedLang) {
 		try {
 			const payload = JSON.stringify({
 				lang,
+				resolvedLang: resolvedLang || lang,
 				ts: Date.now(),
 				data
 			});
@@ -184,7 +187,11 @@
 					.then(function(json) {
 						const messages = normalizeSidebarMessages(json);
 						if (messages) {
-							writeSidebarMessagesCache(requestedLang, messages);
+							// Cache only exact-language hits to avoid persisting English
+							// fallback under non-English language keys.
+							if (candidateLang === requestedLang) {
+								writeSidebarMessagesCache(requestedLang, messages, candidateLang);
+							}
 							done(messages);
 							return;
 						}
