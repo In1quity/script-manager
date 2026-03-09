@@ -55,7 +55,7 @@
 	"dialog-move-select-target": "Выберите целевую тему",
 	"dialog-move-button": "Переместить скрипт",
 	"dialog-move-progress": "Перемещение...",
-	"dialog-move-prompt": "Куда установить? Выберите один из вариантов:",
+	"dialog-move-prompt": "Куда установить? Выберите один из вариантов",
 	"dialog-capture-title": "Перехватить скрипт",
 	"dialog-capture-name": "Имя скрипта",
 	"dialog-capture-name-description": "Имя в боковой панели для этого скрипта",
