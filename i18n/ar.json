@@ -74,6 +74,7 @@
 	"settings-capture-enabled": "تمكين إيقاف السكريبت",
 	"settings-capture-enabled-description": "التقاط تحميلات النص و إظهارها في النقطة الجانبية",
 	"settings-userscript-load-caching-enabled": "تمكين تخزين تحميل النص عبر API",
+	"settings-userscript-load-caching-enabled-description": "أضف/أزل الكود من [[:en:User:SD0001/Making user scripts load faster|userscript load caching via API]] في أعلى ملف global.js",
 	"settings-save": "حفظ",
 	"settings-saved": "الإعدادات المحفوظة",
 	"label-captured-script": "النص الملتقط",
