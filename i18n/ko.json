@@ -90,7 +90,7 @@
 	"error-cannot-install-content-model": "페이지 콘텐츠 모델은 $1이며, '자바스크립트'가 아닙니다",
 	"error-insecure": "(안전하지 않음)",
 	"error-not-javascript": "자바스크립트가 아님",
-	"error-install-via-preferences": "환경설정을 통해 설치",
+	"error-install-via-preferences": "환경 설정을 통해 설치",
 	"error-bad-page": "이 페이지는 User: 또는 MediaWiki: 가 아니며 보호되지 않았습니다",
 	"error-load-interface": "인터페이스를 불러오는 데 실패했습니다. 페이지를 새로 고침하세요.",
 	"error-bootstrap-failed": "스크립트 관리자 초기화에 실패했습니다. 자세한 내용은 콘솔을 확인하세요.",
