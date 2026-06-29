@@ -2,7 +2,8 @@
 	"@metadata": {
 		"authors": [
 			"Largestone",
-			"RhAnish"
+			"RhAnish",
+			"Tensama0415"
 		]
 	},
 	"script-name": "スクリプトマネージャー",
@@ -23,8 +24,8 @@
 	"action-move-progress": "移動中...",
 	"action-restore": "復元",
 	"action-cancel": "キャンセル",
-	"dialog-install-title": "$1をインストール",
-	"dialog-move-current-location": "現在の位置:",
+	"dialog-install-title": "スクリプトをインストール",
+	"dialog-move-current-location": "現在の外装",
 	"dialog-move-button": "スクリプトを移動",
 	"dialog-move-progress": "移動中...",
 	"settings-save": "保存",
