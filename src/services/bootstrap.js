@@ -32,6 +32,9 @@ export function normalizeLangCode(code) {
 	if (code === undefined || code === null || typeof code !== 'string') return undefined;
 	const trimmed = code.trim().toLowerCase();
 	if (!trimmed) return undefined;
+	if (/^(?:zh-(?:hans|hant)|pt-br|sr-[a-z0-9]+)$/.test(trimmed)) {
+		return trimmed;
+	}
 	return trimmed.split('-')[0] || undefined;
 }
 

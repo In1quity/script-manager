@@ -8,6 +8,7 @@ let STRINGS_SITE = {};
 let ACTIVE_LANGUAGE = 'en';
 let ACTIVE_SITE_LANGUAGE = 'en';
 const logger = createLogger('service.i18n');
+const VALID_LANGUAGE_CODE_RGX = /^[a-z0-9-]+$/i;
 
 function getLanguageChain(lang) {
 	const code = String(lang || 'en').toLowerCase();
@@ -25,11 +26,15 @@ function getLanguageChain(lang) {
 }
 
 async function fetchLanguage(lang) {
+	const code = String(lang || '').trim().toLowerCase();
+	if (!VALID_LANGUAGE_CODE_RGX.test(code)) {
+		throw new Error(`Invalid i18n language code: ${lang}`);
+	}
 	const base =
 		window.ScriptManagerI18nBaseUrl || 'https://gitlab-content.toolforge.org/iniquity/script-manager/-/raw/main/i18n';
-	const response = await fetchWithTimeout(`${base}/${lang}.json?mime=application/json`);
+	const response = await fetchWithTimeout(`${base}/${code}.json?mime=application/json`);
 	if (!response.ok) {
-		throw new Error(`Failed to load i18n: ${lang}`);
+		throw new Error(`Failed to load i18n: ${code}`);
 	}
 	return response.json();
 }
@@ -59,22 +64,26 @@ export async function loadI18n(lang, options = {}) {
 	const merged = {};
 
 	const bundledEn = typeof SM_I18N_EN !== 'undefined' ? SM_I18N_EN : {};
+	const languageResults = await Promise.allSettled(chain.map((code) => fetchLanguage(code)));
 
-	for (const code of chain) {
-		try {
-			const dict = await fetchLanguage(code);
+	for (let index = 0; index < chain.length; index++) {
+		const code = chain[index];
+		const result = languageResults[index];
+		if (result.status === 'fulfilled') {
+			const dict = result.value;
 			if (code === 'en') {
 				Object.assign(merged, bundledEn, dict);
 				STRINGS_EN = Object.assign({}, bundledEn, dict);
 			} else {
 				Object.assign(merged, dict);
 			}
-		} catch (error) {
-			logger.warn(`Failed to load language "${code}"`, error);
-			if (code === 'en') {
-				Object.assign(merged, bundledEn);
-				STRINGS_EN = Object.assign({}, bundledEn);
-			}
+			continue;
+		}
+
+		logger.warn(`Failed to load language "${code}"`, result.reason);
+		if (code === 'en') {
+			Object.assign(merged, bundledEn);
+			STRINGS_EN = Object.assign({}, bundledEn);
 		}
 	}
 

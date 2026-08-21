@@ -8,6 +8,13 @@ describe('normalizeLangCode', () => {
 		expect(normalizeLangCode('ru-RU')).toBe('ru');
 	});
 
+	it('keeps supported variant codes intact', () => {
+		expect(normalizeLangCode('zh-Hant')).toBe('zh-hant');
+		expect(normalizeLangCode('zh-Hans')).toBe('zh-hans');
+		expect(normalizeLangCode('pt-BR')).toBe('pt-br');
+		expect(normalizeLangCode('sr-latn')).toBe('sr-latn');
+	});
+
 	it('returns undefined for empty or invalid values', () => {
 		expect(normalizeLangCode('')).toBeUndefined();
 		expect(normalizeLangCode('   ')).toBeUndefined();
