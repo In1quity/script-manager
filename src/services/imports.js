@@ -11,7 +11,13 @@ import { showNotification } from '@services/notification';
 import { buildSummaryLinkTitle, getSummaryForTarget } from '@services/summaryBuilder';
 import { escapeForJsComment, escapeForJsString, escapeForRegex, unescapeForJsString } from '@utils/escape';
 import { createLogger } from '@utils/logger';
-import { getCurrentSourceWiki, getServerName, getUserName, normalizeMediaWikiHost } from '@utils/mediawiki';
+import {
+	getCurrentSourceWiki,
+	getServerName,
+	getUserName,
+	normalizeMediaWikiHost,
+	normalizeSourceWiki
+} from '@utils/mediawiki';
 import { canonicalizeUserNamespace } from '@utils/namespace';
 import { fetchWithTimeout } from '@utils/network';
 import { runWithScriptLock } from '@utils/scriptLock';
@@ -340,14 +346,15 @@ export class Import {
 	}
 
 	getKey() {
+		const wikiKey = normalizeSourceWiki(this.wiki || '');
 		if (this.isModule) {
-			return `module:${this.target || 'common'}:${this.wiki || ''}:${this.page || ''}`;
+			return `module:${this.target || 'common'}:${wikiKey}:${this.page || ''}`;
 		}
 		switch (this.type) {
 			case 0:
 				return `local:${this.target || 'common'}:${this.page || ''}`;
 			case 1:
-				return `remote:${this.target || 'common'}:${this.wiki || ''}:${this.page || ''}`;
+				return `remote:${this.target || 'common'}:${wikiKey}:${this.page || ''}`;
 			default:
 				return `url:${this.target || 'common'}:${this.url || ''}`;
 		}
@@ -403,7 +410,7 @@ export class Import {
 				toFind = quoted(escapeForJsString(this.url));
 			}
 
-			if (!toFind && !titleInUrlPattern) {
+			if (this.type !== 1 && !toFind && !titleInUrlPattern) {
 				return [];
 			}
 		}

@@ -300,6 +300,19 @@ describe('Import core mechanics', () => {
 			expect(local.getLineNums(text)).toEqual([ 1 ]);
 		});
 
+		it('matches mediawiki imports regardless of www host normalization', () => {
+			const text = [
+				'mw.loader.load(\'//www.mediawiki.org/w/index.php?title=User:Iniquity/quickEdit-test.js&action=raw&ctype=text/javascript\'); // Backlink: [[mw:User:Iniquity/quickEdit-test.js]]'
+			].join('\n');
+			const imp = new Import({
+				page: 'User:Iniquity/quickEdit-test.js',
+				wiki: 'mediawiki',
+				target: 'global'
+			});
+			expect(imp.getKey()).toBe('remote:global:mediawiki:User:Iniquity/quickEdit-test.js');
+			expect(imp.getLineNums(text)).toEqual([ 0 ]);
+		});
+
 		it('returns full capture item range when match is inside capture item', () => {
 			const imp = Import.ofLocal('User:Foo/bar.js', 'common');
 			const text = [
