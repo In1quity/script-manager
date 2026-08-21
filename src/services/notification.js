@@ -111,7 +111,7 @@ export function showNotification(messageKeyOrText, type = 'notice', param) {
 				template:
 					'<transition name="sm-fade"><CdxMessage v-if="show" :type="type" :fade-in="true" :allow-user-dismiss="true" :auto-dismiss="true" :display-time="' +
 					SM_NOTIFICATION_DISPLAY_TIME +
-					'"><div v-html="message"></div></CdxMessage></transition>'
+					'"><span v-text="message"></span></CdxMessage></transition>'
 			});
 
 			app.component('CdxMessage', CdxMessage);

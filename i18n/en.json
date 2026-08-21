@@ -120,6 +120,7 @@
 	"error-temp-warning": "Installation of non-User, non-MediaWiki protected pages is temporary and may be removed in the future.",
 	"error-bad-page": "Page is not User: or MediaWiki: and is unprotected",
 	"error-load-interface": "Failed to load interface. Please refresh the page.",
+	"error-create-component": "Failed to create interface component: $1",
 	"error-bootstrap-failed": "Script Manager failed to initialize. Check console for details.",
 
 	"security-warning": "Warning!$1\n\nAll user scripts could contain malicious content capable of compromising your account. Installing a script means it could be changed by others; make sure you trust its author. If you're unsure whether a script is safe, check at the technical village pump. Install this script?",

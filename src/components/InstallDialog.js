@@ -13,6 +13,16 @@ import { runWithScriptLock } from '@utils/scriptLock';
 import { safeUnmount } from '@utils/vue';
 
 const logger = createLogger('component.installDialog');
+let activeInstallDialogApp = null;
+let activeInstallDialogRoot = null;
+
+function destroyActiveInstallDialog() {
+	if (activeInstallDialogRoot) {
+		safeUnmount(activeInstallDialogApp, activeInstallDialogRoot);
+	}
+	activeInstallDialogApp = null;
+	activeInstallDialogRoot = null;
+}
 
 function setButtonText(buttonElement, text) {
 	try {
@@ -56,6 +66,8 @@ function buildInstallConfirmText(scriptName, dialogMeta) {
 }
 
 export function showInstallDialog(scriptName, buttonElement, dialogMeta = null) {
+	destroyActiveInstallDialog();
+	document.getElementById('sm-install-dialog')?.remove();
 	const container = $('<div>').attr('id', 'sm-install-dialog');
 	$('body').append(container);
 
@@ -145,6 +157,8 @@ export function createInstallDialog(
 
 	const onDialogClosed = () => {
 		resetButtonBusy(buttonElement);
+		activeInstallDialogApp = null;
+		activeInstallDialogRoot = null;
 		safeUnmount(app, container[0]);
 	};
 
@@ -353,7 +367,10 @@ export function createInstallDialog(
 		app.component('CdxMessage', CdxMessage);
 		app.component('CdxSelect', CdxSelect);
 		app.component('CdxField', CdxField);
-		app.mount(container[0] || container);
+		const mountRoot = container[0] || container;
+		app.mount(mountRoot);
+		activeInstallDialogApp = app;
+		activeInstallDialogRoot = mountRoot;
 		return app;
 	} catch (error) {
 		logger.error('InstallDialog mount error', error);

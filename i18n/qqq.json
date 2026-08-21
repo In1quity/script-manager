@@ -114,6 +114,7 @@
 	"error-temp-warning": "Warning about temporary installation of non-user pages",
 	"error-bad-page": "Error message for pages that cannot be used as scripts",
 	"error-load-interface": "Error shown inside panel container when Vue/Codex UI fails to mount",
+	"error-create-component": "Error shown when creating a Vue component fails. $1 is the original error message text",
 	"error-bootstrap-failed": "Notification shown when Script Manager bootstrap fails completely",
 	"security-warning": "Security warning dialog text about potential malicious content in user scripts. $1 contains additional context",
 	"label-backlink": "Label for backlink to the script's source page",

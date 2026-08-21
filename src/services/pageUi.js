@@ -1,7 +1,7 @@
 import { collectInstallableLinks } from '@components/InstallLinks';
 import { showInstallDialog } from '@components/InstallDialog';
-import { mountInstallButton, mountInstallButtonAfterImports } from '@components/InstallButton';
-import { createPanel } from '@components/ScriptManagerPanel';
+import { mountInstallButton, mountInstallButtonAfterImports, unmountInstallButton } from '@components/InstallButton';
+import { createPanel, destroyPanel } from '@components/ScriptManagerPanel';
 import { SKINS } from '@constants/skins';
 import {
 	SM_INSTALL_INDICATOR_RETRY_DELAY_MS,
@@ -107,16 +107,19 @@ export function buildCurrentPageInstallElement() {
 		namespaceNumber !== SM_MEDIAWIKI_NAMESPACE_NUMBER &&
 		(editRestriction.includes('sysop') || editRestriction.includes('editprotected'))
 	) {
+		const warningIcon = $('<span>').addClass('warning sm-warning-icon').attr('aria-hidden', 'true');
+		void Promise.resolve().then(() => {
+			try {
+				renderIconInto(warningIcon[0], 'cdxIconAlert', 'currentColor', 16);
+			} catch {
+				// Ignore icon rendering errors for warning marker.
+			}
+		});
 		installElement.append(
 			' ',
 			$('<abbr>')
 				.append(
-					$('<img>')
-						.attr(
-							'src',
-							'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Achtung-yellow.svg/20px-Achtung-yellow.svg.png'
-						)
-						.addClass('warning'),
+					warningIcon,
 					t('error-insecure')
 				)
 				.attr('title', t('error-temp-warning'))
@@ -137,7 +140,7 @@ export function buildCurrentPageInstallElement() {
 		$('<a>')
 			.attr('id', 'script-installer-main-install')
 			.text(installedTargets.length ? t('action-uninstall') : t('action-install'))
-			.click(makeLocalInstallClickHandler(fixedPageName, localDialogMeta))
+			.on('click', makeLocalInstallClickHandler(fixedPageName, localDialogMeta))
 	);
 
 	const firstTarget = installedTargets[0];
@@ -149,9 +152,16 @@ export function buildCurrentPageInstallElement() {
 			$('<a>')
 				.attr('id', 'script-installer-main-enable')
 				.text(t('action-enable'))
-				.click(function onEnableClick() {
-					$(this).text(t('action-enable-progress'));
-					void Promise.resolve(importObj.setDisabled(false)).then(() => reloadAfterChange());
+				.on('click', function onEnableClick() {
+					const $button = $(this);
+					$button.text(t('action-enable-progress'));
+					void Promise.resolve(importObj.setDisabled(false))
+						.then(() => reloadAfterChange())
+						.catch((error) => {
+							logger.error('Enable script failed', error);
+							showNotification('notification-enable-error', 'error', fixedPageName);
+							$button.text(t('action-enable'));
+						});
 				})
 		);
 	}
@@ -175,6 +185,10 @@ function injectInstallIndicator(fixedPageName) {
 		let $slot = $('#mw-indicator-sm-install');
 		if (!$slot.length) {
 			$slot = $('<div id="mw-indicator-sm-install" class="mw-indicator"></div>').appendTo($indicatorRoot);
+		}
+		const oldHost = $slot.find('#sm-install-indicator-host').get(0);
+		if (oldHost) {
+			unmountInstallButton(oldHost);
 		}
 		$slot.empty();
 
@@ -242,12 +256,12 @@ export function showUi() {
 						.attr('title', t('tooltip-manage-user-scripts'))
 						.addClass('sm-manage-button')
 						.append($('<span class="sm-gear-icon"></span>'))
-						.click(function onManageClick() {
+						.on('click', function onManageClick() {
 							const panelExists = Boolean(document.getElementById('sm-panel'));
 							if (!panelExists) {
 								$('#mw-content-text').before(createPanel());
 							} else {
-								$('#sm-panel').remove();
+								destroyPanel();
 							}
 							try {
 								$(this).toggleClass('open', !panelExists);
@@ -302,7 +316,7 @@ export function attachInstallLinks() {
 			' | ',
 			$('<a>')
 				.text(installedTargets.length ? t('action-uninstall') : t('action-install'))
-				.click(makeLocalInstallClickHandler(scriptName, localDialogMeta))
+				.on('click', makeLocalInstallClickHandler(scriptName, localDialogMeta))
 		);
 	});
 

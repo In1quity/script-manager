@@ -9,6 +9,27 @@ import { createLogger } from '@utils/logger';
 import { runWithScriptLock } from '@utils/scriptLock';
 
 const logger = createLogger('component.installButton');
+const mountedButtonApps = new WeakMap();
+
+function unmountButtonApp(hostElement) {
+	if (!hostElement) {
+		return;
+	}
+	const app = mountedButtonApps.get(hostElement);
+	if (!app || typeof app.unmount !== 'function') {
+		return;
+	}
+	try {
+		app.unmount();
+	} catch {
+		// Ignore unmount races for ephemeral button hosts.
+	}
+	mountedButtonApps.delete(hostElement);
+}
+
+export function unmountInstallButton(hostElement) {
+	unmountButtonApp(hostElement);
+}
 
 function getInitialInstallLabel(scriptName) {
 	try {
@@ -22,6 +43,7 @@ export function mountInstallButton(hostElement, scriptName, dialogMeta = null) {
 	if (!hostElement || !scriptName) {
 		return;
 	}
+	unmountButtonApp(hostElement);
 
 	const computeLabel = () => getInitialInstallLabel(scriptName);
 	const initialLabel = computeLabel();
@@ -98,6 +120,7 @@ export function mountInstallButton(hostElement, scriptName, dialogMeta = null) {
 			}
 			app.component('CdxButton', libs.CdxButton);
 			const mounted = app.mount(hostElement);
+			mountedButtonApps.set(hostElement, app);
 			void ensureAllImports().finally(() => {
 				try {
 					mounted.label = computeLabel();

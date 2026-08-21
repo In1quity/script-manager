@@ -40,6 +40,19 @@ import { getSkinLabel, getSkinTooltip } from '@utils/skinLabels';
 import { safeUnmount } from '@utils/vue';
 
 const logger = createLogger('component.scriptManagerPanel');
+let activePanelApp = null;
+let activePanelRoot = null;
+
+export function destroyPanel() {
+	setImportsRef(null);
+	if (!activePanelRoot) {
+		activePanelApp = null;
+		return;
+	}
+	safeUnmount(activePanelApp, activePanelRoot);
+	activePanelApp = null;
+	activePanelRoot = null;
+}
 
 function getDefaultSkin() {
 	try {
@@ -59,7 +72,20 @@ function getDefaultSkin() {
 	return DEFAULT_SKIN;
 }
 
+function renderPanelError(container, message) {
+	try {
+		container.empty();
+		const errorNode = document.createElement('div');
+		errorNode.className = 'error';
+		errorNode.textContent = String(message || t('notification-general-error'));
+		container.append(errorNode);
+	} catch {
+		// Ignore rendering fallback errors on broken host pages.
+	}
+}
+
 export function createPanel() {
+	destroyPanel();
 	const container = $('<div>').attr('id', 'sm-panel');
 	void Promise.all([ loadVueCodex(), loadSettings() ])
 		.then(([ libs ]) => {
@@ -83,7 +109,7 @@ export function createPanel() {
 		})
 		.catch((error) => {
 			logger.error('Failed to load Vue/Codex for panel', error);
-			container.html(`<div class="error">${t('error-load-interface')}</div>`);
+			renderPanelError(container, t('error-load-interface'));
 		});
 	return container;
 }
@@ -144,8 +170,8 @@ export function createVuePanel(
 			};
 
 			const ensureGadgetsReady = async () => {
+				await loadGadgets();
 				await Promise.all([
-					loadGadgets(),
 					loadSectionLabels(),
 					loadGadgetsLabel(),
 					loadUserGadgetSettings(),
@@ -296,7 +322,7 @@ export function createVuePanel(
 								reloadAfterChange();
 							}, 0);
 						}
-						safeUnmount(app, rootEl);
+						destroyPanel();
 					}
 				});
 
@@ -646,13 +672,13 @@ export function createVuePanel(
 								<div v-for="(targetImports, targetName) in filteredImports" :key="targetName" class="script-target-section">
 									<h3>
 										<template v-if="targetName === 'common'">
-											<a :href="getSkinUrl(targetName)" target="_blank" v-text="getSkinLabel(targetName, true)"></a>
+											<a :href="getSkinUrl(targetName)" target="_blank" rel="noopener noreferrer" v-text="getSkinLabel(targetName, true)"></a>
 										</template>
 										<template v-else-if="targetName === 'global'">
-											<a :href="getSkinUrl(targetName)" target="_blank" v-text="getSkinLabel(targetName, true)"></a>
+											<a :href="getSkinUrl(targetName)" target="_blank" rel="noopener noreferrer" v-text="getSkinLabel(targetName, true)"></a>
 										</template>
 										<template v-else>
-											<a :href="getSkinUrl(targetName)" target="_blank" v-text="targetName"></a>
+											<a :href="getSkinUrl(targetName)" target="_blank" rel="noopener noreferrer" v-text="targetName"></a>
 										</template>
 									</h3>
 									<div class="script-list">
@@ -663,7 +689,7 @@ export function createVuePanel(
 											:class="{ disabled: anImport.disabled, 'script-item-removed': removedScripts.includes(anImport.getKey()) }"
 										>
 											<div class="script-info">
-												<a :href="anImport.getHumanUrl()" class="script-link" v-text="getImportDisplayName(anImport)"></a>
+												<a :href="anImport.getHumanUrl()" class="script-link" target="_blank" rel="noopener noreferrer" v-text="getImportDisplayName(anImport)"></a>
 												<span
 													v-if="anImport.captured"
 													class="sm-captured-indicator"
@@ -739,6 +765,8 @@ export function createVuePanel(
 			app.config.compilerOptions.delimiters = [ '[%', '%]' ];
 		}
 		app.mount(rootEl);
+		activePanelApp = app;
+		activePanelRoot = rootEl;
 		// Dialog header may be teleported to body; search in document
 		const scheduleIcons = () => {
 			const gear = document.querySelector('.sm-cdx-dialog .sm-panel-gear-icon');
@@ -796,7 +824,8 @@ export function createVuePanel(
 		return app;
 	} catch (error) {
 		logger.error('Error mounting panel', error);
-		container.html(`<div class="error">Error creating Vue component: ${error.message}</div>`);
+		const message = t('error-create-component').replace('$1', String(error?.message || 'unknown'));
+		renderPanelError(container, message);
 		return null;
 	}
 }
