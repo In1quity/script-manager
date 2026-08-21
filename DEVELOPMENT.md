@@ -86,4 +86,4 @@ Then run `npm run lint:fix` once if the working copy had CRLF.
 
 ## Wiki documentation
 
-Product documentation on mediawiki.org may lag the codebase. Suggested wikitext updates are kept in `docs/wiki-Script_Manager-updates.md`. Apply them on [Script_Manager](https://www.mediawiki.org/wiki/Script_Manager) when syncing the wiki with a release.
+User-facing product docs live on [Script_Manager](https://www.mediawiki.org/wiki/Script_Manager). Keep that page aligned with user-visible behavior when releasing.

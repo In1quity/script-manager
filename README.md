@@ -35,7 +35,6 @@ The loader fetches the core from mediawiki.org. Open **Script Manager** in the t
 ├── i18n/                         # Message files (translatewiki.net)
 ├── data/
 │   └── languageFallbacks.json    # Language fallback chain
-├── docs/                         # Maintainer notes (wiki sync, etc.)
 ├── .github/workflows/            # CI + release deploy
 ├── eslint.config.js
 ├── stylelint.config.js
@@ -148,4 +147,3 @@ MIT OR CC-BY-SA-4.0 — see [LICENSE](LICENSE) and `package.json`.
 
 - User-facing: [mw:Script Manager](https://www.mediawiki.org/wiki/Script_Manager)
 - Contributor guide: [DEVELOPMENT.md](DEVELOPMENT.md)
-- Wiki sync notes: [docs/wiki-Script_Manager-updates.md](docs/wiki-Script_Manager-updates.md)
