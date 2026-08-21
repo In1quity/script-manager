@@ -48,7 +48,7 @@ export default [
 		},
 		settings: {
 			'es-x': {
-				aggressive: true
+				aggressive: false
 			}
 		},
 		linterOptions: {
@@ -92,6 +92,9 @@ export default [
 			'object-shorthand': 'warn',
 			'prefer-const': 'warn',
 			'prefer-regex-literals': 'error',
+			'es-x/no-import-attributes': 'error',
+			'es-x/no-top-level-await': 'error',
+			'es-x/no-regexp-v-flag': 'error',
 			'security/detect-object-injection': 'off',
 			'unicorn/prefer-optional-catch-binding': 'warn',
 			'no-var': 'warn'
@@ -105,6 +108,10 @@ export default [
 		plugins: {
 			json,
 			jsonc
+		},
+		rules: {
+			'jsonc/no-dupe-keys': 'error',
+			'jsonc/valid-json-number': 'error'
 		}
 	},
 	{

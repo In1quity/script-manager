@@ -2,22 +2,23 @@
 	"name": "Script Manager",
 	"version": "1.6.7",
 	"description": "Script Manager Core - MediaWiki user script management",
-	"main": "scriptManager.js",
-	"browser": "scriptManager.js",
+	"main": "scr/scriptManager.js",
+	"browser": "scr/scriptManager.js",
 	"type": "module",
 	"engines": {
-		"node": ">=22.0.0"
+		"node": ">=22.0.0",
+		"npm": ">=10.0.0"
 	},
 	"scripts": {
 		"lint:eslint": "eslint .",
 		"lint:stylelint": "stylelint \"src/**/*.css\" --allow-empty-input",
 		"lint": "npm run lint:eslint && npm run lint:stylelint",
 		"lint:fix": "eslint . --fix && stylelint \"src/**/*.css\" --fix --allow-empty-input",
-		"test": "vitest --passWithNoTests",
-		"test:run": "vitest run --passWithNoTests",
+		"test": "vitest",
+		"test:run": "vitest run",
 		"build:dev": "vite build --mode development",
 		"build:prod": "vite build --mode production",
-		"build": "npm run build:dev && npm run build:prod",
+		"build": "npm run build:prod",
 		"prebuild": "npm run lint",
 		"prepare": "husky"
 	},
@@ -50,7 +51,7 @@
 	"homepage": "https://www.mediawiki.org/wiki/Script_Manager",
 	"documentation": "https://www.mediawiki.org/wiki/Script_Manager",
 	"bugs": {
-		"url": "https://github.com/In1quity/script-manager/issues"
+		"url": "https://gitlab.wikimedia.org/iniquity/script-manager/-/issues"
 	},
 	"author": {
 		"name": "Iniquity",
@@ -58,12 +59,18 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/In1quity/script-manager.git",
+		"url": "https://gitlab.wikimedia.org/iniquity/script-manager.git",
 		"directory": "."
 	},
 	"license": "MIT OR CC-BY-SA-4.0",
 	"lint-staged": {
 		"*.js": [
+			"eslint --fix"
+		],
+		"src/**/*.css": [
+			"stylelint --fix --allow-empty-input"
+		],
+		"i18n/*.json": [
 			"eslint --fix"
 		]
 	}
