@@ -17,6 +17,10 @@ let loadUserSettingsPromise = null;
 let loadEnabledGadgetsPromise = null;
 const logger = createLogger('service.gadgets');
 
+function isEnabledFlag(value) {
+	return value === '' || value === true || value === 1 || value === '1';
+}
+
 export async function loadGadgets() {
 	if (loadGadgetsPromise) {
 		return loadGadgetsPromise;
@@ -43,7 +47,7 @@ export async function loadGadgets() {
 
 			list.forEach((gadget) => {
 				const settings = gadget?.metadata?.settings || {};
-				if (Object.prototype.hasOwnProperty.call(settings, 'hidden')) {
+				if (isEnabledFlag(settings.hidden)) {
 					return;
 				}
 
@@ -56,7 +60,7 @@ export async function loadGadgets() {
 					name: gadget.id,
 					description: gadget.desc || '',
 					section,
-					isDefault: settings.default === '' || settings.default === true || settings.default === 1
+					isDefault: isEnabledFlag(settings.default)
 				};
 			});
 
