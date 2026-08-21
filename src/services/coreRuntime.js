@@ -1,4 +1,5 @@
 import { createPanel } from '@components/ScriptManagerPanel';
+import { isCodeContentModel } from '@utils/mediawiki';
 import { createUiOrchestrator } from './uiOrchestrator.js';
 import { attachInstallLinks, showUi } from './pageUi.js';
 
@@ -6,7 +7,7 @@ function isJsRelatedPage(context) {
 	try {
 		const pageName = context.runtime.mw?.config?.get('wgPageName') || '';
 		const contentModel = context.runtime.mw?.config?.get('wgPageContentModel') || '';
-		return /\.js$/i.test(pageName) || /\.css$/i.test(pageName) || /javascript|css|sanitized-css/i.test(contentModel);
+		return /\.js$/i.test(pageName) || /\.css$/i.test(pageName) || isCodeContentModel(contentModel);
 	} catch {
 		return true;
 	}

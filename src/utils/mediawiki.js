@@ -20,6 +20,11 @@ export function getUserNamespaceName() {
 	return userNamespace || 'User';
 }
 
+export function isCodeContentModel(contentModel = getMwConfig('wgPageContentModel')) {
+	const model = String(contentModel || '').toLowerCase();
+	return model === 'javascript' || model === 'css' || model === 'sanitized-css';
+}
+
 export function normalizeMediaWikiHost(host) {
 	const cleanHost = String(host || '')
 		.trim()

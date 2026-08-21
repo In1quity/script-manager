@@ -20,6 +20,7 @@ import {
 	extractSourceWikiFromUrl,
 	getCurrentSourceWiki,
 	getUserNamespaceName,
+	isCodeContentModel,
 	normalizeSourceWiki
 } from '@utils/mediawiki';
 import { runWithScriptLock } from '@utils/scriptLock';
@@ -73,7 +74,7 @@ export function buildCurrentPageInstallElement() {
 
 	if (namespaceNumber === SM_USER_NAMESPACE_NUMBER && pageName.indexOf('/') > 0) {
 		const contentModel = mw.config.get('wgPageContentModel');
-		const isCodeModel = contentModel === 'javascript' || contentModel === 'css' || contentModel === 'sanitized-css';
+		const isCodeModel = isCodeContentModel(contentModel);
 		if (isCodeModel) {
 			const prefix = `${userNamespace}:${mw.config.get('wgUserName')}`;
 			if (pageName.indexOf(prefix) === 0) {
@@ -379,22 +380,24 @@ export function attachInstallLinks() {
 		});
 	});
 
-	$('#mw-content-text .mw-highlight pre, #mw-content-text pre').each(function attachSnippetButtons() {
-		const installMeta = getSnippetInstallMeta(this);
-		if (!installMeta?.scriptName) {
-			return;
-		}
+	if (!isCodeContentModel()) {
+		$('#mw-content-text .mw-highlight pre, #mw-content-text pre').each(function attachSnippetButtons() {
+			const installMeta = getSnippetInstallMeta(this);
+			if (!installMeta?.scriptName) {
+				return;
+			}
 
-		const container = this.closest('.mw-highlight') || this;
-		const $container = $(container);
-		if ($container.next('.sm-snippet-install-host').length) {
-			return;
-		}
+			const container = this.closest('.mw-highlight') || this;
+			const $container = $(container);
+			if ($container.next('.sm-snippet-install-host').length) {
+				return;
+			}
 
-		const host = $('<div class="sm-snippet-install-host"></div>');
-		$container.after(host);
-		mountInstallButtonAfterImports(host[0], installMeta.scriptName, {
-			sourceWiki: installMeta.sourceWiki || getCurrentSourceWiki()
+			const host = $('<div class="sm-snippet-install-host"></div>');
+			$container.after(host);
+			mountInstallButtonAfterImports(host[0], installMeta.scriptName, {
+				sourceWiki: installMeta.sourceWiki || getCurrentSourceWiki()
+			});
 		});
-	});
+	}
 }
