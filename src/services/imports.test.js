@@ -100,6 +100,33 @@ describe('Import core mechanics', () => {
 			expect(parsed.page).toBe('User:Foo/bar.js');
 		});
 
+		it('parses mw.loader.load load.php modules URL as gadget module import', () => {
+			const parsed = Import.fromJs(
+				'mw.loader.load(\'//commons.wikimedia.org/w/load.php?modules=ext.gadget.Cat-a-lot\');',
+				'common'
+			);
+			expect(parsed).not.toBeNull();
+			expect(parsed.isModule).toBe(true);
+			expect(parsed.type).toBe(1);
+			expect(parsed.wiki).toBe('commons.wikimedia');
+			expect(parsed.page).toBe('ext.gadget.Cat-a-lot');
+			expect(parsed.getDisplayName()).toBe('ext.gadget.Cat-a-lot');
+		});
+
+		it('parses local gadget module names as module imports', () => {
+			const parsed = Import.fromJs(
+				'mw.loader.load(\'ext.gadget.Cat-a-lot\'); // Ссылка на скрипт: [[MediaWiki:Gadget-Cat-a-lot]]',
+				'common'
+			);
+			expect(parsed).not.toBeNull();
+			expect(parsed.isModule).toBe(true);
+			expect(parsed.type).toBe(0);
+			expect(parsed.wiki).toBeNull();
+			expect(parsed.page).toBe('ext.gadget.Cat-a-lot');
+			expect(parsed.getDocumentationPage()).toBe('MediaWiki:Gadget-Cat-a-lot');
+			expect(parsed.getHumanUrl()).toBe('/wiki/MediaWiki:Gadget-Cat-a-lot');
+		});
+
 		it('parses non-wikimedia URL as raw URL import', () => {
 			const parsed = Import.fromJs('mw.loader.load(\'//example.com/foo.js\');', 'common');
 			expect(parsed).not.toBeNull();
@@ -145,6 +172,18 @@ describe('Import core mechanics', () => {
 			expect(imp.type).toBe(2);
 			expect(imp.url).toBe('//commons.wikimedia.org/w/index.php?action=raw');
 		});
+
+		it('parses load.php gadget modules as remote module imports', () => {
+			const imp = Import.ofUrl(
+				'//commons.wikimedia.org/w/load.php?modules=ext.gadget.Cat-a-lot',
+				'common'
+			);
+			expect(imp.type).toBe(1);
+			expect(imp.isModule).toBe(true);
+			expect(imp.wiki).toBe('commons.wikimedia');
+			expect(imp.page).toBe('ext.gadget.Cat-a-lot');
+			expect(imp.url).toBeNull();
+		});
 	});
 
 	describe('toLoaderUrl/getKey/getDisplayName', () => {
@@ -181,6 +220,43 @@ describe('Import core mechanics', () => {
 			expect(raw.getKey()).toBe('url:common://example.com/foo.js');
 			expect(raw.getDisplayName()).toBe('//example.com/foo.js');
 		});
+
+		it('keeps remote gadget modules on load.php and adds gadget backlink', () => {
+			const imp = Import.ofUrl(
+				'//commons.wikimedia.org/w/load.php?modules=ext.gadget.Cat-a-lot',
+				'common'
+			);
+			expect(imp.toLoaderUrl('ru.wikipedia.org')).toBe(
+				'//commons.wikimedia.org/w/load.php?modules=ext.gadget.Cat-a-lot'
+			);
+			expect(imp.getKey()).toBe('module:common:commons.wikimedia:ext.gadget.Cat-a-lot');
+			expect(imp.getDocumentationPage()).toBe('MediaWiki:Gadget-Cat-a-lot');
+			expect(imp.getHumanUrl()).toBe('//commons.wikimedia.org/wiki/MediaWiki:Gadget-Cat-a-lot');
+			expect(imp.toJs('ru.wikipedia.org')).toBe(
+				'mw.loader.load(\'//commons.wikimedia.org/w/load.php?modules=ext.gadget.Cat-a-lot\'); // label-backlink [[MediaWiki:Gadget-Cat-a-lot]]'
+			);
+		});
+
+		it('uses module name for same-wiki load.php gadget imports', () => {
+			const imp = Import.ofUrl(
+				'//ru.wikipedia.org/w/load.php?modules=ext.gadget.HotCat',
+				'common'
+			);
+			expect(imp.toLoaderUrl('ru.wikipedia.org')).toBe('ext.gadget.HotCat');
+			expect(imp.toJs('ru.wikipedia.org')).toContain("mw.loader.load('ext.gadget.HotCat');");
+		});
+
+		it('keeps local gadget module names local and links to gadget page', () => {
+			const imp = Import.ofUrl('ext.gadget.Cat-a-lot', 'common');
+			expect(imp.isModule).toBe(true);
+			expect(imp.type).toBe(0);
+			expect(imp.toLoaderUrl('ru.wikipedia.org')).toBe('ext.gadget.Cat-a-lot');
+			expect(imp.getHumanUrl()).toBe('/wiki/MediaWiki:Gadget-Cat-a-lot');
+			expect(imp.toJs('ru.wikipedia.org')).toBe(
+				'mw.loader.load(\'ext.gadget.Cat-a-lot\'); // label-backlink [[MediaWiki:Gadget-Cat-a-lot]]'
+			);
+			expect(imp.getSourceLabel()).toBeTruthy();
+		});
 	});
 
 	describe('getLineNums', () => {
@@ -192,6 +268,33 @@ describe('Import core mechanics', () => {
 				'console.log(1);'
 			].join('\n');
 			expect(imp.getLineNums(text)).toEqual([ 0, 1 ]);
+		});
+
+		it('finds module imports by modules query parameter', () => {
+			const imp = Import.ofUrl(
+				'//commons.wikimedia.org/w/load.php?modules=ext.gadget.Cat-a-lot',
+				'common'
+			);
+			const text = [
+				'mw.loader.load(\'//commons.wikimedia.org/w/load.php?modules=ext.gadget.Cat-a-lot\');',
+				'mw.loader.load(\'ext.gadget.HotCat\');'
+			].join('\n');
+			expect(imp.getLineNums(text)).toEqual([ 0 ]);
+		});
+
+		it('treats remote load.php and local gadget module name as different imports', () => {
+			const text = [
+				'mw.loader.load(\'//commons.wikimedia.org/w/load.php?modules=ext.gadget.Cat-a-lot\'); // Ссылка на скрипт: [[c:MediaWiki:Gadget-Cat-a-lot]]',
+				'mw.loader.load(\'ext.gadget.Cat-a-lot\'); // Ссылка на скрипт: [[MediaWiki:Gadget-Cat-a-lot]]'
+			].join('\n');
+			const remote = Import.ofUrl(
+				'//commons.wikimedia.org/w/load.php?modules=ext.gadget.Cat-a-lot',
+				'common'
+			);
+			const local = Import.ofUrl('ext.gadget.Cat-a-lot', 'common');
+			expect(remote.getKey()).not.toBe(local.getKey());
+			expect(remote.getLineNums(text)).toEqual([ 0 ]);
+			expect(local.getLineNums(text)).toEqual([ 1 ]);
 		});
 
 		it('returns full capture item range when match is inside capture item', () => {

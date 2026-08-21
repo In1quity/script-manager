@@ -35,7 +35,6 @@ import { loadVueCodex } from '@utils/codex';
 import { renderIconInto } from '@utils/icons';
 import { createLogger } from '@utils/logger';
 import { getServerName, getUserName, normalizeMediaWikiHost } from '@utils/mediawiki';
-import { canonicalizeUserNamespace } from '@utils/namespace';
 import { toPromise } from '@utils/promise';
 import { getSkinLabel, getSkinTooltip } from '@utils/skinLabels';
 import { safeUnmount } from '@utils/vue';
@@ -504,24 +503,8 @@ export function createVuePanel(
 				return `https://${host}/wiki/User:${userName}/${skinName}.js`;
 			};
 
-			const getImportHumanUrl = (anImport) => {
-				const page = canonicalizeUserNamespace(anImport.page);
-				if (anImport.type === 0) {
-					return `/wiki/${encodeURI(page)}`;
-				}
-				if (anImport.type === 1) {
-					const host = normalizeMediaWikiHost(`${anImport.wiki}.org`);
-					return `//${host}/wiki/${encodeURI(page)}`;
-				}
-				return anImport.url;
-			};
-
 			const getImportDisplayName = (anImport) => {
 				return (anImport.getDisplayName() || '').replace(/_/g, ' ');
-			};
-
-			const getImportSourceLabel = (anImport) => {
-				return anImport.getSourceLabel();
 			};
 
 			if (captureEnabled.value) {
@@ -555,9 +538,7 @@ export function createVuePanel(
 				isGadgetEnabled,
 				getSkinUrl,
 				getSkinLabel,
-				getImportHumanUrl,
 				getImportDisplayName,
-				getImportSourceLabel,
 				openSettingsDialog,
 				SM_t: t,
 				onPanelClose
@@ -682,14 +663,14 @@ export function createVuePanel(
 											:class="{ disabled: anImport.disabled, 'script-item-removed': removedScripts.includes(anImport.getKey()) }"
 										>
 											<div class="script-info">
-												<a :href="getImportHumanUrl(anImport)" class="script-link" v-text="getImportDisplayName(anImport)"></a>
+												<a :href="anImport.getHumanUrl()" class="script-link" v-text="getImportDisplayName(anImport)"></a>
 												<span
 													v-if="anImport.captured"
 													class="sm-captured-indicator"
 													:title="SM_t('label-captured-script')"
 													:aria-label="SM_t('label-captured-script')"
 												></span>
-												<span v-if="getImportSourceLabel(anImport)" class="script-source" v-text="getImportSourceLabel(anImport)"></span>
+												<span v-if="anImport.getSourceLabel()" class="script-source" v-text="anImport.getSourceLabel()"></span>
 											</div>
 											<div class="script-actions">
 												<cdx-button

@@ -11,16 +11,38 @@ import { showNotification } from '@services/notification';
 import { buildSummaryLinkTitle, getSummaryForTarget } from '@services/summaryBuilder';
 import { escapeForJsComment, escapeForJsString, escapeForRegex, unescapeForJsString } from '@utils/escape';
 import { createLogger } from '@utils/logger';
-import { getServerName, getUserName, normalizeMediaWikiHost } from '@utils/mediawiki';
+import { getCurrentSourceWiki, getServerName, getUserName, normalizeMediaWikiHost } from '@utils/mediawiki';
+import { canonicalizeUserNamespace } from '@utils/namespace';
 import { fetchWithTimeout } from '@utils/network';
 import { decodeSafe } from '@utils/url';
 import { getWikitext } from '@utils/wikitext';
 
 const URL_RGX = /^(?:https?:)?\/\/(.+?)\.org\/w\/index\.php\?(?:.*?&)?title=([^&#]+)/;
+const LOAD_PHP_RGX = /^(?:https?:)?\/\/(.+?)\.org\/w\/load\.php\?(?:.*?&)?modules=([^&#]+)/;
 const IMPORT_RGX = /^\s*(\/\/)?\s*importScript\s*\(\s*(['"])\s*(.+?)\s*\2\s*\)\s*;?/;
 const LOADER_RGX =
 	/^\s*(\/\/)?\s*mw\s*\.\s*loader\s*\.\s*load\s*\(\s*(['"])\s*(.+?)\s*\2\s*(?:,\s*(['"])\s*(?:text\/css|application\/css|text\/javascript|application\/javascript)\s*\4\s*)?\)\s*;?/;
 const logger = createLogger('service.imports');
+
+function getGadgetDocumentationPage(moduleName) {
+	const primary = String(moduleName || '')
+		.split('|')[0]
+		.split(',')[0]
+		.trim();
+	const gadgetMatch = /^ext\.gadget\.(.+)$/i.exec(primary);
+	if (!gadgetMatch) {
+		return null;
+	}
+	return `MediaWiki:Gadget-${gadgetMatch[1]}`;
+}
+
+function isGadgetModuleName(value) {
+	const name = String(value || '').trim();
+	if (!name || /[/:?#\s|,]/.test(name)) {
+		return false;
+	}
+	return Boolean(getGadgetDocumentationPage(name));
+}
 
 function extractDocumentationReference(text) {
 	const source = String(text || '');
@@ -89,14 +111,14 @@ async function fetchScriptHead(host, pageTitle) {
 	return String(extractRevisionContent(apiData) || '').slice(0, SM_DOC_REFERENCE_SCAN_LIMIT);
 }
 
-function getCaptureBlockRange(lines, lineIndex) {
+function getMarkedRange(lines, lineIndex, startRgx, endRgx) {
 	let start = -1;
 	for (let i = lineIndex; i >= 0; i--) {
-		if (CAPTURE_BLOCK_START_RGX.test(lines[i])) {
+		if (startRgx.test(lines[i])) {
 			start = i;
 			break;
 		}
-		if (CAPTURE_BLOCK_END_RGX.test(lines[i])) {
+		if (endRgx.test(lines[i])) {
 			return null;
 		}
 	}
@@ -106,43 +128,11 @@ function getCaptureBlockRange(lines, lineIndex) {
 
 	let end = -1;
 	for (let i = lineIndex; i < lines.length; i++) {
-		if (CAPTURE_BLOCK_END_RGX.test(lines[i])) {
+		if (endRgx.test(lines[i])) {
 			end = i;
 			break;
 		}
-		if (i !== lineIndex && CAPTURE_BLOCK_START_RGX.test(lines[i])) {
-			return null;
-		}
-	}
-	if (end < 0 || end < start) {
-		return null;
-	}
-
-	return { start, end };
-}
-
-function getCaptureItemRange(lines, lineIndex) {
-	let start = -1;
-	for (let i = lineIndex; i >= 0; i--) {
-		if (CAPTURE_ITEM_START_RGX.test(lines[i])) {
-			start = i;
-			break;
-		}
-		if (CAPTURE_ITEM_END_RGX.test(lines[i])) {
-			return null;
-		}
-	}
-	if (start < 0) {
-		return null;
-	}
-
-	let end = -1;
-	for (let i = lineIndex; i < lines.length; i++) {
-		if (CAPTURE_ITEM_END_RGX.test(lines[i])) {
-			end = i;
-			break;
-		}
-		if (i !== lineIndex && CAPTURE_ITEM_START_RGX.test(lines[i])) {
+		if (i !== lineIndex && startRgx.test(lines[i])) {
 			return null;
 		}
 	}
@@ -162,7 +152,8 @@ export class Import {
 			target: targetValue = 'common',
 			disabled: disabledValue = false,
 			captured: capturedValue = false,
-			captureName: captureNameValue = ''
+			captureName: captureNameValue = '',
+			isModule: isModuleValue = false
 		} = options;
 		this.page = page;
 		this.wiki = wikiValue;
@@ -171,6 +162,7 @@ export class Import {
 		this.disabled = Boolean(disabledValue);
 		this.captured = Boolean(capturedValue);
 		this.captureName = captureNameValue || '';
+		this.isModule = Boolean(isModuleValue);
 		this.type = this.url ? 2 : this.wiki ? 1 : 0;
 	}
 
@@ -186,6 +178,26 @@ export class Import {
 				wiki: decodeSafe(match[1]),
 				target,
 				disabled
+			});
+		}
+
+		if ((match = LOAD_PHP_RGX.exec(String(url || '')))) {
+			return new Import({
+				page: decodeSafe(match[2]),
+				wiki: decodeSafe(match[1]),
+				target,
+				disabled,
+				isModule: true
+			});
+		}
+
+		const moduleName = String(url || '').trim();
+		if (isGadgetModuleName(moduleName)) {
+			return new Import({
+				page: moduleName,
+				target,
+				disabled,
+				isModule: true
 			});
 		}
 
@@ -220,7 +232,17 @@ export class Import {
 
 	toLoaderUrl(serverName) {
 		let url;
-		if (this.type === 2) {
+		if (this.isModule) {
+			const currentHost = normalizeMediaWikiHost(serverName);
+			const moduleHost = this.wiki
+				? normalizeMediaWikiHost(`${this.wiki}.org`)
+				: currentHost;
+			if (this.wiki && moduleHost.toLowerCase() !== currentHost.toLowerCase()) {
+				url = `//${moduleHost}/w/load.php?modules=${this.page}`;
+			} else {
+				url = this.page;
+			}
+		} else if (this.type === 2) {
 			url = this.url;
 		} else {
 			const host = normalizeMediaWikiHost(this.type === 1 ? `${this.wiki}.org` : serverName);
@@ -229,35 +251,60 @@ export class Import {
 			const ctype = isCss ? 'text/css' : 'text/javascript';
 			url = `//${host}/w/index.php?title=${pageTitle}&action=raw&ctype=${ctype}`;
 		}
-		return url.replace(/\/\/mediawiki\.org\b/i, '//www.mediawiki.org');
+		return String(url || '').replace(/\/\/mediawiki\.org\b/i, '//www.mediawiki.org');
+	}
+
+	getDocumentationPage() {
+		if (this.isModule) {
+			return getGadgetDocumentationPage(this.page) || this.page;
+		}
+		return this.page;
+	}
+
+	getHumanUrl() {
+		if (this.type === 2) {
+			return this.url || '';
+		}
+		const page = canonicalizeUserNamespace(this.getDocumentationPage());
+		if (!page) {
+			return '';
+		}
+		if (this.type === 0) {
+			return `/wiki/${encodeURI(page)}`;
+		}
+		const host = normalizeMediaWikiHost(`${this.wiki}.org`);
+		return `//${host}/wiki/${encodeURI(page)}`;
+	}
+
+	getSummaryLinkTitle() {
+		return buildSummaryLinkTitle({
+			type: this.type,
+			page: this.getDocumentationPage(),
+			wiki: this.wiki,
+			target: this.target,
+			docInterwiki: this.docInterwiki
+		});
 	}
 
 	toJs(serverName) {
 		const disabledPrefix = this.disabled ? '//' : '';
 		const url = this.toLoaderUrl(serverName);
-		const isCss = /\.css($|[?#])/i.test(String(url || ''));
+		const isCss = !this.isModule && /\.css($|[?#])/i.test(String(url || ''));
 		const typeArg = isCss ? ", 'text/css'" : '';
 		const backlinkText =
 			this.target === 'global'
 				? getStrings().fallback['label-backlink']
 				: translate('label-backlink');
-		const summaryLinkTitle = buildSummaryLinkTitle(this);
+		const summaryLinkTitle = this.getSummaryLinkTitle();
 		const suffix = this.type === 2 ? '' : ` // ${backlinkText} [[${escapeForJsComment(summaryLinkTitle)}]]`;
 		return `${disabledPrefix}mw.loader.load('${escapeForJsString(url)}'${typeArg});${suffix}`;
 	}
 
 	getDescription(useWikitext = false) {
-		switch (this.type) {
-			case 0:
-				return useWikitext ? `[[${buildSummaryLinkTitle(this)}]]` : this.getDisplayName();
-			case 1:
-				if (useWikitext) {
-					return `[[${buildSummaryLinkTitle(this)}]]`;
-				}
-				return this.getDisplayName();
-			default:
-				return this.getDisplayName();
+		if (useWikitext && (this.type === 0 || this.type === 1)) {
+			return `[[${this.getSummaryLinkTitle()}]]`;
 		}
+		return this.getDisplayName();
 	}
 
 	getDisplayName() {
@@ -268,13 +315,17 @@ export class Import {
 	}
 
 	getSourceLabel() {
-		if (this.type !== 1 || !this.wiki) {
+		const wiki = this.wiki || (this.isModule ? getCurrentSourceWiki() : '');
+		if (!wiki) {
 			return '';
 		}
-		return translate('label-loaded-from').replace('$1', this.wiki);
+		return translate('label-loaded-from').replace('$1', wiki);
 	}
 
 	getKey() {
+		if (this.isModule) {
+			return `module:${this.target || 'common'}:${this.wiki || ''}:${this.page || ''}`;
+		}
 		switch (this.type) {
 			case 0:
 				return `local:${this.target || 'common'}:${this.page || ''}`;
@@ -290,16 +341,24 @@ export class Import {
 			if (this.type === 2 || !this.page) {
 				return null;
 			}
+			const gadgetDocPage = this.isModule ? getGadgetDocumentationPage(this.page) : null;
+			if (this.isModule && !gadgetDocPage) {
+				return null;
+			}
+			const docPage = gadgetDocPage || this.page;
 			const host = normalizeMediaWikiHost(this.type === 1 && this.wiki ? `${this.wiki}.org` : Import.getServerName());
-			const head = await fetchScriptHead(host, this.page);
-			if (!head) {
-				return null;
+			const titles = gadgetDocPage ? [ `${docPage}.js`, docPage ] : [ this.page ];
+			for (const title of titles) {
+				const head = await fetchScriptHead(host, title);
+				if (!head) {
+					continue;
+				}
+				const docRef = extractDocumentationReference(head);
+				if (docRef) {
+					return docRef;
+				}
 			}
-			const docRef = extractDocumentationReference(head);
-			if (!docRef) {
-				return null;
-			}
-			return docRef;
+			return null;
 		} catch (error) {
 			logger.warn('Failed to resolve documentation interwiki', error);
 			return null;
@@ -311,35 +370,42 @@ export class Import {
 		let toFind = null;
 		let titleInUrlPattern = null;
 
-		if (this.type === 0) {
-			toFind = quoted(escapeForJsString(this.page));
-			const page = String(this.page || '').trim();
-			if (page) {
-				// mw.loader.load('//host/...?title=PAGE&...') or title= encoded; line may start with "// " when disabled
-				titleInUrlPattern = new RegExp(
-					`title=${escapeForRegex(page)}([&\\s]|$)|title=${escapeForRegex(encodeURIComponent(page))}([&\\s]|$)`
-				);
+		if (!this.isModule) {
+			if (this.type === 0) {
+				toFind = quoted(escapeForJsString(this.page));
+				const page = String(this.page || '').trim();
+				if (page) {
+					// mw.loader.load('//host/...?title=PAGE&...') or title= encoded; line may start with "// " when disabled
+					titleInUrlPattern = new RegExp(
+						`title=${escapeForRegex(page)}([&\\s]|$)|title=${escapeForRegex(encodeURIComponent(page))}([&\\s]|$)`
+					);
+				}
+			} else if (this.type === 1) {
+				const pageName = String(this.page || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+				toFind = new RegExp(pageName);
+			} else if (this.type === 2) {
+				toFind = quoted(escapeForJsString(this.url));
 			}
-		} else if (this.type === 1) {
-			const pageName = String(this.page || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			toFind = new RegExp(pageName);
-		} else if (this.type === 2) {
-			toFind = quoted(escapeForJsString(this.url));
+
+			if (!toFind && !titleInUrlPattern) {
+				return [];
+			}
 		}
 
-		if (!toFind && !titleInUrlPattern) {
-			return [];
-		}
-
-		const lineMatches = (line) =>
-			(toFind && toFind.test(line)) || (titleInUrlPattern && titleInUrlPattern.test(line));
+		const lineMatches = (line) => {
+			if (this.isModule) {
+				const parsed = Import.fromJs(line, this.target);
+				return Boolean(parsed && parsed.getKey() === this.getKey());
+			}
+			return (toFind && toFind.test(line)) || (titleInUrlPattern && titleInUrlPattern.test(line));
+		};
 
 		const lines = String(targetWikitext || '').split('\n');
 		const indexes = new Set();
 		for (let index = 0; index < lines.length; index++) {
 			if (lineMatches(lines[index])) {
-				const itemRange = getCaptureItemRange(lines, index);
-				const blockRange = itemRange || getCaptureBlockRange(lines, index);
+				const itemRange = getMarkedRange(lines, index, CAPTURE_ITEM_START_RGX, CAPTURE_ITEM_END_RGX);
+				const blockRange = itemRange || getMarkedRange(lines, index, CAPTURE_BLOCK_START_RGX, CAPTURE_BLOCK_END_RGX);
 				if (blockRange) {
 					for (let i = blockRange.start; i <= blockRange.end; i++) {
 						indexes.add(i);
@@ -456,6 +522,9 @@ export class Import {
 				const parsed = Import.fromJs(candidate, target);
 				if (!parsed) {
 					return false;
+				}
+				if (this.isModule || parsed.isModule) {
+					return parsed.getKey() === this.getKey();
 				}
 				const parsedPage = String(parsed.page || '').toLowerCase();
 				const thisPage = String(this.page || '').toLowerCase();
