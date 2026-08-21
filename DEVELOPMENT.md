@@ -3,47 +3,51 @@
 ## Architecture
 
 - `src/App.js` is the Vite entry point and bootstrap layer.
-- `src/components`, `src/services`, `src/utils`, `src/constants`, and `src/styles` contain the modular runtime code.
-- `src/services/bootstrap.js` is the orchestration layer (readiness -> data preload -> UI runtime start).
-- `src/services/coreRuntime.js` initializes UI orchestration directly (no runtime bridge).
-- `src/services/pageUi.js` handles page-level UI integration points (heading button, indicators, install links).
+- Modular runtime lives under `src/components`, `src/services`, `src/utils`, `src/constants`, and `src/styles`.
+- `src/services/bootstrap.js` orchestrates readiness → data preload → UI runtime start.
+- `src/services/coreRuntime.js` starts UI orchestration (no legacy runtime bridge).
+- `src/services/pageUi.js` wires page-level UI (heading/indicator, marked links, infobox, snippet Install buttons). Snippet buttons are skipped when the page content model is JS/CSS.
 - `src/services/uiOrchestrator.js` coordinates UI entry points (`showUi`, install links, open handlers).
-- `src/services/summaryBuilder.js` centralizes summary text and interwiki summary links.
-- `src/services/imports.js` parses script heads for documentation links: `@documentation`, `Documentation:`, or `@see` (first 2000 characters).
-- `scr/scriptManager.js` is the loader source; `scr/scriptManager-capture.js` is the capture wrapper. Both are copied into `dist/` with a single JSDoc-style banner (version, license, docs, build date). Vite builds the core bundle; the loader and capture files are not bundled, only banner-injected and copied.
+- `src/services/summaryBuilder.js` centralizes edit summaries and interwiki summary links.
+- `src/services/imports.js` parses imports (including gadget `load.php?modules=…` URLs) and documentation references: `@documentation`, `Documentation:`, or `@see` (first 2000 characters).
+- `src/services/installRisk.js` scans scripts for network loads; the install dialog deep-check uses max depth 3.
+- `src/services/settings.js` stores default tab locally and interceptor / load-caching preferences globally; Settings UI also shows `SM_VERSION` and `BUILD_DATE`.
+- `scr/scriptManager.js` is the loader source; `scr/scriptManager-capture.js` is the capture wrapper. Both are copied into `dist/` with a single JSDoc-style banner (version, license, docs, build date). Vite builds the core bundle; loader and capture files are banner-injected only, not bundled.
 
-## Code Quality Tools
+Path aliases (Vite + Vitest): `@`, `@components`, `@services`, `@utils`, `@constants`, `@styles`.
+
+## Code quality tools
 
 ### ESLint
 
-- **Purpose**: Code linting and style enforcement
-- **Config**: `eslint.config.js`
-- **Commands**:
-  - `npm run lint` - Check for issues
-  - `npm run lint:fix` - Auto-fix issues
+- Config: `eslint.config.js`
+- `npm run lint` / `npm run lint:fix`
 
 ### Stylelint
 
-- **Purpose**: CSS linting for modular styles
-- **Config**: `stylelint.config.js`
-- **Commands**:
-  - `npm run lint` - Includes style checks
-  - `npm run lint:fix` - Auto-fix style issues where possible
+- Config: `stylelint.config.js` (CSS under `src/`)
+- Included in `npm run lint` / `npm run lint:fix`
 
 ### Tests
 
-- **Commands**: `npm run test` (watch), `npm run test:run` (single run). Uses Vitest; `--passWithNoTests` so the project can have zero tests and still pass.
+- Runner: Vitest (`vitest.config.js`), environment `jsdom`
+- Include: `src/**/*.test.js`
+- Commands: `npm run test` (watch), `npm run test:run` (CI-style single run)
+- `--passWithNoTests` remains enabled so an empty suite still exits 0
 
 ### Husky + lint-staged
 
-- **Purpose**: Pre-commit hooks for automatic code quality checks
-- **Hooks**:
-  - `pre-commit`: Runs ESLint on staged files
-  - `pre-push`: Runs full lint
+- `pre-commit`: ESLint on staged `*.js`
+- `pre-push`: full `npm run lint`
+
+### CI / release
+
+- CI (`.github/workflows/ci.yml`): Node 22, `npm ci`, lint, build, check `dist/scriptManager.js` and `dist/scriptManager-core.js`
+- Deploy (`.github/workflows/deploy.yml`): on `v*` tags, build and attach loader, core, and capture artifacts to the GitHub Release
 
 ## Line endings (Windows)
 
-The project uses LF (`.gitattributes`). On Windows, set in this repo so pre-push passes:
+The project uses LF (`.gitattributes`). On Windows, in this repo:
 
 ```bash
 git config core.autocrlf false
@@ -53,22 +57,33 @@ Then run `npm run lint:fix` once if the working copy had CRLF.
 
 ## Workflow
 
-1. **Before committing**: Husky runs lint-staged
-2. **Manual linting**: `npm run lint:fix`
-3. **Build artifacts**: `npm run build` runs lint then both dev and prod builds. Outputs:
-   - `dist/scriptManager-core.js` — Vite bundle (Vue/Codex runtime)
-   - `dist/scriptManager.js` — loader (from `scr/`, with banner)
-   - `dist/scriptManager-capture.js` — capture script (from `scr/`, with banner)
+1. Before committing: Husky runs lint-staged
+2. Manual quality pass: `npm run lint:fix` then `npm run test:run`
+3. Build: `npm run build` (lint + dev + prod). Outputs:
+   - `dist/scriptManager-core.js` — Vite IIFE bundle (Vue/Codex runtime)
+   - `dist/scriptManager.js` — loader from `scr/` (+ banner)
+   - `dist/scriptManager-capture.js` — capture from `scr/` (+ banner)
 
-## Configuration Files
+## Configuration files
 
-- `eslint.config.js` - ESLint configuration
-- `stylelint.config.js` - Stylelint configuration
-- `vite.config.js` - Build outputs and artifact naming
-- `.husky/pre-commit` - Pre-commit hook
-- `.husky/pre-push` - Pre-push hook
-- `package.json` - Contains lint-staged configuration
+| File | Role |
+| --- | --- |
+| `eslint.config.js` | ESLint flat config |
+| `stylelint.config.js` | Stylelint |
+| `vite.config.js` | Build, banners, loader/capture copy |
+| `vitest.config.js` | Unit tests |
+| `.husky/pre-commit` / `pre-push` | Git hooks |
+| `package.json` | Scripts, engines, lint-staged |
+| `data/languageFallbacks.json` | i18n fallback chain |
+| `.github/workflows/*` | CI and release |
+
+## Localization for developers
+
+- Source messages: `i18n/en.json`
+- Translator documentation: `i18n/qqq.json`
+- Community translations: [translatewiki.net — Script-manager](https://translatewiki.net/wiki/Translating:Script-manager)
+- Fetch base URL at runtime: `https://gitlab-content.toolforge.org/iniquity/script-manager/-/raw/main/i18n` (overridable via `window.ScriptManagerI18nBaseUrl`)
 
 ## Wiki documentation
 
-Suggested edits for the [Script_Manager](https://www.mediawiki.org/wiki/Script_Manager) wiki page (JSDoc doc link, install button on snippets, install dialog, repos) are collected in `docs/wiki-Script_Manager-updates.md`. Use it when syncing the wiki with the codebase.
+User-facing product docs live on [Script_Manager](https://www.mediawiki.org/wiki/Script_Manager). Keep that page aligned with user-visible behavior when releasing.
