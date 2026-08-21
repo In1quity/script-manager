@@ -310,3 +310,29 @@ export function getGadgetSectionLabels() {
 export function getGadgetSectionOrder() {
 	return gadgetSectionOrder.slice();
 }
+
+function stripHtml(value) {
+	return String(value || '').replace(/<[^>]*>/g, ' ');
+}
+
+export function gadgetMatchesFilter(gadgetName, gadget, query, sectionLabel = '') {
+	const needle = String(query || '').trim().toLowerCase();
+	if (!needle) {
+		return true;
+	}
+
+	const haystack = [
+		gadgetName,
+		gadget?.name,
+		stripHtml(gadget?.description),
+		gadget?.section,
+		sectionLabel
+	]
+		.join(' ')
+		.replace(/_/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.toLowerCase();
+
+	return haystack.includes(needle);
+}

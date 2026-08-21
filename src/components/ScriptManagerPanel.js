@@ -9,6 +9,7 @@ import {
 	getGadgetsLabel,
 	getGadgetSectionLabels,
 	getGadgetSectionOrder,
+	gadgetMatchesFilter,
 	isEnabledGadgetsLoaded,
 	getUserGadgetSettings,
 	loadEnabledGadgets,
@@ -174,6 +175,10 @@ export function createVuePanel(
 						const gadget = gadgetsReactive.value[gadgetName];
 						const section = gadget?.section || 'other';
 						if (enabledOnly.value && !isGadgetEnabled(gadgetName)) {
+							return;
+						}
+						const sectionLabel = gadgetSectionLabels.value?.[section] || section;
+						if (!gadgetMatchesFilter(gadgetName, gadget, filterText.value, sectionLabel)) {
 							return;
 						}
 						if (!grouped[section]) {
