@@ -53,6 +53,10 @@ describe('getSummaryForTarget', () => {
 		setServerName('ru.wikipedia.org');
 	});
 
+	it('keeps documentation tag target fixed to Script Manager docs', () => {
+		expect(SUMMARY_TAG).toBe('([[mw:Script Manager]])');
+	});
+
 	it('uses site summary when available', () => {
 		const strings = {
 			fallback: { 'summary-install': 'Install $1' },
@@ -108,5 +112,16 @@ describe('getSummaryForTarget', () => {
 		};
 		const summary = getSummaryForTarget('common', 'summary-install', '[[User:Foo/bar.js]]', strings);
 		expect(summary).toBe(`Install [[User:Foo/bar.js]] ${SUMMARY_TAG}`);
+	});
+
+	it('always appends Script Manager documentation tag as summary suffix', () => {
+		const strings = {
+			fallback: { 'summary-normalize': 'Standardize script imports and documentation links' },
+			current: {},
+			site: {}
+		};
+		const summary = getSummaryForTarget('common', 'summary-normalize', '', strings);
+		expect(summary).toBe('Standardize script imports and documentation links ([[mw:Script Manager]])');
+		expect(summary.endsWith('([[mw:Script Manager]])')).toBe(true);
 	});
 });
