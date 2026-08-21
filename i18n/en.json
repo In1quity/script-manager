@@ -80,6 +80,8 @@
 	"settings-userscript-load-caching-enabled-description": "Insert/remove code from [[:en:User:SD0001/Making user scripts load faster|userscript load caching via API]] at the top of global.js",
 	"settings-save": "Save",
 	"settings-saved": "Settings saved",
+	"settings-version": "Version $1",
+	"settings-published": "Published $1",
 	"label-captured-script": "Captured script",
 	"label-gadgets": "Gadgets",
 	"label-loading": "Loading",

@@ -3,6 +3,7 @@ import { getGadgetsLabel } from '@services/gadgets';
 import { t } from '@services/i18n';
 import { showNotification } from '@services/notification';
 import { loadSettings, saveSettings } from '@services/settings';
+import { formatBuildDate, getBuildInfo } from '@utils/buildInfo';
 import { loadVueCodex } from '@utils/codex';
 import { createLogger } from '@utils/logger';
 import { getSkinLabel } from '@utils/skinLabels';
@@ -164,6 +165,11 @@ export function createSettingsDialog(
 			const userscriptLoadCachingDescriptionHtml = ref(
 				renderInlineWikitext(t('settings-userscript-load-caching-enabled-description'))
 			);
+			const buildInfo = getBuildInfo();
+			const versionLabel = t('settings-version').replace('$1', buildInfo.version);
+			const publishedLabel = buildInfo.buildDate
+				? t('settings-published').replace('$1', formatBuildDate(buildInfo.buildDate))
+				: '';
 
 			const targetOptions = getDefaultTabOptions();
 
@@ -208,6 +214,8 @@ export function createSettingsDialog(
 				captureEnabled,
 				userscriptLoadCachingEnabled,
 				userscriptLoadCachingDescriptionHtml,
+				versionLabel,
+				publishedLabel,
 				targetOptions,
 				closeDialog,
 				handleSave,
@@ -268,6 +276,10 @@ export function createSettingsDialog(
 						>
 							<span v-text="SM_t('settings-save')"></span>
 						</cdx-button>
+					</div>
+					<div class="sm-settings-meta">
+						<div v-text="versionLabel"></div>
+						<div v-if="publishedLabel" v-text="publishedLabel"></div>
 					</div>
 				</div>
 			</cdx-dialog>

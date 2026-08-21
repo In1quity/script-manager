@@ -77,6 +77,8 @@
 	"settings-userscript-load-caching-enabled-description": "Description text for the setting that inserts/removes userscript load caching code in global.js. Supports wikilink markup ([[...]]).",
 	"settings-save": "Button text for saving settings in the settings dialog",
 	"settings-saved": "Success notification shown after settings are saved",
+	"settings-version": "Version line in the settings dialog footer. $1 is the script version",
+	"settings-published": "Publication date line in the settings dialog footer. $1 is the localized build date",
 	"label-captured-script": "Tooltip for the captured-script indicator and fallback name when script has no display name",
 	"label-gadgets": "Fallback label for the Gadgets tab when interface message is unavailable",
 	"label-loading": "Accessible label for progress indicator while content is loading",

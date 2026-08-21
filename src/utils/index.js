@@ -1,4 +1,5 @@
 export * from './logger.js';
+export * from './buildInfo.js';
 export * from './promise.js';
 export * from './namespace.js';
 export * from './interwiki.js';

@@ -39,7 +39,11 @@ export default [
 				clearInterval: 'readonly',
 				URL: 'readonly',
 				URLSearchParams: 'readonly',
-				fetch: 'readonly'
+				fetch: 'readonly',
+				SM_VERSION: 'readonly',
+				BUILD_DATE: 'readonly',
+				SM_DOC_PAGE: 'readonly',
+				SM_I18N_EN: 'readonly'
 			}
 		},
 		settings: {

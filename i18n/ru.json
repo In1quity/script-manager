@@ -76,6 +76,8 @@
 	"settings-userscript-load-caching-enabled-description": "Добавлять/удалять код из [[:en:User:SD0001/Making user scripts load faster|кеширования скриптов через API]] в начало global.js",
 	"settings-save": "Сохранить",
 	"settings-saved": "Настройки сохранены",
+	"settings-version": "Версия $1",
+	"settings-published": "Дата публикации $1",
 	"label-captured-script": "Перехваченный скрипт",
 	"label-gadgets": "Гаджеты",
 	"label-loading": "Загрузка",

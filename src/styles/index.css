@@ -449,6 +449,15 @@
 	gap: 0.5rem;
 }
 
+.sm-settings-meta {
+	margin-top: 1.25rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid var(--border-color-subtle, #eaecf0);
+	color: var(--color-subtle, #54595d);
+	font-size: 0.8125rem;
+	line-height: 1.4;
+}
+
 /* Capture Dialog */
 .sm-capture-dialog.cdx-dialog {
 	max-width: 32rem;
