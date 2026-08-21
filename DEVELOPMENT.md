@@ -4,15 +4,17 @@
 
 - `src/App.js` is the Vite entry point and bootstrap layer.
 - Modular runtime lives under `src/components`, `src/services`, `src/utils`, `src/constants`, and `src/styles`.
-- `src/services/bootstrap.js` orchestrates readiness → data preload → UI runtime start.
+- `src/services/bootstrap.js` orchestrates readiness -> data preload -> UI runtime start.
 - `src/services/coreRuntime.js` starts UI orchestration (no legacy runtime bridge).
-- `src/services/pageUi.js` wires page-level UI (heading/indicator, marked links, infobox, snippet Install buttons). Snippet buttons are skipped when the page content model is JS/CSS.
+- `src/services/pageUi.js` wires page-level UI (heading/indicator, marked links, infobox, snippet Install buttons).
 - `src/services/uiOrchestrator.js` coordinates UI entry points (`showUi`, install links, open handlers).
 - `src/services/summaryBuilder.js` centralizes edit summaries and interwiki summary links.
-- `src/services/imports.js` parses imports (including gadget `load.php?modules=…` URLs) and documentation references: `@documentation`, `Documentation:`, or `@see` (first 2000 characters).
-- `src/services/installRisk.js` scans scripts for network loads; the install dialog deep-check uses max depth 3.
-- `src/services/settings.js` stores default tab locally and interceptor / load-caching preferences globally; Settings UI also shows `SM_VERSION` and `BUILD_DATE`.
-- `scr/scriptManager.js` is the loader source; `scr/scriptManager-capture.js` is the capture wrapper. Both are copied into `dist/` with a single JSDoc-style banner (version, license, docs, build date). Vite builds the core bundle; loader and capture files are banner-injected only, not bundled.
+- `src/services/imports.js` parses imports and documentation references (`@documentation`, `Documentation:`, `@see`).
+- `src/services/installRisk.js` scans scripts for external network loads; deep scan in install dialog uses depth 3.
+- `src/services/settings.js` stores default tab locally and interceptor/load-caching preferences globally.
+- `src/services/captureRuntime.js` loads and memoizes capture runtime bootstrap code.
+- `src/utils/scriptLock.js` serializes install/uninstall/move operations by script key.
+- `scr/scriptManager.js` is loader source; `scr/scriptManager-capture.js` is capture wrapper source. Both are copied to `dist/` with a banner.
 
 Path aliases (Vite + Vitest): `@`, `@components`, `@services`, `@utils`, `@constants`, `@styles`.
 
@@ -30,20 +32,14 @@ Path aliases (Vite + Vitest): `@`, `@components`, `@services`, `@utils`, `@const
 
 ### Tests
 
-- Runner: Vitest (`vitest.config.js`), environment `jsdom`
-- Include: `src/**/*.test.js`
-- Commands: `npm run test` (watch), `npm run test:run` (CI-style single run)
-- `--passWithNoTests` remains enabled so an empty suite still exits 0
+- **Commands**: `npm run test` (watch), `npm run test:run` (single run). Uses Vitest.
 
 ### Husky + lint-staged
 
-- `pre-commit`: ESLint on staged `*.js`
-- `pre-push`: full `npm run lint`
-
-### CI / release
-
-- CI (`.github/workflows/ci.yml`): Node 22, `npm ci`, lint, build, check `dist/scriptManager.js` and `dist/scriptManager-core.js`
-- Deploy (`.github/workflows/deploy.yml`): on `v*` tags, build and attach loader, core, and capture artifacts to the GitHub Release
+- **Purpose**: Pre-commit hooks for automatic code quality checks
+- **Hooks**:
+  - `pre-commit`: Runs lint-staged
+  - `pre-push`: Runs full lint + test suite
 
 ## Line endings (Windows)
 
@@ -57,12 +53,12 @@ Then run `npm run lint:fix` once if the working copy had CRLF.
 
 ## Workflow
 
-1. Before committing: Husky runs lint-staged
-2. Manual quality pass: `npm run lint:fix` then `npm run test:run`
-3. Build: `npm run build` (lint + dev + prod). Outputs:
-   - `dist/scriptManager-core.js` — Vite IIFE bundle (Vue/Codex runtime)
-   - `dist/scriptManager.js` — loader from `scr/` (+ banner)
-   - `dist/scriptManager-capture.js` — capture from `scr/` (+ banner)
+1. **Before committing**: Husky runs lint-staged
+2. **Manual linting**: `npm run lint:fix`
+3. **Build artifacts**: `npm run build` runs lint then production build. Outputs:
+   - `dist/scriptManager-core.js` — Vite bundle (Vue/Codex runtime)
+   - `dist/scriptManager.js` — loader (from `scr/`, with banner)
+   - `dist/scriptManager-capture.js` — capture script (from `scr/`, with banner)
 
 ## Configuration files
 
@@ -86,4 +82,4 @@ Then run `npm run lint:fix` once if the working copy had CRLF.
 
 ## Wiki documentation
 
-User-facing product docs live on [Script_Manager](https://www.mediawiki.org/wiki/Script_Manager). Keep that page aligned with user-visible behavior when releasing.
+Keep the [Script_Manager](https://www.mediawiki.org/wiki/Script_Manager) page aligned with the implementation when shipping user-facing changes (install dialog behavior, snippet install button, repository links, and settings wording).
