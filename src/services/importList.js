@@ -3,7 +3,7 @@ import { DEFAULT_SKIN, SKINS } from '@constants/skins';
 import { getApi, getApiForTarget } from '@services/api';
 import { Import } from '@services/imports';
 import { createLogger } from '@utils/logger';
-import { getUserNamespaceName } from '@utils/mediawiki';
+import { getUserJsTitle } from '@utils/userJsTitle';
 import { extractWikitextFromResponse } from '@utils/wikitext';
 
 const logger = createLogger('importList');
@@ -17,11 +17,7 @@ const queuedBuildTargets = new Set();
 
 function getFullTarget(target = DEFAULT_SKIN) {
 	const cleanTarget = target || DEFAULT_SKIN;
-	const userName = mw?.config?.get('wgUserName') || '';
-	if (cleanTarget === 'global') {
-		return `User:${userName}/global.js`;
-	}
-	return `${getUserNamespaceName()}:${userName}/${cleanTarget}.js`;
+	return getUserJsTitle(cleanTarget);
 }
 
 function getTargetFromTitle(pageTitle) {
@@ -115,7 +111,13 @@ function hasNonImportCode(text, target) {
 
 export async function getWikitextForTarget(target) {
 	const title = getFullTarget(target);
+	if (!title) {
+		return null;
+	}
 	const api = getApiForTarget(target);
+	if (!api) {
+		return null;
+	}
 	const response = await api.get({
 		action: 'query',
 		prop: 'revisions',
@@ -154,8 +156,11 @@ export async function getAllTargetWikitexts() {
 	}
 
 	const localTargets = SKINS.filter((skin) => skin !== 'global');
-	const localTitles = localTargets.map((skin) => getFullTarget(skin)).join('|');
+	const localTitles = localTargets.map((skin) => getFullTarget(skin)).filter(Boolean).join('|');
 	const globalTitle = getFullTarget('global');
+	if (!localTitles || !globalTitle) {
+		return Object.create(null);
+	}
 
 	try {
 		const [ localData, globalData ] = await Promise.all([
@@ -181,12 +186,16 @@ export async function getAllTargetWikitexts() {
 		return result;
 	} catch (error) {
 		logger.warn('getAllTargetWikitexts fallback path', error);
+		const fallbackTitles = localTargets.map((skin) => getFullTarget(skin)).filter(Boolean).join('|');
+		if (!fallbackTitles) {
+			return Object.create(null);
+		}
 		const fallbackData = await localApi.get({
 			action: 'query',
 			prop: 'revisions',
 			rvprop: 'content',
 			rvslots: 'main',
-			titles: localTargets.map((skin) => getFullTarget(skin)).join('|')
+			titles: fallbackTitles
 		});
 		return extractTargetTextsFromPages(fallbackData?.query?.pages);
 	}

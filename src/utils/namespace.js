@@ -1,3 +1,5 @@
+import { getUserNamespaceName } from '@utils/mediawiki';
+
 export function canonicalizeUserNamespace(pageTitle) {
 	const title = String(pageTitle || '').trim();
 	if (!title) {
@@ -15,7 +17,9 @@ export function canonicalizeUserNamespace(pageTitle) {
 		return title;
 	}
 
-	if (namespace.toLowerCase() === 'user') {
+	const namespaceLower = namespace.toLowerCase();
+	const localizedUserNs = String(getUserNamespaceName() || 'User').toLowerCase();
+	if (namespaceLower === 'user' || namespaceLower === localizedUserNs) {
 		return `User:${rest}`;
 	}
 

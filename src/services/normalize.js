@@ -1,17 +1,26 @@
 import { createLogger } from '@utils/logger';
 import { getApiForTarget } from '@services/api';
 import { getStrings, t } from '@services/i18n';
-import { getWikitextForTarget } from '@services/importList';
 import { Import } from '@services/imports';
 import { showNotification } from '@services/notification';
 import { getSummaryForTarget } from '@services/summaryBuilder';
 import { urlToInterwiki } from '@utils/interwiki';
+import { getWikitextWithMeta } from '@utils/wikitext';
 
 const logger = createLogger('normalize');
 
 export async function normalize(target) {
 	try {
-		const wikitext = String((await getWikitextForTarget(target)) || '');
+		const api = getApiForTarget(target);
+		if (!api) {
+			throw new Error(`API is unavailable for target "${target}"`);
+		}
+		const targetTitle = Import.getTargetTitle(target);
+		if (!targetTitle) {
+			throw new Error(`Target title is unavailable for target "${target}"`);
+		}
+		const wikitextMeta = await getWikitextWithMeta(api, targetTitle);
+		const wikitext = String(wikitextMeta.content || '');
 		const lines = wikitext.split('\n');
 		const nextLines = Array(lines.length);
 		const importsToResolve = [];
@@ -51,16 +60,15 @@ export async function normalize(target) {
 		}
 
 		const summary = getSummaryForTarget(target, 'summary-normalize', '', getStrings());
-		const api = getApiForTarget(target);
-		if (!api) {
-			throw new Error(`API is unavailable for target "${target}"`);
-		}
 		try {
 			await api.postWithEditToken({
 				action: 'edit',
-				title: Import.getTargetTitle(target),
+				title: targetTitle,
 				summary,
 				text: nextText,
+				baserevid: wikitextMeta.revid,
+				basetimestamp: wikitextMeta.basetimestamp,
+				starttimestamp: wikitextMeta.starttimestamp,
 				formatversion: 2
 			});
 		} catch (error) {

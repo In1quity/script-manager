@@ -48,8 +48,9 @@ export function ensureCaptureRuntimeLoaded() {
 		} catch (error) {
 			reject(error);
 		}
-	}).finally(() => {
+	}).catch((error) => {
 		capturePromise = null;
+		throw error;
 	});
 
 	return capturePromise;

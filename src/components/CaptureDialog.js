@@ -17,9 +17,10 @@ import { getSummaryForTarget } from '@services/summaryBuilder';
 import { loadVueCodex } from '@utils/codex';
 import { escapeForJsString } from '@utils/escape';
 import { createLogger } from '@utils/logger';
-import { getServerName, getUserName } from '@utils/mediawiki';
+import { getServerName } from '@utils/mediawiki';
+import { getUserJsTitle } from '@utils/userJsTitle';
 import { safeUnmount } from '@utils/vue';
-import { getWikitext } from '@utils/wikitext';
+import { getWikitextWithMeta } from '@utils/wikitext';
 
 const logger = createLogger('component.captureDialog');
 const CAPTURE_FALLBACK_DELAY_MS = 5000;
@@ -219,8 +220,7 @@ function getTargetTitle(anImport, target) {
 	if (typeof staticResolver === 'function') {
 		return staticResolver(target);
 	}
-	const userName = getUserName();
-	return `User:${userName}/${target}.js`;
+	return getUserJsTitle(target);
 }
 
 function removeRangesFromLines(lines, ranges) {
@@ -251,18 +251,24 @@ function appendWrapperToLines(lines, items) {
 	return nextLines;
 }
 
-async function saveCaptureState(anImport, summaryKey, nextText) {
+async function saveCaptureState(anImport, summaryKey, nextText, editMeta = {}) {
 	const target = anImport.target || 'common';
 	const api = getApiForTarget(target);
 	if (!api) {
 		throw new Error(`API is unavailable for target "${target}"`);
 	}
 	const title = getTargetTitle(anImport, target);
+	if (!title) {
+		throw new Error(`Target title is unavailable for target "${target}"`);
+	}
 	try {
 		await api.postWithEditToken({
 			action: 'edit',
 			title,
 			text: nextText,
+			baserevid: editMeta.revid,
+			basetimestamp: editMeta.basetimestamp,
+			starttimestamp: editMeta.starttimestamp,
 			summary: getSummaryForTarget(target, summaryKey, anImport.getDescription(true), getStrings()),
 			formatversion: 2
 		});
@@ -286,7 +292,11 @@ export async function decaptureImport(anImport) {
 		throw new Error(`API is unavailable for target "${target}"`);
 	}
 	const title = getTargetTitle(anImport, target);
-	const current = await getWikitext(api, title);
+	if (!title) {
+		throw new Error(`Target title is unavailable for target "${target}"`);
+	}
+	const currentMeta = await getWikitextWithMeta(api, title);
+	const current = currentMeta.content;
 	const lines = String(current || '').split('\n');
 	const blocks = findCaptureBlocks(lines);
 	if (!blocks.length) {
@@ -315,7 +325,7 @@ export async function decaptureImport(anImport) {
 		return false;
 	}
 
-	await saveCaptureState(anImport, 'summary-decapture', nextText);
+	await saveCaptureState(anImport, 'summary-decapture', nextText, currentMeta);
 	showNotification('notification-decapture-success', 'success', anImport.getDisplayName());
 	return true;
 }
@@ -332,7 +342,8 @@ async function captureImport(anImport, captureName) {
 		throw new Error(`Target title is unavailable for target "${target}"`);
 	}
 
-	const current = await getWikitext(api, title);
+	const currentMeta = await getWikitextWithMeta(api, title);
+	const current = currentMeta.content;
 	const lines = String(current || '').split('\n');
 	const blocks = findCaptureBlocks(lines);
 	const existingItems = parseCaptureItems(lines, blocks);
@@ -357,7 +368,7 @@ async function captureImport(anImport, captureName) {
 		return false;
 	}
 
-	await saveCaptureState(anImport, 'summary-capture', nextText);
+	await saveCaptureState(anImport, 'summary-capture', nextText, currentMeta);
 
 	return true;
 }

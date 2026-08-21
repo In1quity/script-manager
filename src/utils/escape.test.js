@@ -23,6 +23,11 @@ describe('escape utils', () => {
 		expect(unescapeForJsString(escaped)).toBe('\'\\\r\n\u2028\u2029');
 	});
 
+	it('keeps escaped slash sequences stable in round-trip', () => {
+		const original = 'User:Example/Foo\\\\new.js';
+		expect(unescapeForJsString(escapeForJsString(original))).toBe(original);
+	});
+
 	it('escapes JavaScript comment terminator', () => {
 		expect(escapeForJsComment('a*/b')).toBe('a*\\/b');
 	});

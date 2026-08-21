@@ -3,7 +3,8 @@ import { SUMMARY_TAG } from '@constants/config';
 import { getApi, getMetaApi } from '@services/api';
 import { createLogger } from '@utils/logger';
 import { fetchWithTimeout } from '@utils/network';
-import { getWikitext } from '@utils/wikitext';
+import { getUserJsTitle } from '@utils/userJsTitle';
+import { getWikitext, getWikitextWithMeta } from '@utils/wikitext';
 
 const logger = createLogger('service.settings');
 
@@ -186,12 +187,7 @@ function syncGlobalCacheToLocal(api, globalRaw) {
 }
 
 function getGlobalJsTitle() {
-	try {
-		const userName = mw?.config?.get?.('wgUserName') || '';
-		return userName ? `User:${userName}/global.js` : null;
-	} catch {
-		return null;
-	}
+	return getUserJsTitle('global');
 }
 
 function stripUserscriptLoadCachingBlock(text) {
@@ -267,7 +263,8 @@ async function syncUserscriptLoadCachingInGlobalJs(enabled) {
 		throw new Error('Meta API or global.js title is unavailable');
 	}
 
-	const current = String((await getWikitext(metaApi, title)) || '');
+	const currentMeta = await getWikitextWithMeta(metaApi, title);
+	const current = String(currentMeta.content || '');
 	let stripped = stripUserscriptLoadCachingBlock(current).replace(/^\s*\n+/, '');
 	let next = stripped;
 
@@ -297,6 +294,9 @@ async function syncUserscriptLoadCachingInGlobalJs(enabled) {
 			action: 'edit',
 			title,
 			text: next,
+			baserevid: currentMeta.revid,
+			basetimestamp: currentMeta.basetimestamp,
+			starttimestamp: currentMeta.starttimestamp,
 			summary,
 			formatversion: 2
 		});
@@ -404,27 +404,28 @@ export function saveSettings(nextSettings) {
 		return Promise.resolve(getSettings());
 	}
 
-	const localSavePromise = api ? saveOptionRaw(api, LOCAL_SETTINGS_OPTION_KEY, localRaw) : Promise.resolve();
-	const globalSavePromise = metaApi ?
-		saveOptionRaw(metaApi, SETTINGS_OPTION_KEY, globalRaw) :
-		Promise.resolve().then(() => {
-			if (!api) {
-				return;
-			}
-			logger.warn('Meta API is not initialized, saving global settings to local wiki as fallback');
-			return saveOptionRaw(api, SETTINGS_OPTION_KEY, globalRaw);
-		});
-	const cacheSyncPromise = syncGlobalCacheToLocal(api, globalRaw);
-	const userscriptLoadCachingPromise =
-		prevUserscriptLoadCachingEnabled !== nextUserscriptLoadCachingEnabled ?
-			syncUserscriptLoadCachingInGlobalJs(nextUserscriptLoadCachingEnabled) :
-			Promise.resolve(false);
+	return (async () => {
+		if (api) {
+			await saveOptionRaw(api, LOCAL_SETTINGS_OPTION_KEY, localRaw);
+		}
 
-	return Promise.all([ localSavePromise, globalSavePromise, cacheSyncPromise, userscriptLoadCachingPromise ]).then(() => {
+		if (metaApi) {
+			await saveOptionRaw(metaApi, SETTINGS_OPTION_KEY, globalRaw);
+		} else if (api) {
+			logger.warn('Meta API is not initialized, saving global settings to local wiki as fallback');
+			await saveOptionRaw(api, SETTINGS_OPTION_KEY, globalRaw);
+		}
+
+		await syncGlobalCacheToLocal(api, globalRaw);
+
+		if (prevUserscriptLoadCachingEnabled !== nextUserscriptLoadCachingEnabled) {
+			await syncUserscriptLoadCachingInGlobalJs(nextUserscriptLoadCachingEnabled);
+		}
+
 		settingsCache = normalized;
 		settingsLoaded = true;
 		writeLocalRawSettings(localRaw);
 		writeLegacyRawSettings(globalRaw);
 		return getSettings();
-	});
+	})();
 }

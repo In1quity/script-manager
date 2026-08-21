@@ -32,7 +32,8 @@ export async function loadGadgets() {
 			action: 'query',
 			list: 'gadgets',
 			gaprop: 'id|desc|metadata',
-			format: 'json'
+			format: 'json',
+			formatversion: 2
 		})
 	)
 		.then((response) => {
@@ -55,7 +56,7 @@ export async function loadGadgets() {
 					name: gadget.id,
 					description: gadget.desc || '',
 					section,
-					isDefault: settings.default === ''
+					isDefault: settings.default === '' || settings.default === true || settings.default === 1
 				};
 			});
 
@@ -268,11 +269,16 @@ export async function toggleGadget(gadgetName, enabled) {
 		return false;
 	}
 
-	await api.postWithToken('csrf', {
-		action: 'options',
-		optionname: `gadget-${gadgetName}`,
-		optionvalue: enabled ? '1' : '0'
-	});
+	try {
+		await api.postWithToken('csrf', {
+			action: 'options',
+			optionname: `gadget-${gadgetName}`,
+			optionvalue: enabled ? '1' : '0'
+		});
+	} catch (error) {
+		logger.warn('Failed to toggle gadget option', error);
+		throw error;
+	}
 	userGadgetSettings[`gadget-${gadgetName}`] = enabled ? '1' : '0';
 	enabledGadgetsLoaded = true;
 	if (enabled) {

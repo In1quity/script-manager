@@ -10,6 +10,7 @@ export * from './mediawiki.js';
 export * from './network.js';
 export * from './scriptLock.js';
 export * from './url.js';
+export * from './userJsTitle.js';
 export * from './vue.js';
 export * from './wikitext.js';
 export * from './icons.js';

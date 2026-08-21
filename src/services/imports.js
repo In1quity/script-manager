@@ -14,8 +14,10 @@ import { createLogger } from '@utils/logger';
 import { getCurrentSourceWiki, getServerName, getUserName, normalizeMediaWikiHost } from '@utils/mediawiki';
 import { canonicalizeUserNamespace } from '@utils/namespace';
 import { fetchWithTimeout } from '@utils/network';
+import { runWithScriptLock } from '@utils/scriptLock';
 import { decodeSafe } from '@utils/url';
-import { getWikitext } from '@utils/wikitext';
+import { getUserJsTitle } from '@utils/userJsTitle';
+import { getWikitextWithMeta } from '@utils/wikitext';
 
 const URL_RGX = /^(?:https?:)?\/\/(.+?)\.org\/w\/index\.php\?(?:.*?&)?title=([^&#]+)/;
 const LOAD_PHP_RGX = /^(?:https?:)?\/\/(.+?)\.org\/w\/load\.php\?(?:.*?&)?modules=([^&#]+)/;
@@ -23,6 +25,13 @@ const IMPORT_RGX = /^\s*(\/\/)?\s*importScript\s*\(\s*(['"])\s*(.+?)\s*\2\s*\)\s
 const LOADER_RGX =
 	/^\s*(\/\/)?\s*mw\s*\.\s*loader\s*\.\s*load\s*\(\s*(['"])\s*(.+?)\s*\2\s*(?:,\s*(['"])\s*(?:text\/css|application\/css|text\/javascript|application\/javascript)\s*\4\s*)?\)\s*;?/;
 const logger = createLogger('service.imports');
+
+function isEditConflictError(error) {
+	const code = String(error?.code || '').toLowerCase();
+	const info = String(error?.info || '').toLowerCase();
+	const message = String(error?.message || '').toLowerCase();
+	return code.includes('editconflict') || info.includes('editconflict') || message.includes('editconflict');
+}
 
 function getGadgetDocumentationPage(moduleName) {
 	const primary = String(moduleName || '')
@@ -227,7 +236,7 @@ export class Import {
 
 	static getTargetTitle(target) {
 		const cleanTarget = target || 'common';
-		return `User:${Import.getUserName()}/${cleanTarget}.js`;
+		return getUserJsTitle(cleanTarget, Import.getUserName());
 	}
 
 	toLoaderUrl(serverName) {
@@ -246,7 +255,8 @@ export class Import {
 			url = this.url;
 		} else {
 			const host = normalizeMediaWikiHost(this.type === 1 ? `${this.wiki}.org` : serverName);
-			const pageTitle = this.page;
+			const normalizedPageTitle = String(this.page || '').replace(/ /g, '_');
+			const pageTitle = encodeURI(normalizedPageTitle);
 			const isCss = /\.css$/i.test(String(pageTitle || ''));
 			const ctype = isCss ? 'text/css' : 'text/javascript';
 			url = `//${host}/w/index.php?title=${pageTitle}&action=raw&ctype=${ctype}`;
@@ -381,8 +391,7 @@ export class Import {
 					);
 				}
 			} else if (this.type === 1) {
-				const pageName = String(this.page || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-				toFind = new RegExp(pageName);
+				toFind = null;
 			} else if (this.type === 2) {
 				toFind = quoted(escapeForJsString(this.url));
 			}
@@ -394,6 +403,10 @@ export class Import {
 
 		const lineMatches = (line) => {
 			if (this.isModule) {
+				const parsed = Import.fromJs(line, this.target);
+				return Boolean(parsed && parsed.getKey() === this.getKey());
+			}
+			if (this.type === 1) {
 				const parsed = Import.fromJs(line, this.target);
 				return Boolean(parsed && parsed.getKey() === this.getKey());
 			}
@@ -434,7 +447,11 @@ export class Import {
 				throw new Error(`API is unavailable for target "${target}"`);
 			}
 			const title = Import.getTargetTitle(target);
-			const current = await getWikitext(targetApi, title);
+			if (!title) {
+				throw new Error('Target title is unavailable for current user');
+			}
+			const currentMeta = await getWikitextWithMeta(targetApi, title);
+			const current = currentMeta.content;
 			const lines = String(current || '').split('\n');
 			const lineNums = this.getLineNums(current);
 
@@ -454,6 +471,9 @@ export class Import {
 					action: 'edit',
 					title,
 					text: lines.join('\n'),
+					baserevid: currentMeta.revid,
+					basetimestamp: currentMeta.basetimestamp,
+					starttimestamp: currentMeta.starttimestamp,
 					summary: getSummaryForTarget(
 						target,
 						disabled ? 'summary-disable' : 'summary-enable',
@@ -463,6 +483,9 @@ export class Import {
 					formatversion: 2
 				});
 			} catch (error) {
+				if (isEditConflictError(error)) {
+					showNotification('notification-general-error', 'error');
+				}
 				logger.error('Failed to persist disabled state', error);
 				throw error;
 			}
@@ -480,7 +503,8 @@ export class Import {
 	}
 
 	move(newTarget) {
-		return (async () => {
+		const lockKey = this.getDisplayName() || this.getKey();
+		return runWithScriptLock(lockKey, async () => {
 			if (!newTarget || this.target === newTarget) {
 				return false;
 			}
@@ -490,19 +514,37 @@ export class Import {
 				wiki: this.wiki,
 				url: this.url,
 				target: oldTarget,
-				disabled: this.disabled
+				disabled: this.disabled,
+				isModule: this.isModule
 			});
-			this.target = newTarget;
+			const installedInTarget = new Import({
+				page: this.page,
+				wiki: this.wiki,
+				url: this.url,
+				target: newTarget,
+				disabled: this.disabled,
+				isModule: this.isModule
+			});
 
 			const moveOptions = { moveFromTarget: oldTarget };
 			if (newTarget === 'global') {
 				moveOptions.moveSourceProject = getServerName();
 			}
-			await this.install(moveOptions);
-			await old.uninstall({ moveToTarget: newTarget });
+			await installedInTarget.install(moveOptions);
+			try {
+				await old.uninstall({ moveToTarget: newTarget });
+			} catch (error) {
+				try {
+					await installedInTarget.uninstall({ moveToTarget: oldTarget });
+				} catch (rollbackError) {
+					logger.error('Failed to rollback move after uninstall failure', rollbackError);
+				}
+				throw error;
+			}
+			this.target = newTarget;
 			showNotification('notification-move-success', 'success', this.getDisplayName());
 			return true;
-		})();
+		});
 	}
 
 	async updateInTarget(mode, options = {}) {
@@ -512,7 +554,11 @@ export class Import {
 			throw new Error(`API is unavailable for target "${target}"`);
 		}
 		const title = Import.getTargetTitle(target);
-		const current = await getWikitext(api, title);
+		if (!title) {
+			throw new Error('Target title is unavailable for current user');
+		}
+		const currentMeta = await getWikitextWithMeta(api, title);
+		const current = currentMeta.content;
 		const line = this.toJs(mw.config.get('wgServerName'));
 		const lines = String(current || '').split('\n');
 		let next = String(current || '');
@@ -523,12 +569,7 @@ export class Import {
 				if (!parsed) {
 					return false;
 				}
-				if (this.isModule || parsed.isModule) {
-					return parsed.getKey() === this.getKey();
-				}
-				const parsedPage = String(parsed.page || '').toLowerCase();
-				const thisPage = String(this.page || '').toLowerCase();
-				if (parsedPage && thisPage && parsedPage === thisPage) {
+				if (parsed.getKey() === this.getKey()) {
 					return true;
 				}
 				return Boolean(parsed.url && this.url && parsed.url === this.url);
@@ -569,6 +610,9 @@ export class Import {
 				action: 'edit',
 				title,
 				text: next,
+				baserevid: currentMeta.revid,
+				basetimestamp: currentMeta.basetimestamp,
+				starttimestamp: currentMeta.starttimestamp,
 				summary: getSummaryForTarget(
 					target,
 					summaryKey,
@@ -579,6 +623,9 @@ export class Import {
 				formatversion: 2
 			});
 		} catch (error) {
+			if (isEditConflictError(error)) {
+				showNotification('notification-general-error', 'error');
+			}
 			logger.error(`Failed to ${mode} import`, error);
 			throw error;
 		}

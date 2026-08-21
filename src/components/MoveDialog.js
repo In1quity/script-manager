@@ -76,13 +76,13 @@ export function createMoveDialog(
 		components: { CdxDialog, CdxButton, CdxSelect, CdxField },
 		setup() {
 			const dialogOpen = ref(true);
-			const selectedTarget = ref('common');
 			const isMoving = ref(false);
 
 			const targetOptions = SKINS.filter((skin) => skin !== anImport.target).map((skin) => ({
 				label: getSkinLabel(skin, true),
 				value: skin
 			}));
+			const selectedTarget = ref(targetOptions[0]?.value || 'global');
 
 			const closeDialog = () => {
 				dialogOpen.value = false;
