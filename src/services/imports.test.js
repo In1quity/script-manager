@@ -23,7 +23,8 @@ vi.mock('@utils/network', () => ({
 	fetchWithTimeout: vi.fn()
 }));
 vi.mock('@utils/wikitext', () => ({
-	getWikitext: vi.fn()
+	getWikitext: vi.fn(),
+	getWikitextWithMeta: vi.fn()
 }));
 vi.mock('@utils/logger', () => ({
 	createLogger: () => ({
@@ -38,7 +39,9 @@ vi.mock('@utils/logger', () => ({
 }));
 
 import { fetchWithTimeout } from '@utils/network';
+import { getApiForTarget } from '@services/api';
 import { Import } from '@services/imports';
+import { getWikitextWithMeta } from '@utils/wikitext';
 
 function createMwMock(serverName = 'ru.wikipedia.org') {
 	const foreignApiGet = vi.fn().mockResolvedValue({
@@ -307,6 +310,40 @@ describe('Import core mechanics', () => {
 				'// SM-CAPTURE-END'
 			].join('\n');
 			expect(imp.getLineNums(text)).toEqual([ 1, 2, 3 ]);
+		});
+	});
+
+	describe('setDisabled', () => {
+		it('throws when import line is missing and does not post success', async () => {
+			const postWithEditToken = vi.fn();
+			vi.mocked(getApiForTarget).mockReturnValue({ postWithEditToken });
+			vi.mocked(getWikitextWithMeta).mockResolvedValue({
+				content: 'console.log("no imports here");',
+				revid: 10,
+				basetimestamp: '2026-01-01T00:00:00Z',
+				starttimestamp: '2026-01-01T00:00:01Z'
+			});
+			const imp = Import.ofLocal('User:Foo/bar.js', 'common');
+
+			await expect(imp.setDisabled(true)).rejects.toThrow('was not found');
+			expect(postWithEditToken).not.toHaveBeenCalled();
+		});
+
+		it('throws when edit API result is not Success', async () => {
+			const postWithEditToken = vi.fn().mockResolvedValue({
+				edit: { result: 'Failure' }
+			});
+			vi.mocked(getApiForTarget).mockReturnValue({ postWithEditToken });
+			vi.mocked(getWikitextWithMeta).mockResolvedValue({
+				content: 'mw.loader.load(\'//ru.wikipedia.org/w/index.php?title=User:Foo/bar.js&action=raw&ctype=text/javascript\');',
+				revid: 10,
+				basetimestamp: '2026-01-01T00:00:00Z',
+				starttimestamp: '2026-01-01T00:00:01Z'
+			});
+			const imp = Import.ofLocal('User:Foo/bar.js', 'common');
+
+			await expect(imp.setDisabled(true)).rejects.toThrow('edit result is "Failure"');
+			expect(postWithEditToken).toHaveBeenCalledTimes(1);
 		});
 	});
 });

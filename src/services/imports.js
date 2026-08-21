@@ -33,6 +33,13 @@ function isEditConflictError(error) {
 	return code.includes('editconflict') || info.includes('editconflict') || message.includes('editconflict');
 }
 
+function assertEditSucceeded(response, operation) {
+	const result = String(response?.edit?.result || '');
+	if (result !== 'Success') {
+		throw new Error(`Failed to ${operation}: edit result is "${result || 'unknown'}"`);
+	}
+}
+
 function getGadgetDocumentationPage(moduleName) {
 	const primary = String(moduleName || '')
 		.split('|')[0]
@@ -454,6 +461,9 @@ export class Import {
 			const current = currentMeta.content;
 			const lines = String(current || '').split('\n');
 			const lineNums = this.getLineNums(current);
+			if (!lineNums.length) {
+				throw new Error(`Import "${this.getDisplayName()}" was not found in ${title}`);
+			}
 
 			lineNums.forEach((lineNum) => {
 				if (disabled) {
@@ -464,13 +474,16 @@ export class Import {
 					lines[lineNum] = lines[lineNum].replace(/^(\s*)\/\/\s?/, '$1');
 				}
 			});
+			const next = lines.join('\n');
+			if (next === current) {
+				throw new Error(`Import "${this.getDisplayName()}" state did not change`);
+			}
 
-			this.disabled = Boolean(disabled);
 			try {
-				await targetApi.postWithEditToken({
+				const response = await targetApi.postWithEditToken({
 					action: 'edit',
 					title,
-					text: lines.join('\n'),
+					text: next,
 					baserevid: currentMeta.revid,
 					basetimestamp: currentMeta.basetimestamp,
 					starttimestamp: currentMeta.starttimestamp,
@@ -482,6 +495,7 @@ export class Import {
 					),
 					formatversion: 2
 				});
+				assertEditSucceeded(response, disabled ? 'disable import' : 'enable import');
 			} catch (error) {
 				if (isEditConflictError(error)) {
 					showNotification('notification-general-error', 'error');
@@ -489,6 +503,7 @@ export class Import {
 				logger.error('Failed to persist disabled state', error);
 				throw error;
 			}
+			this.disabled = Boolean(disabled);
 			showNotification(
 				disabled ? 'notification-disable-success' : 'notification-enable-success',
 				'success',
@@ -606,7 +621,7 @@ export class Import {
 				: {};
 
 		try {
-			await api.postWithEditToken({
+			const response = await api.postWithEditToken({
 				action: 'edit',
 				title,
 				text: next,
@@ -622,6 +637,7 @@ export class Import {
 				),
 				formatversion: 2
 			});
+			assertEditSucceeded(response, `${mode} import`);
 		} catch (error) {
 			if (isEditConflictError(error)) {
 				showNotification('notification-general-error', 'error');
